@@ -1,31 +1,27 @@
-# Tell GitHub Linguist to detect all languages properly
+# GitHub Linguist overrides - force language detection
 
-# Kotlin source files
+# Kotlin
 *.kt linguist-language=Kotlin
 *.kts linguist-language=Kotlin
 
-# Android XML resources - force detection
+# Force XML to be counted as a detectable language
+*.xml linguist-detectable=true
 *.xml linguist-language=XML
-app/src/main/AndroidManifest.xml linguist-language=XML
-app/src/main/res/**/*.xml linguist-language=XML
 
-# Gradle & build files
-*.gradle linguist-language=Groovy
-*.gradle.kts linguist-language=Kotlin
-gradle/libs.versions.toml linguist-language=TOML
+# TOML - Gradle version catalog
+*.toml linguist-detectable=true
+*.toml linguist-language=TOML
+
+# Properties files
+*.properties linguist-detectable=true
 *.properties linguist-language=INI
 
-# Gradle wrapper - mark as vendored so it doesn't skew stats
-gradle/wrapper/gradle-wrapper.jar linguist-vendored=true
+# Exclude binary/vendored files from language stats
+*.apk linguist-vendored=true
+*.ttf linguist-vendored=true
+*.webp linguist-vendored=true
+*.png linguist-vendored=true
+*.jar linguist-vendored=true
 gradlew linguist-vendored=true
 gradlew.bat linguist-vendored=true
-
-# APK binary - not source code
-*.apk linguist-vendored=true
-
-# Font files - not source code
-*.ttf linguist-vendored=true
-
-# Test files - still count as language
-app/src/androidTest/**/*.kt linguist-detectable=true
-app/src/test/**/*.kt linguist-detectable=true
+gradle/wrapper/** linguist-vendored=true
