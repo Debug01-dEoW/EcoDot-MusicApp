@@ -15,8 +15,11 @@
 .cxx
 local.properties
 
-# APK outputs
+# APK outputs (build cache - excluded)
 app/build/
+
+# Allow the releases folder (published APKs)
+!releases/
 
 # Kotlin build cache
 .kotlin/
