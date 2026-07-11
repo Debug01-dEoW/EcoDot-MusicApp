@@ -1,0 +1,37 @@
+# Built artifacts
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# APK outputs
+app/build/
+
+# Kotlin build cache
+.kotlin/
+
+# Scratch and temp files
+scratch/
+build_log.txt
+build_output.txt
+upload_response.txt
+refactor.js
+replace.js
+test.kt
+suggestion_row.kt
+input_images/
+
+# Agent files
+.agent/
+.agents/
