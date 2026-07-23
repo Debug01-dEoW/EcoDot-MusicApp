@@ -273,17 +273,20 @@ fun ProfileScreen(
 
                 // ── General ─────────────────────────────────────────────
                 item {
-                    SettingsSection("General") {
-                        SettingsRow(
-                            icon    = Icons.Rounded.Person,
-                            title   = "Edit Profile",
+                    val hazeState = com.example.ecodot.LocalHazeState.current
+                    IOSSettingsGroup("General", hazeState = hazeState) {
+                        IOSSettingsRow(
+                            icon = Icons.Rounded.Person,
+                            iconBackgroundColor = Color(0xFF007AFF), // iOS Blue
+                            title = "Edit Profile",
                             subtitle = "Change name & avatar",
                             onClick = { showEditProfile = true }
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
-                        SettingsRow(
-                            icon    = Icons.Rounded.Notifications,
-                            title   = "Notifications",
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
+                        IOSSettingsRow(
+                            icon = Icons.Rounded.Notifications,
+                            iconBackgroundColor = Color(0xFFFF9500), // iOS Orange
+                            title = "Notifications",
                             subtitle = "Manage notification settings",
                             onClick = {
                                 val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
@@ -297,48 +300,53 @@ fun ProfileScreen(
 
                 // ── Playback ─────────────────────────────────────────────
                 item {
-                    SettingsSection("Playback") {
-                        SettingsRow(
-                            icon     = Icons.Rounded.HighQuality,
-                            title    = "Audio Quality",
+                    val hazeState = com.example.ecodot.LocalHazeState.current
+                    IOSSettingsGroup("Playback", hazeState = hazeState) {
+                        IOSSettingsRow(
+                            icon = Icons.Rounded.HighQuality,
+                            iconBackgroundColor = Color(0xFF5856D6), // iOS Purple
+                            title = "Audio Quality",
                             subtitle = when (audioQuality) {
                                 AudioQuality.LOW    -> "Low · ~48 kbps, saves data"
                                 AudioQuality.NORMAL -> "Normal · ~128 kbps, balanced"
                                 AudioQuality.HIGH   -> "High · Best quality (up to 256 kbps Opus)"
                             },
                             valueLabel = audioQuality.name,
-                            onClick  = { showAudioQualityPicker = true }
+                            onClick = { showAudioQualityPicker = true }
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
-                        SettingsRow(
-                            icon     = Icons.Rounded.Hd,
-                            title    = "Video Quality",
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
+                        IOSSettingsRow(
+                            icon = Icons.Rounded.Hd,
+                            iconBackgroundColor = Color(0xFF32ADE6), // iOS Teal Blue
+                            title = "Video Quality",
                             subtitle = when (videoQuality) {
                                 VideoQuality.LOW    -> "Low · 360p, saves data"
                                 VideoQuality.NORMAL -> "Normal · 720p, balanced"
                                 VideoQuality.HIGH   -> "High · 1080p+ (if available)"
                             },
                             valueLabel = videoQuality.name,
-                            onClick  = { showVideoQualityPicker = true }
+                            onClick = { showVideoQualityPicker = true }
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
-                        SettingsRow(
-                            icon     = Icons.Rounded.GraphicEq,
-                            title    = "Equalizer",
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
+                        IOSSettingsRow(
+                            icon = Icons.Rounded.GraphicEq,
+                            iconBackgroundColor = Color(0xFFFF2D55), // iOS Pink
+                            title = "Equalizer",
                             subtitle = "Tune bass, treble & more",
-                            onClick  = onEqualizerClick
+                            onClick = onEqualizerClick
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
-                        SettingsRow(
-                            icon      = Icons.Rounded.SwapHoriz,
-                            title     = "Auto Crossfade",
-                            subtitle  = if (crossfadeEnabled) "Overlap tracks for $crossfadeDuration seconds" else "Tracks play without overlap",
-                            isToggle  = true,
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
+                        IOSSettingsRow(
+                            icon = Icons.Rounded.SwapHoriz,
+                            iconBackgroundColor = Color(0xFF007AFF),
+                            title = "Auto Crossfade",
+                            subtitle = if (crossfadeEnabled) "Overlap tracks for ${crossfadeDuration}s" else "Tracks play without overlap",
+                            isToggle = true,
                             isChecked = crossfadeEnabled,
-                            onClick   = { viewModel.setCrossfadeEnabled(!crossfadeEnabled) }
+                            onClick = { viewModel.setCrossfadeEnabled(!crossfadeEnabled) }
                         )
                         if (crossfadeEnabled) {
-                            Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
+                            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
@@ -352,98 +360,109 @@ fun ProfileScreen(
                                     valueRange = 1f..10f,
                                     steps = 8,
                                     colors = androidx.compose.material3.SliderDefaults.colors(
-                                        thumbColor = Color(0xFF1DB954),
-                                        activeTrackColor = Color(0xFF1DB954)
+                                        thumbColor = Color(0xFF34C759),
+                                        activeTrackColor = Color(0xFF34C759)
                                     )
                                 )
                             }
                         }
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
-                        SettingsRow(
-                            icon      = Icons.Rounded.OfflineBolt,
-                            title     = "Offline Mode",
-                            subtitle  = if (offlineMode) "Only plays downloaded tracks" else "Streams when data is available",
-                            isToggle  = true,
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
+                        IOSSettingsRow(
+                            icon = Icons.Rounded.OfflineBolt,
+                            iconBackgroundColor = Color(0xFF34C759), // iOS Green
+                            title = "Offline Mode",
+                            subtitle = if (offlineMode) "Only plays downloaded tracks" else "Streams when data is available",
+                            isToggle = true,
                             isChecked = offlineMode,
-                            onClick   = { viewModel.setOfflineMode(!offlineMode) }
+                            onClick = { viewModel.setOfflineMode(!offlineMode) }
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
                         val autoCanvas by viewModel.autoCanvasEnabled.collectAsState()
-                        SettingsRow(
-                            icon      = Icons.Rounded.Movie,
-                            title     = "Auto Looping Canvas",
-                            subtitle  = if (autoCanvas) "Automatically fetch Spotify Canvas for songs" else "Off",
-                            isToggle  = true,
+                        IOSSettingsRow(
+                            icon = Icons.Rounded.Movie,
+                            iconBackgroundColor = Color(0xFFAF52DE), // iOS Indigo
+                            title = "Auto Looping Canvas",
+                            subtitle = if (autoCanvas) "Automatically fetch Spotify Canvas for songs" else "Off",
+                            isToggle = true,
                             isChecked = autoCanvas,
-                            onClick   = { viewModel.setAutoCanvasEnabled(!autoCanvas) }
+                            onClick = { viewModel.setAutoCanvasEnabled(!autoCanvas) }
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
                         val lockscreenLyrics by viewModel.lockscreenLyricsEnabled.collectAsState()
-                        SettingsRow(
-                            icon      = Icons.Rounded.MenuBook,
-                            title     = "Lock Screen Lyrics",
-                            subtitle  = if (lockscreenLyrics) "Show real-time lyrics overlay on lock screen" else "Off",
-                            isToggle  = true,
+                        IOSSettingsRow(
+                            icon = Icons.Rounded.MenuBook,
+                            iconBackgroundColor = Color(0xFFFF9500),
+                            title = "Lock Screen Lyrics",
+                            subtitle = if (lockscreenLyrics) "Show real-time lyrics overlay on lock screen" else "Off",
+                            isToggle = true,
                             isChecked = lockscreenLyrics,
-                            onClick   = { viewModel.setLockscreenLyricsEnabled(!lockscreenLyrics) }
+                            onClick = { viewModel.setLockscreenLyricsEnabled(!lockscreenLyrics) }
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
-                        SettingsRow(
-                            icon      = Icons.Rounded.CloseFullscreen,
-                            title     = "Stop playback on exit",
-                            subtitle  = if (killServiceOnExit) "Music stops when app is swiped away" else "Keeps playing in background",
-                            isToggle  = true,
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
+                        IOSSettingsRow(
+                            icon = Icons.Rounded.CloseFullscreen,
+                            iconBackgroundColor = Color(0xFFFF3B30), // iOS Red
+                            title = "Stop playback on exit",
+                            subtitle = if (killServiceOnExit) "Music stops when app is swiped away" else "Keeps playing in background",
+                            isToggle = true,
                             isChecked = killServiceOnExit,
-                            onClick   = { viewModel.setKillServiceOnExit(!killServiceOnExit) }
+                            onClick = { viewModel.setKillServiceOnExit(!killServiceOnExit) }
                         )
                     }
                 }
 
                 // ── Storage & Data ────────────────────────────────────────
                 item {
-                    SettingsSection("Storage & Data") {
+                    val hazeState = com.example.ecodot.LocalHazeState.current
+                    IOSSettingsGroup("Storage & Data", hazeState = hazeState) {
                         val cacheMb = cacheSize / (1024 * 1024)
-                        SettingsRow(
-                            icon       = Icons.Rounded.Storage,
-                            title      = "Stream Cache",
-                            subtitle   = "Audio cached for faster replay",
+                        IOSSettingsRow(
+                            icon = Icons.Rounded.Storage,
+                            iconBackgroundColor = Color(0xFF8E8E93), // iOS Gray
+                            title = "Stream Cache",
+                            subtitle = "Audio cached for faster replay",
                             valueLabel = if (cacheMb > 0) "${cacheMb} MB" else "Empty",
-                            onClick    = { if (cacheMb > 0) showClearCacheDialog = true }
+                            onClick = { if (cacheMb > 0) showClearCacheDialog = true }
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
-                        SettingsRow(
-                            icon      = Icons.Rounded.DataUsage,
-                            title     = "Data Saver",
-                            subtitle  = if (dataSaver) "Streaming at lower quality" else "Full quality streaming",
-                            isToggle  = true,
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
+                        IOSSettingsRow(
+                            icon = Icons.Rounded.DataUsage,
+                            iconBackgroundColor = Color(0xFF007AFF),
+                            title = "Data Saver",
+                            subtitle = if (dataSaver) "Streaming at lower quality" else "Full quality streaming",
+                            isToggle = true,
                             isChecked = dataSaver,
-                            onClick   = { viewModel.setDataSaver(!dataSaver) }
+                            onClick = { viewModel.setDataSaver(!dataSaver) }
                         )
                     }
                 }
 
                 // ── About ──────────────────────────────────────────────────
                 item {
-                    SettingsSection("About") {
-                        SettingsRow(
-                            icon     = Icons.Rounded.Info,
-                            title    = "Version",
+                    val hazeState = com.example.ecodot.LocalHazeState.current
+                    IOSSettingsGroup("About", hazeState = hazeState) {
+                        IOSSettingsRow(
+                            icon = Icons.Rounded.Info,
+                            iconBackgroundColor = Color(0xFF007AFF),
+                            title = "Version",
                             valueLabel = "1.0.0-beta",
-                            onClick  = {}
+                            onClick = {}
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
-                        SettingsRow(
-                            icon    = Icons.Rounded.Policy,
-                            title   = "Privacy Policy",
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
+                        IOSSettingsRow(
+                            icon = Icons.Rounded.Policy,
+                            iconBackgroundColor = Color(0xFF34C759),
+                            title = "Privacy Policy",
                             onClick = {
                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com"))
                                 context.startActivity(intent)
                             }
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
-                        SettingsRow(
-                            icon    = Icons.Rounded.Email,
-                            title   = "Email Feedback",
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
+                        IOSSettingsRow(
+                            icon = Icons.Rounded.Email,
+                            iconBackgroundColor = Color(0xFFFF9500),
+                            title = "Email Feedback",
                             onClick = {
                                 val intent = Intent(Intent.ACTION_SENDTO).apply {
                                     data = Uri.parse("mailto:deep082008.patel@gmail.com")
@@ -452,10 +471,11 @@ fun ProfileScreen(
                                 context.startActivity(intent)
                             }
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
-                        SettingsRow(
-                            icon    = Icons.Rounded.Chat,
-                            title   = "Contact on WhatsApp",
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
+                        IOSSettingsRow(
+                            icon = Icons.Rounded.Chat,
+                            iconBackgroundColor = Color(0xFF25D366),
+                            title = "Contact on WhatsApp",
                             onClick = {
                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/918799114016"))
                                 context.startActivity(intent)

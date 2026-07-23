@@ -39,10 +39,8 @@ media3 = "1.5.1"
 haze = "1.7.2"
 kmpalette = "3.1.0"
 gson = "2.11.0"
-liquid-glass = "2.0.0"
 
 [libraries]
-liquid-glass = { module = "io.github.kyant0:backdrop", version.ref = "liquid-glass" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
