@@ -63,6 +63,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.haze)
     implementation(libs.haze.material)
+    implementation("io.github.kashif-mehmood-km:backdrop:0.0.1-alpha02")
     implementation(libs.kmpalette.core)
     implementation(libs.kmpalette.extensions.network)
     implementation(libs.retrofit)

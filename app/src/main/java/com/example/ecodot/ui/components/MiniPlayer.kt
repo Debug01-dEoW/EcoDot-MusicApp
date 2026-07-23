@@ -59,25 +59,22 @@ fun MiniPlayer(
         label = "artwork_pulse"
     )
 
-    Box(
+    MotionLiquidGlassCard(
         modifier = modifier
             .fillMaxWidth()
-            .liquidGlass(
-                shape = RoundedCornerShape(24.dp),
-                specularAlpha = 0.32f,
-                elevation = 12.dp,
-                hazeState = hazeState,
-                tintColor = Color(0xFF0E1020),
-                blurRadius = 22.dp
-            )
             .pointerInput(Unit) {
                 detectVerticalDragGestures { _, dragAmount ->
                     if (dragAmount < -15f) { // Swipe up
                         onClick()
                     }
                 }
-            }
-            .animatedClickable(onClick = onClick)
+            },
+        shape = RoundedCornerShape(24.dp),
+        specularAlpha = 0.42f,
+        elevation = 12.dp,
+        hazeState = hazeState,
+        tintColor = Color(0xFF0E1020),
+        onClick = onClick
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Row(

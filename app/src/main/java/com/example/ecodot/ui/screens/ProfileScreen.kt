@@ -471,12 +471,12 @@ fun ProfileScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp)
-                            .liquidGlass(
-                                shape = RoundedCornerShape(20.dp),
-                                tintColor = Color(0xFF141626),
-                                specularAlpha = 0.38f,
-                                elevation = 8.dp
+                            .padding(horizontal = 24.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(Color(0xFF1E1E1E), Color(0xFF121212))
+                                )
                             )
                             .clickable { devInfoExpanded = !devInfoExpanded }
                             .padding(20.dp)
@@ -1029,35 +1029,11 @@ private fun VideoQualityPickerDialog(
 
 @Composable
 fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp)) {
-        Text(
-            text       = title.uppercase(),
-            style      = MaterialTheme.typography.labelSmall,
-            color      = Color.White.copy(alpha = 0.45f),
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.4.sp,
-            modifier   = Modifier.padding(bottom = 8.dp, start = 8.dp)
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .liquidGlass(
-                    shape = RoundedCornerShape(20.dp),
-                    tintColor = Color(0xFF141624),
-                    specularAlpha = 0.35f,
-                    elevation = 6.dp
-                )
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                content()
-            }
-        }
-    }
+    IOSSettingsGroup(
+        title = title,
+        content = content
+    )
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Settings Row — supports iOS toggle, value label, subtitle
-// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun SettingsRow(
@@ -1069,63 +1045,34 @@ fun SettingsRow(
     isChecked: Boolean = false,
     onClick: () -> Unit = {}
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .animatedClickable(onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = if (subtitle != null) 12.dp else 15.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(34.dp)
-                .clip(RoundedCornerShape(9.dp))
-                .background(Color.White.copy(alpha = 0.09f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, contentDescription = null, tint = Color.White.copy(alpha = 0.9f), modifier = Modifier.size(20.dp))
-        }
-        Spacer(Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text       = title,
-                style      = MaterialTheme.typography.bodyLarge,
-                color      = Color.White,
-                fontWeight = FontWeight.Medium
-            )
-            if (subtitle != null) {
-                Text(
-                    text  = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.45f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-        if (valueLabel != null && !isToggle) {
-            Text(
-                text  = valueLabel,
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.5f),
-                fontWeight = FontWeight.Medium
-            )
-            Spacer(Modifier.width(6.dp))
-        }
-        if (isToggle) {
-            IOSSwitch(
-                checked = isChecked,
-                onCheckedChange = { onClick() }
-            )
-        } else {
-            Icon(
-                Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.3f),
-                modifier = Modifier.size(18.dp)
-            )
+    val iconColor = remember(title) {
+        when {
+            title.contains("Profile", ignoreCase = true) -> Color(0xFF007AFF) // iOS Blue
+            title.contains("Notification", ignoreCase = true) -> Color(0xFFFF3B30) // iOS Red
+            title.contains("Audio", ignoreCase = true) -> Color(0xFF5856D6) // iOS Purple
+            title.contains("Video", ignoreCase = true) -> Color(0xFFFF9500) // iOS Orange
+            title.contains("Equalizer", ignoreCase = true) -> Color(0xFFAF52DE) // iOS Indigo
+            title.contains("Crossfade", ignoreCase = true) -> Color(0xFF34C759) // iOS Green
+            title.contains("Offline", ignoreCase = true) -> Color(0xFF30B0C7) // iOS Teal
+            title.contains("Canvas", ignoreCase = true) -> Color(0xFFFF2D55) // iOS Pink
+            title.contains("Lyrics", ignoreCase = true) -> Color(0xFFFFCC00) // iOS Yellow
+            title.contains("exit", ignoreCase = true) -> Color(0xFF8E8E93) // iOS Gray
+            title.contains("Cache", ignoreCase = true) -> Color(0xFFFF9500) // iOS Orange
+            title.contains("Saver", ignoreCase = true) -> Color(0xFF34C759) // iOS Green
+            else -> Color(0xFF007AFF)
         }
     }
+
+    IOSSettingsRow(
+        icon = icon,
+        iconBackgroundColor = iconColor,
+        title = title,
+        subtitle = subtitle,
+        valueLabel = valueLabel,
+        isToggle = isToggle,
+        isChecked = isChecked,
+        onClick = onClick
+    )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1143,16 +1090,12 @@ fun StatCard(
     Box(
         modifier = modifier
             .height(90.dp)
-            .liquidGlass(
-                shape = RoundedCornerShape(18.dp),
-                tintColor = Color(0xFF141626),
-                specularAlpha = 0.32f,
-                elevation = 6.dp
-            )
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.White.copy(alpha = 0.05f))
             .padding(14.dp)
     ) {
         Column {
-            Icon(icon, null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
+            Icon(icon, null, tint = Color.White.copy(alpha = 0.45f), modifier = Modifier.size(18.dp))
             Spacer(Modifier.weight(1f))
             Text(
                 text       = value,

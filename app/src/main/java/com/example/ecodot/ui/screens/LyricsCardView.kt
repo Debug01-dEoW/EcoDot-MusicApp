@@ -39,7 +39,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
-import com.example.ecodot.ui.components.liquidGlass
+import com.example.ecodot.ui.components.MotionLiquidGlassCard
 
 /**
  * Renders a beautiful shareable lyrics card.
@@ -53,15 +53,12 @@ fun LyricsCardContent(
     accentColor: Color,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier
-            .aspectRatio(9f / 16f)
-            .liquidGlass(
-                shape = RoundedCornerShape(28.dp),
-                backgroundColor = Color(0x35181A2A),
-                specularAlpha = 0.45f,
-                elevation = 16.dp
-            )
+    MotionLiquidGlassCard(
+        modifier = modifier.aspectRatio(9f / 16f),
+        shape = RoundedCornerShape(28.dp),
+        fluidColor = accentColor,
+        specularAlpha = 0.45f,
+        elevation = 16.dp
     ) {
         // 1. Blurred album art background
         if (!track.albumArtUri.isNullOrEmpty()) {
