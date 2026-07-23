@@ -1,4 +1,4 @@
-﻿package com.example.ecodot.ui.components
+package com.example.ecodot.ui.components
 
 import android.graphics.RenderEffect
 import android.graphics.RuntimeShader
@@ -255,8 +255,8 @@ fun IOSSwitch(
  */
 @Composable
 fun IOSSettingsGroup(
-    modifier: Modifier = Modifier,
     title: String? = null,
+    modifier: Modifier = Modifier,
     footer: String? = null,
     hazeState: HazeState? = null,
     content: @Composable ColumnScope.() -> Unit
