@@ -1412,19 +1412,23 @@ private fun HistoryRow(item: RecentSearchItem, onClick: () -> Unit, onRemove: ()
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = when (item.type) {
-                    "Query" -> "Search query"
-                    "Song" -> if (!item.subtitle.isNullOrEmpty()) "Song • ${item.subtitle}" else "Song"
-                    "Video" -> if (!item.subtitle.isNullOrEmpty()) "Video • ${item.subtitle}" else "Video"
-                    else -> item.type
-                },
-                color = Color.White.copy(0.4f),
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            val subtitle = when (item.type) {
+                "Song"  -> if (!item.subtitle.isNullOrEmpty()) "Song · ${item.subtitle}" else "Song"
+                "Video" -> if (!item.subtitle.isNullOrEmpty()) "Video · ${item.subtitle}" else "Video"
+                "Artist" -> "Artist"
+                "Album" -> if (!item.subtitle.isNullOrEmpty()) "Album · ${item.subtitle}" else "Album"
+                else    -> null  // Don't show subtitle for plain text searches
+            }
+            if (subtitle != null) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    color = Color.White.copy(0.4f),
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
         
         IconButton(onClick = onRemove, modifier = Modifier.size(32.dp)) {
