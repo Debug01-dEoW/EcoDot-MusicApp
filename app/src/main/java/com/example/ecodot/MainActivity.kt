@@ -34,6 +34,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.example.ecodot.ui.components.MiniPlayer
+import com.example.ecodot.ui.components.liquidGlass
 import com.example.ecodot.ui.screens.HomeScreen
 import com.example.ecodot.ui.screens.LibraryScreen
 import com.example.ecodot.ui.screens.NowPlayingScreen
@@ -411,8 +412,6 @@ class MainActivity : ComponentActivity() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Dynamic Island Nav Bar
 // ─────────────────────────────────────────────────────────────────────────────
-
-import com.example.ecodot.ui.components.liquidGlass
 
 @Composable
 fun DynamicIslandNavBar(
