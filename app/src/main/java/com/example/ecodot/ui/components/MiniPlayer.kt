@@ -64,9 +64,11 @@ fun MiniPlayer(
             .fillMaxWidth()
             .liquidGlass(
                 shape = RoundedCornerShape(24.dp),
-                backgroundColor = Color(0x351E2030),
-                specularAlpha = 0.38f,
-                elevation = 12.dp
+                specularAlpha = 0.32f,
+                elevation = 12.dp,
+                hazeState = hazeState,
+                tintColor = Color(0xFF0E1020),
+                blurRadius = 22.dp
             )
             .pointerInput(Unit) {
                 detectVerticalDragGestures { _, dragAmount ->

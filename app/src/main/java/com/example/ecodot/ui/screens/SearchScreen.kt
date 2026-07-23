@@ -566,6 +566,11 @@ private fun IdleSearchBody(
         "Focus" to Color(0xFF503750)
     )
 
+    // Limit to 6 recent items max; allow "See all" expansion
+    val MAX_VISIBLE = 6
+    var showAllHistory by remember { mutableStateOf(false) }
+    val visibleHistory = if (showAllHistory) history else history.take(MAX_VISIBLE)
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 22.dp, end = 22.dp, top = 8.dp, bottom = 120.dp)
@@ -573,44 +578,70 @@ private fun IdleSearchBody(
         if (history.isNotEmpty()) {
             item {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Recent Searches",
-                        color = Color.White.copy(0.9f),
+                        "Recent searches",
+                        color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp
                     )
                     Text(
                         "Clear all",
-                        color = EcoDotRed.copy(0.7f),
+                        color = Color.White.copy(0.5f),
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
+                        fontWeight = FontWeight.Normal,
                         modifier = Modifier.clickable { onClearAllHistory() }
                     )
                 }
             }
-            items(history, key = { it.id }) { item ->
+            items(visibleHistory, key = { it.id }) { item ->
                 HistoryRow(
                     item     = item,
                     onClick  = { onHistoryClick(item) },
                     onRemove = { onHistoryRemove(item) }
                 )
             }
+            // "See all" / "See less" toggle — only show if we have more than MAX_VISIBLE
+            if (history.size > MAX_VISIBLE) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showAllHistory = !showAllHistory }
+                            .padding(vertical = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (showAllHistory) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                            contentDescription = null,
+                            tint = Color.White.copy(0.45f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = if (showAllHistory) "Show less" else "See all ${history.size} searches",
+                            color = Color.White.copy(0.45f),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
         }
-        
+
         item {
             Text(
-                "Browse all",
+                "Browse categories",
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp,
-                modifier = Modifier.padding(top = 24.dp, bottom = 16.dp)
+                modifier = Modifier.padding(top = 28.dp, bottom = 16.dp)
             )
         }
-        
+
         item {
             Column(modifier = Modifier.fillMaxWidth()) {
                 for (i in genres.indices step 2) {

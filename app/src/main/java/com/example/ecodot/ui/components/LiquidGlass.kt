@@ -3,8 +3,6 @@ package com.example.ecodot.ui.components
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
@@ -20,51 +18,79 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.ecodot.ui.theme.animatedCombinedClickable
+import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.hazeEffect
 
 /**
- * Custom Liquid Glass background and specular highlight modifier inspired by liquid-glass aesthetics.
+ * Liquid Glass modifier using Haze library for real frosted-glass blur.
+ * Pass [hazeState] from a parent `haze {}` modifier to enable real blurring.
  */
 fun Modifier.liquidGlass(
     shape: Shape = RoundedCornerShape(24.dp),
-    backgroundColor: Color = Color(0x2B1F202E),
-    specularAlpha: Float = 0.35f,
-    borderWidth: Dp = 1.dp,
-    elevation: Dp = 8.dp
-): Modifier = this
-    .shadow(
-        elevation = elevation,
-        shape = shape,
-        clip = false,
-        ambientColor = Color.Black.copy(alpha = 0.5f),
-        spotColor = Color.Black.copy(alpha = 0.7f)
+    backgroundColor: Color = Color(0x22FFFFFF),
+    specularAlpha: Float = 0.30f,
+    borderWidth: Dp = 0.8.dp,
+    elevation: Dp = 8.dp,
+    hazeState: HazeState? = null,
+    tintColor: Color = Color(0xFF141620),
+    blurRadius: Dp = 20.dp
+): Modifier {
+    val base = this
+        .shadow(
+            elevation = elevation,
+            shape = shape,
+            clip = false,
+            ambientColor = Color.Black.copy(alpha = 0.4f),
+            spotColor = Color.Black.copy(alpha = 0.6f)
+        )
+        .clip(shape)
+
+    val glassStyle = HazeStyle(
+        backgroundColor = tintColor.copy(alpha = 0.50f),
+        tint = HazeDefaults.tint(tintColor.copy(alpha = 0.30f)),
+        blurRadius = blurRadius,
+        noiseFactor = 0.06f
     )
-    .clip(shape)
-    .background(backgroundColor)
-    .border(
+
+    val withBackground = if (hazeState != null) {
+        base.hazeEffect(state = hazeState, style = glassStyle)
+    } else {
+        base.background(
+            color = tintColor.copy(alpha = 0.78f),
+            shape = shape
+        )
+    }
+
+    return withBackground.border(
         width = borderWidth,
         brush = Brush.linearGradient(
             colors = listOf(
                 Color.White.copy(alpha = specularAlpha),
-                Color.White.copy(alpha = specularAlpha * 0.2f),
-                Color.Transparent,
-                Color.Black.copy(alpha = 0.4f)
+                Color.White.copy(alpha = specularAlpha * 0.6f),
+                Color.White.copy(alpha = 0.03f),
+                Color.Black.copy(alpha = 0.20f)
             ),
             start = Offset(0f, 0f),
             end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
         ),
         shape = shape
     )
+}
 
 /**
- * A reusable Liquid Glass container card with interactive tactile bounce.
+ * A reusable Liquid Glass container card with optional click interaction.
  */
 @Composable
 fun LiquidGlassCard(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(20.dp),
-    backgroundColor: Color = Color(0x30222436),
-    specularAlpha: Float = 0.35f,
+    backgroundColor: Color = Color(0x22FFFFFF),
+    tintColor: Color = Color(0xFF141620),
+    specularAlpha: Float = 0.30f,
     elevation: Dp = 6.dp,
+    hazeState: HazeState? = null,
     onClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit
@@ -73,8 +99,10 @@ fun LiquidGlassCard(
         .liquidGlass(
             shape = shape,
             backgroundColor = backgroundColor,
+            tintColor = tintColor,
             specularAlpha = specularAlpha,
-            elevation = elevation
+            elevation = elevation,
+            hazeState = hazeState
         )
 
     val interactiveModifier = if (onClick != null || onLongClick != null) {
@@ -93,50 +121,50 @@ fun LiquidGlassCard(
 }
 
 /**
- * Animated liquid mesh background with fluid shifting color blobs.
+ * Animated liquid mesh background with subtle shifting ambient color blobs.
+ * Simulates iOS 26 Liquid Glass ambient light behavior.
  */
 @Composable
 fun LiquidMeshBackground(
     modifier: Modifier = Modifier,
-    dominantColor: Color = Color(0xFF7C3AED),
-    accentColor: Color = Color(0xFF10B981),
+    dominantColor: Color = Color(0xFF6B21A8),
+    accentColor: Color = Color(0xFF0EA5E9),
     content: @Composable BoxScope.() -> Unit = {}
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "liquid_mesh")
-    
+
     val offsetX1 by infiniteTransition.animateFloat(
-        initialValue = -0.3f,
-        targetValue = 0.4f,
+        initialValue = -0.15f,
+        targetValue = 0.20f,
         animationSpec = infiniteRepeatable(
-            animation = tween(12000, easing = FastOutSlowInEasing),
+            animation = tween(14000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "blob1_x"
     )
     val offsetY1 by infiniteTransition.animateFloat(
-        initialValue = -0.2f,
-        targetValue = 0.3f,
+        initialValue = -0.08f,
+        targetValue = 0.15f,
         animationSpec = infiniteRepeatable(
-            animation = tween(15000, easing = FastOutSlowInEasing),
+            animation = tween(18000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "blob1_y"
     )
-
     val offsetX2 by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
-        targetValue = -0.2f,
+        initialValue = 0.20f,
+        targetValue = -0.08f,
         animationSpec = infiniteRepeatable(
-            animation = tween(14000, easing = FastOutSlowInEasing),
+            animation = tween(16000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "blob2_x"
     )
     val offsetY2 by infiniteTransition.animateFloat(
-        initialValue = 0.6f,
-        targetValue = -0.1f,
+        initialValue = 0.30f,
+        targetValue = 0.02f,
         animationSpec = infiniteRepeatable(
-            animation = tween(11000, easing = FastOutSlowInEasing),
+            animation = tween(13000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "blob2_y"
@@ -145,40 +173,36 @@ fun LiquidMeshBackground(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF07070C))
+            .background(Color(0xFF060810))
             .drawWithCache {
-                val width = size.width
-                val height = size.height
-
+                val w = size.width
+                val h = size.height
                 onDrawBehind {
-                    // Blob 1 (Dominant theme color)
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                dominantColor.copy(alpha = 0.35f),
-                                dominantColor.copy(alpha = 0.12f),
+                                dominantColor.copy(alpha = 0.26f),
+                                dominantColor.copy(alpha = 0.09f),
                                 Color.Transparent
                             ),
-                            center = Offset(width * (0.3f + offsetX1), height * (0.25f + offsetY1)),
-                            radius = width * 0.85f
+                            center = Offset(w * (0.25f + offsetX1), h * (0.20f + offsetY1)),
+                            radius = w * 0.85f
                         ),
-                        radius = width * 0.85f,
-                        center = Offset(width * (0.3f + offsetX1), height * (0.25f + offsetY1))
+                        radius = w * 0.85f,
+                        center = Offset(w * (0.25f + offsetX1), h * (0.20f + offsetY1))
                     )
-
-                    // Blob 2 (Accent color)
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                accentColor.copy(alpha = 0.28f),
-                                accentColor.copy(alpha = 0.08f),
+                                accentColor.copy(alpha = 0.20f),
+                                accentColor.copy(alpha = 0.05f),
                                 Color.Transparent
                             ),
-                            center = Offset(width * (0.7f + offsetX2), height * (0.65f + offsetY2)),
-                            radius = width * 0.75f
+                            center = Offset(w * (0.75f + offsetX2), h * (0.70f + offsetY2)),
+                            radius = w * 0.70f
                         ),
-                        radius = width * 0.75f,
-                        center = Offset(width * (0.7f + offsetX2), height * (0.65f + offsetY2))
+                        radius = w * 0.70f,
+                        center = Offset(w * (0.75f + offsetX2), h * (0.70f + offsetY2))
                     )
                 }
             }

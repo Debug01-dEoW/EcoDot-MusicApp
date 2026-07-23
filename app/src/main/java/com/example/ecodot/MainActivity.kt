@@ -43,6 +43,7 @@ import com.example.ecodot.ui.theme.EcoDotTheme
 import com.example.ecodot.ui.viewmodel.MusicViewModel
 import com.example.ecodot.util.RequestNotificationPermission
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.delay
 
 val LocalHazeState = compositionLocalOf { HazeState() }
@@ -141,7 +142,7 @@ class MainActivity : ComponentActivity() {
                     Scaffold(
                         containerColor = Color(0xFF000000),
                     ) { _ ->
-                        Box(modifier = Modifier.fillMaxSize()) {
+                        Box(modifier = Modifier.fillMaxSize().hazeSource(appHazeState)) {
 
                             // ── Global Ambient Haze (album art color bleeds into all screens) ──
                             Box(
@@ -268,7 +269,8 @@ class MainActivity : ComponentActivity() {
                                             launchSingleTop = true
                                             restoreState = true
                                         }
-                                    }
+                                    },
+                                    hazeState = appHazeState
                                 )
                             }
 
@@ -416,7 +418,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun DynamicIslandNavBar(
     currentRoute: String?,
-    onTabSelected: (String) -> Unit
+    onTabSelected: (String) -> Unit,
+    hazeState: HazeState? = null
 ) {
     val navItems = listOf(
         Triple("home",    Icons.Rounded.Home,         "Home"),
@@ -436,9 +439,11 @@ fun DynamicIslandNavBar(
             .wrapContentSize()
             .liquidGlass(
                 shape = RoundedCornerShape(percent = 50),
-                backgroundColor = Color(0x38181A28),
-                specularAlpha = 0.42f,
-                elevation = 16.dp
+                specularAlpha = 0.38f,
+                elevation = 16.dp,
+                hazeState = hazeState,
+                tintColor = Color(0xFF10111A),
+                blurRadius = 24.dp
             )
     ) {
         Box(
