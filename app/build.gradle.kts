@@ -63,6 +63,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.haze)
     implementation(libs.haze.material)
+    implementation(libs.liquid.glass)
     implementation(libs.kmpalette.core)
     implementation(libs.kmpalette.extensions.network)
     implementation(libs.retrofit)
