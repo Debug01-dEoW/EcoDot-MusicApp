@@ -686,22 +686,17 @@ fun NowPlayingScreen(
                         }
                     }
 
-                    // 6. Lyrics Card — Styled with Liquid Glass refraction and haze blur
+                    // 6. Lyrics Card — Solid card styled exactly like the Spotify preview (second image)
                     item {
-                        val hazeState = com.example.ecodot.LocalHazeState.current
                         Spacer(modifier = Modifier.height(16.dp))
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 12.dp)
                                 .height(340.dp)
-                                .liquidGlass(
-                                    shape = RoundedCornerShape(24.dp),
-                                    tintColor = dominantColor.copy(alpha = 0.85f),
-                                    specularAlpha = 0.40f,
-                                    elevation = 12.dp,
-                                    hazeState = hazeState
-                                )
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(dominantColor) // Solid dynamic background color
+                                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(24.dp))
                         ) {
                             Column(
                                 modifier = Modifier

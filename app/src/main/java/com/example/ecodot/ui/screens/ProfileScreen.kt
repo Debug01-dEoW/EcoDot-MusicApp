@@ -273,20 +273,17 @@ fun ProfileScreen(
 
                 // ── General ─────────────────────────────────────────────
                 item {
-                    val hazeState = com.example.ecodot.LocalHazeState.current
-                    IOSSettingsGroup(title = "General", hazeState = hazeState) {
-                        IOSSettingsRow(
-                            icon = Icons.Rounded.Person,
-                            iconBackgroundColor = Color(0xFF007AFF), // iOS Blue
-                            title = "Edit Profile",
+                    SettingsSection("General") {
+                        SettingsRow(
+                            icon    = Icons.Rounded.Person,
+                            title   = "Edit Profile",
                             subtitle = "Change name & avatar",
                             onClick = { showEditProfile = true }
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
-                        IOSSettingsRow(
-                            icon = Icons.Rounded.Notifications,
-                            iconBackgroundColor = Color(0xFFFF9500), // iOS Orange
-                            title = "Notifications",
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
+                        SettingsRow(
+                            icon    = Icons.Rounded.Notifications,
+                            title   = "Notifications",
                             subtitle = "Manage notification settings",
                             onClick = {
                                 val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
@@ -300,53 +297,48 @@ fun ProfileScreen(
 
                 // ── Playback ─────────────────────────────────────────────
                 item {
-                    val hazeState = com.example.ecodot.LocalHazeState.current
-                    IOSSettingsGroup(title = "Playback", hazeState = hazeState) {
-                        IOSSettingsRow(
-                            icon = Icons.Rounded.HighQuality,
-                            iconBackgroundColor = Color(0xFF5856D6), // iOS Purple
-                            title = "Audio Quality",
+                    SettingsSection("Playback") {
+                        SettingsRow(
+                            icon     = Icons.Rounded.HighQuality,
+                            title    = "Audio Quality",
                             subtitle = when (audioQuality) {
                                 AudioQuality.LOW    -> "Low · ~48 kbps, saves data"
                                 AudioQuality.NORMAL -> "Normal · ~128 kbps, balanced"
                                 AudioQuality.HIGH   -> "High · Best quality (up to 256 kbps Opus)"
                             },
                             valueLabel = audioQuality.name,
-                            onClick = { showAudioQualityPicker = true }
+                            onClick  = { showAudioQualityPicker = true }
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
-                        IOSSettingsRow(
-                            icon = Icons.Rounded.Hd,
-                            iconBackgroundColor = Color(0xFF32ADE6), // iOS Teal Blue
-                            title = "Video Quality",
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
+                        SettingsRow(
+                            icon     = Icons.Rounded.Hd,
+                            title    = "Video Quality",
                             subtitle = when (videoQuality) {
                                 VideoQuality.LOW    -> "Low · 360p, saves data"
                                 VideoQuality.NORMAL -> "Normal · 720p, balanced"
                                 VideoQuality.HIGH   -> "High · 1080p+ (if available)"
                             },
                             valueLabel = videoQuality.name,
-                            onClick = { showVideoQualityPicker = true }
+                            onClick  = { showVideoQualityPicker = true }
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
-                        IOSSettingsRow(
-                            icon = Icons.Rounded.GraphicEq,
-                            iconBackgroundColor = Color(0xFFFF2D55), // iOS Pink
-                            title = "Equalizer",
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
+                        SettingsRow(
+                            icon     = Icons.Rounded.GraphicEq,
+                            title    = "Equalizer",
                             subtitle = "Tune bass, treble & more",
-                            onClick = onEqualizerClick
+                            onClick  = onEqualizerClick
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
-                        IOSSettingsRow(
-                            icon = Icons.Rounded.SwapHoriz,
-                            iconBackgroundColor = Color(0xFF007AFF),
-                            title = "Auto Crossfade",
-                            subtitle = if (crossfadeEnabled) "Overlap tracks for ${crossfadeDuration}s" else "Tracks play without overlap",
-                            isToggle = true,
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
+                        SettingsRow(
+                            icon      = Icons.Rounded.SwapHoriz,
+                            title     = "Auto Crossfade",
+                            subtitle  = if (crossfadeEnabled) "Overlap tracks for $crossfadeDuration seconds" else "Tracks play without overlap",
+                            isToggle  = true,
                             isChecked = crossfadeEnabled,
-                            onClick = { viewModel.setCrossfadeEnabled(!crossfadeEnabled) }
+                            onClick   = { viewModel.setCrossfadeEnabled(!crossfadeEnabled) }
                         )
                         if (crossfadeEnabled) {
-                            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                            Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
@@ -360,109 +352,98 @@ fun ProfileScreen(
                                     valueRange = 1f..10f,
                                     steps = 8,
                                     colors = androidx.compose.material3.SliderDefaults.colors(
-                                        thumbColor = Color(0xFF34C759),
-                                        activeTrackColor = Color(0xFF34C759)
+                                        thumbColor = Color(0xFF1DB954),
+                                        activeTrackColor = Color(0xFF1DB954)
                                     )
                                 )
                             }
                         }
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
-                        IOSSettingsRow(
-                            icon = Icons.Rounded.OfflineBolt,
-                            iconBackgroundColor = Color(0xFF34C759), // iOS Green
-                            title = "Offline Mode",
-                            subtitle = if (offlineMode) "Only plays downloaded tracks" else "Streams when data is available",
-                            isToggle = true,
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
+                        SettingsRow(
+                            icon      = Icons.Rounded.OfflineBolt,
+                            title     = "Offline Mode",
+                            subtitle  = if (offlineMode) "Only plays downloaded tracks" else "Streams when data is available",
+                            isToggle  = true,
                             isChecked = offlineMode,
-                            onClick = { viewModel.setOfflineMode(!offlineMode) }
+                            onClick   = { viewModel.setOfflineMode(!offlineMode) }
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
                         val autoCanvas by viewModel.autoCanvasEnabled.collectAsState()
-                        IOSSettingsRow(
-                            icon = Icons.Rounded.Movie,
-                            iconBackgroundColor = Color(0xFFAF52DE), // iOS Indigo
-                            title = "Auto Looping Canvas",
-                            subtitle = if (autoCanvas) "Automatically fetch Spotify Canvas for songs" else "Off",
-                            isToggle = true,
+                        SettingsRow(
+                            icon      = Icons.Rounded.Movie,
+                            title     = "Auto Looping Canvas",
+                            subtitle  = if (autoCanvas) "Automatically fetch Spotify Canvas for songs" else "Off",
+                            isToggle  = true,
                             isChecked = autoCanvas,
-                            onClick = { viewModel.setAutoCanvasEnabled(!autoCanvas) }
+                            onClick   = { viewModel.setAutoCanvasEnabled(!autoCanvas) }
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
                         val lockscreenLyrics by viewModel.lockscreenLyricsEnabled.collectAsState()
-                        IOSSettingsRow(
-                            icon = Icons.Rounded.MenuBook,
-                            iconBackgroundColor = Color(0xFFFF9500),
-                            title = "Lock Screen Lyrics",
-                            subtitle = if (lockscreenLyrics) "Show real-time lyrics overlay on lock screen" else "Off",
-                            isToggle = true,
+                        SettingsRow(
+                            icon      = Icons.Rounded.MenuBook,
+                            title     = "Lock Screen Lyrics",
+                            subtitle  = if (lockscreenLyrics) "Show real-time lyrics overlay on lock screen" else "Off",
+                            isToggle  = true,
                             isChecked = lockscreenLyrics,
-                            onClick = { viewModel.setLockscreenLyricsEnabled(!lockscreenLyrics) }
+                            onClick   = { viewModel.setLockscreenLyricsEnabled(!lockscreenLyrics) }
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
-                        IOSSettingsRow(
-                            icon = Icons.Rounded.CloseFullscreen,
-                            iconBackgroundColor = Color(0xFFFF3B30), // iOS Red
-                            title = "Stop playback on exit",
-                            subtitle = if (killServiceOnExit) "Music stops when app is swiped away" else "Keeps playing in background",
-                            isToggle = true,
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
+                        SettingsRow(
+                            icon      = Icons.Rounded.CloseFullscreen,
+                            title     = "Stop playback on exit",
+                            subtitle  = if (killServiceOnExit) "Music stops when app is swiped away" else "Keeps playing in background",
+                            isToggle  = true,
                             isChecked = killServiceOnExit,
-                            onClick = { viewModel.setKillServiceOnExit(!killServiceOnExit) }
+                            onClick   = { viewModel.setKillServiceOnExit(!killServiceOnExit) }
                         )
                     }
                 }
 
                 // ── Storage & Data ────────────────────────────────────────
                 item {
-                    val hazeState = com.example.ecodot.LocalHazeState.current
-                    IOSSettingsGroup(title = "Storage & Data", hazeState = hazeState) {
+                    SettingsSection("Storage & Data") {
                         val cacheMb = cacheSize / (1024 * 1024)
-                        IOSSettingsRow(
-                            icon = Icons.Rounded.Storage,
-                            iconBackgroundColor = Color(0xFF8E8E93), // iOS Gray
-                            title = "Stream Cache",
-                            subtitle = "Audio cached for faster replay",
+                        SettingsRow(
+                            icon       = Icons.Rounded.Storage,
+                            title      = "Stream Cache",
+                            subtitle   = "Audio cached for faster replay",
                             valueLabel = if (cacheMb > 0) "${cacheMb} MB" else "Empty",
-                            onClick = { if (cacheMb > 0) showClearCacheDialog = true }
+                            onClick    = { if (cacheMb > 0) showClearCacheDialog = true }
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
-                        IOSSettingsRow(
-                            icon = Icons.Rounded.DataUsage,
-                            iconBackgroundColor = Color(0xFF007AFF),
-                            title = "Data Saver",
-                            subtitle = if (dataSaver) "Streaming at lower quality" else "Full quality streaming",
-                            isToggle = true,
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
+                        SettingsRow(
+                            icon      = Icons.Rounded.DataUsage,
+                            title     = "Data Saver",
+                            subtitle  = if (dataSaver) "Streaming at lower quality" else "Full quality streaming",
+                            isToggle  = true,
                             isChecked = dataSaver,
-                            onClick = { viewModel.setDataSaver(!dataSaver) }
+                            onClick   = { viewModel.setDataSaver(!dataSaver) }
                         )
                     }
                 }
 
                 // ── About ──────────────────────────────────────────────────
                 item {
-                    val hazeState = com.example.ecodot.LocalHazeState.current
-                    IOSSettingsGroup(title = "About", hazeState = hazeState) {
-                        IOSSettingsRow(
-                            icon = Icons.Rounded.Info,
-                            iconBackgroundColor = Color(0xFF007AFF),
-                            title = "Version",
+                    SettingsSection("About") {
+                        SettingsRow(
+                            icon     = Icons.Rounded.Info,
+                            title    = "Version",
                             valueLabel = "1.0.0-beta",
-                            onClick = {}
+                            onClick  = {}
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
-                        IOSSettingsRow(
-                            icon = Icons.Rounded.Policy,
-                            iconBackgroundColor = Color(0xFF34C759),
-                            title = "Privacy Policy",
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
+                        SettingsRow(
+                            icon    = Icons.Rounded.Policy,
+                            title   = "Privacy Policy",
                             onClick = {
                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com"))
                                 context.startActivity(intent)
                             }
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
-                        IOSSettingsRow(
-                            icon = Icons.Rounded.Email,
-                            iconBackgroundColor = Color(0xFFFF9500),
-                            title = "Email Feedback",
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
+                        SettingsRow(
+                            icon    = Icons.Rounded.Email,
+                            title   = "Email Feedback",
                             onClick = {
                                 val intent = Intent(Intent.ACTION_SENDTO).apply {
                                     data = Uri.parse("mailto:deep082008.patel@gmail.com")
@@ -471,11 +452,10 @@ fun ProfileScreen(
                                 context.startActivity(intent)
                             }
                         )
-                        HorizontalDivider(color = Color.White.copy(alpha = 0.06f), thickness = 0.5.dp)
-                        IOSSettingsRow(
-                            icon = Icons.Rounded.Chat,
-                            iconBackgroundColor = Color(0xFF25D366),
-                            title = "Contact on WhatsApp",
+                        HorizontalDivider(color = Color.White.copy(alpha = 0.05f), thickness = 0.5.dp)
+                        SettingsRow(
+                            icon    = Icons.Rounded.Chat,
+                            title   = "Contact on WhatsApp",
                             onClick = {
                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/918799114016"))
                                 context.startActivity(intent)
@@ -491,12 +471,12 @@ fun ProfileScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 24.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(
-                                Brush.linearGradient(
-                                    colors = listOf(Color(0xFF1E1E1E), Color(0xFF121212))
-                                )
+                            .padding(horizontal = 20.dp)
+                            .liquidGlass(
+                                shape = RoundedCornerShape(20.dp),
+                                tintColor = Color(0xFF141626),
+                                specularAlpha = 0.38f,
+                                elevation = 8.dp
                             )
                             .clickable { devInfoExpanded = !devInfoExpanded }
                             .padding(20.dp)
@@ -1049,28 +1029,34 @@ private fun VideoQualityPickerDialog(
 
 @Composable
 fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp)) {
         Text(
             text       = title.uppercase(),
             style      = MaterialTheme.typography.labelSmall,
-            color      = Color.White.copy(alpha = 0.4f),
+            color      = Color.White.copy(alpha = 0.45f),
             fontWeight = FontWeight.Bold,
-            letterSpacing = 1.5.sp,
-            modifier   = Modifier.padding(bottom = 10.dp, start = 4.dp)
+            letterSpacing = 1.4.sp,
+            modifier   = Modifier.padding(bottom = 8.dp, start = 8.dp)
         )
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(18.dp))
-                .background(Color.White.copy(alpha = 0.05f))
+                .liquidGlass(
+                    shape = RoundedCornerShape(20.dp),
+                    tintColor = Color(0xFF141624),
+                    specularAlpha = 0.35f,
+                    elevation = 6.dp
+                )
         ) {
-            content()
+            Column(modifier = Modifier.fillMaxWidth()) {
+                content()
+            }
         }
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Settings Row — supports toggle, value label, subtitle
+// Settings Row — supports iOS toggle, value label, subtitle
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -1087,17 +1073,17 @@ fun SettingsRow(
         modifier = Modifier
             .fillMaxWidth()
             .animatedClickable(onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = if (subtitle != null) 14.dp else 16.dp),
+            .padding(horizontal = 18.dp, vertical = if (subtitle != null) 12.dp else 15.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(Color.White.copy(alpha = 0.08f)),
+                .size(34.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .background(Color.White.copy(alpha = 0.09f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription = null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(20.dp))
+            Icon(icon, contentDescription = null, tint = Color.White.copy(alpha = 0.9f), modifier = Modifier.size(20.dp))
         }
         Spacer(Modifier.width(14.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -1121,28 +1107,22 @@ fun SettingsRow(
             Text(
                 text  = valueLabel,
                 style = MaterialTheme.typography.bodySmall,
-                color = EcoDotRed.copy(alpha = 0.9f),
-                fontWeight = FontWeight.SemiBold
+                color = Color.White.copy(alpha = 0.5f),
+                fontWeight = FontWeight.Medium
             )
             Spacer(Modifier.width(6.dp))
         }
         if (isToggle) {
-            Switch(
-                checked           = isChecked,
-                onCheckedChange   = { onClick() },
-                colors            = SwitchDefaults.colors(
-                    checkedThumbColor   = Color.White,
-                    checkedTrackColor   = EcoDotRed,
-                    uncheckedThumbColor = Color.White.copy(alpha = 0.6f),
-                    uncheckedTrackColor = Color.White.copy(alpha = 0.15f),
-                    uncheckedBorderColor = Color.Transparent
-                )
+            IOSSwitch(
+                checked = isChecked,
+                onCheckedChange = { onClick() }
             )
         } else {
             Icon(
                 Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.2f)
+                tint = Color.White.copy(alpha = 0.3f),
+                modifier = Modifier.size(18.dp)
             )
         }
     }
@@ -1163,12 +1143,16 @@ fun StatCard(
     Box(
         modifier = modifier
             .height(90.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .liquidGlass(
+                shape = RoundedCornerShape(18.dp),
+                tintColor = Color(0xFF141626),
+                specularAlpha = 0.32f,
+                elevation = 6.dp
+            )
             .padding(14.dp)
     ) {
         Column {
-            Icon(icon, null, tint = Color.White.copy(alpha = 0.45f), modifier = Modifier.size(18.dp))
+            Icon(icon, null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
             Spacer(Modifier.weight(1f))
             Text(
                 text       = value,
