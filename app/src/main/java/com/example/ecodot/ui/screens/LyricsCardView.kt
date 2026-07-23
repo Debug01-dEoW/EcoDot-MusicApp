@@ -40,6 +40,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 import com.example.ecodot.ui.components.MotionLiquidGlassCard
+import com.kashif_e.backdrop.backdrops.rememberLayerBackdrop
+import com.kashif_e.backdrop.backdrops.layerBackdrop
 
 /**
  * Renders a beautiful shareable lyrics card.
@@ -53,52 +55,65 @@ fun LyricsCardContent(
     accentColor: Color,
     modifier: Modifier = Modifier
 ) {
-    MotionLiquidGlassCard(
-        modifier = modifier.aspectRatio(9f / 16f),
-        shape = RoundedCornerShape(28.dp),
-        fluidColor = accentColor,
-        specularAlpha = 0.45f,
-        elevation = 16.dp
-    ) {
-        // 1. Blurred album art background
-        if (!track.albumArtUri.isNullOrEmpty()) {
-            AsyncImage(
-                model = ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
-                    .data(track.albumArtUri)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .alpha(0.3f)
-                    .blur(40.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded),
-                contentScale = ContentScale.Crop
-            )
-        }
+    val lyricsBackdrop = rememberLayerBackdrop()
 
-        // 2. Dark gradient overlay
+    Box(
+        modifier = modifier.aspectRatio(9f / 16f),
+        contentAlignment = Alignment.Center
+    ) {
+        // 1. Blurred album art background (drawn inside layerBackdrop)
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0.0f to Color.Black.copy(alpha = 0.4f),
-                            0.3f to dominantColor.copy(alpha = 0.25f),
-                            0.75f to Color.Black.copy(alpha = 0.85f),
-                            1.0f to Color.Black
+                .layerBackdrop(lyricsBackdrop)
+        ) {
+            if (!track.albumArtUri.isNullOrEmpty()) {
+                AsyncImage(
+                    model = ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                        .data(track.albumArtUri)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .alpha(0.3f)
+                        .blur(40.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded),
+                    contentScale = ContentScale.Crop
+                )
+            }
+
+            // 2. Dark gradient overlay
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.0f to Color.Black.copy(alpha = 0.4f),
+                                0.3f to dominantColor.copy(alpha = 0.25f),
+                                0.75f to Color.Black.copy(alpha = 0.85f),
+                                1.0f to Color.Black
+                            )
                         )
                     )
-                )
-        )
+            )
+        }
 
-        // 3. Small album art in top-left corner
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(28.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
+        // 3. Motion Liquid Glass card on top
+        CompositionLocalProvider(com.example.ecodot.ui.components.LocalBackdrop provides lyricsBackdrop) {
+            MotionLiquidGlassCard(
+                modifier = Modifier.fillMaxSize(),
+                shape = RoundedCornerShape(28.dp),
+                fluidColor = accentColor,
+                specularAlpha = 0.45f,
+                elevation = 16.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(28.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
             // Top: small album art + song info
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -207,6 +222,8 @@ fun LyricsCardContent(
                     shape = RoundedCornerShape(24.dp)
                 )
         )
+            }
+        }
     }
 }
 

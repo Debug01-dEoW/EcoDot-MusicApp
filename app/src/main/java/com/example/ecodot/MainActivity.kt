@@ -35,6 +35,8 @@ import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.example.ecodot.ui.components.MiniPlayer
 import com.example.ecodot.ui.components.liquidGlass
+import com.kashif_e.backdrop.backdrops.rememberLayerBackdrop
+import com.kashif_e.backdrop.backdrops.layerBackdrop
 import com.example.ecodot.ui.screens.HomeScreen
 import com.example.ecodot.ui.screens.LibraryScreen
 import com.example.ecodot.ui.screens.NowPlayingScreen
@@ -138,7 +140,12 @@ class MainActivity : ComponentActivity() {
 
                 RequestNotificationPermission()
 
-                CompositionLocalProvider(LocalHazeState provides appHazeState) {
+                val backdrop = com.kashif_e.backdrop.backdrops.rememberLayerBackdrop()
+
+                CompositionLocalProvider(
+                    LocalHazeState provides appHazeState,
+                    com.example.ecodot.ui.components.LocalBackdrop provides backdrop
+                ) {
                     Scaffold(
                         containerColor = Color(0xFF000000),
                     ) { _ ->
@@ -161,36 +168,41 @@ class MainActivity : ComponentActivity() {
                             )
 
                             // ── Page Content ──────────────────────────────────
-                            NavHost(
-                                navController = navController,
-                                startDestination = "home",
-                                modifier = Modifier.fillMaxSize(),
-                                enterTransition = {
-                                    slideIntoContainer(
-                                        AnimatedContentTransitionScope.SlideDirection.Left,
-                                        animationSpec = spring(stiffness = Spring.StiffnessLow)
-                                    ) + fadeIn(animationSpec = tween(300))
-                                },
-                                exitTransition = {
-                                    slideOutOfContainer(
-                                        AnimatedContentTransitionScope.SlideDirection.Left,
-                                        animationSpec = spring(stiffness = Spring.StiffnessLow)
-                                    ) + fadeOut(animationSpec = tween(300))
-                                },
-                                popEnterTransition = {
-                                    slideIntoContainer(
-                                        AnimatedContentTransitionScope.SlideDirection.Right,
-                                        animationSpec = spring(stiffness = Spring.StiffnessLow)
-                                    ) + fadeIn(animationSpec = tween(300))
-                                },
-                                popExitTransition = {
-                                    slideOutOfContainer(
-                                        AnimatedContentTransitionScope.SlideDirection.Right,
-                                        animationSpec = spring(stiffness = Spring.StiffnessLow)
-                                    ) + fadeOut(animationSpec = tween(300))
-                                }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .layerBackdrop(backdrop)
                             ) {
-                                composable("home") {
+                                NavHost(
+                                    navController = navController,
+                                    startDestination = "home",
+                                    modifier = Modifier.fillMaxSize(),
+                                    enterTransition = {
+                                        slideIntoContainer(
+                                            AnimatedContentTransitionScope.SlideDirection.Left,
+                                            animationSpec = spring(stiffness = Spring.StiffnessLow)
+                                        ) + fadeIn(animationSpec = tween(300))
+                                    },
+                                    exitTransition = {
+                                        slideOutOfContainer(
+                                            AnimatedContentTransitionScope.SlideDirection.Left,
+                                            animationSpec = spring(stiffness = Spring.StiffnessLow)
+                                        ) + fadeOut(animationSpec = tween(300))
+                                    },
+                                    popEnterTransition = {
+                                        slideIntoContainer(
+                                            AnimatedContentTransitionScope.SlideDirection.Right,
+                                            animationSpec = spring(stiffness = Spring.StiffnessLow)
+                                        ) + fadeIn(animationSpec = tween(300))
+                                    },
+                                    popExitTransition = {
+                                        slideOutOfContainer(
+                                            AnimatedContentTransitionScope.SlideDirection.Right,
+                                            animationSpec = spring(stiffness = Spring.StiffnessLow)
+                                        ) + fadeOut(animationSpec = tween(300))
+                                    }
+                                ) {
+                                    composable("home") {
                                     HomeScreen(
                                         viewModel = viewModel,
                                         navController = navController,
@@ -249,8 +261,9 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
+                        }
 
-                            // ── Dynamic Island Nav Bar ────────────────────────
+                        // ── Dynamic Island Nav Bar ────────────────────────
                             val showBottomBar = currentDestination in listOf("home", "library", "search", "artist/{artistId}")
                             AnimatedVisibility(
                                 visible = showBottomBar && !isNowPlayingVisible,

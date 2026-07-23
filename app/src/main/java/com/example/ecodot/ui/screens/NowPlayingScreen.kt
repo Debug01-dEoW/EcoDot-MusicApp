@@ -65,6 +65,8 @@ import com.example.ecodot.ui.viewmodel.ArtistViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ecodot.ui.theme.*
 import com.example.ecodot.ui.components.*
+import com.kashif_e.backdrop.backdrops.rememberLayerBackdrop
+import com.kashif_e.backdrop.backdrops.layerBackdrop
 
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -175,11 +177,19 @@ fun NowPlayingScreen(
         if (canvasPlayer == null) isCleanCanvasMode = false
     }
 
+    val playerBackdrop = com.kashif_e.backdrop.backdrops.rememberLayerBackdrop()
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFF070708)) // Slick OLED dark base
     ) {
+        // Wrap background layers to capture them into the player backdrop
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .layerBackdrop(playerBackdrop)
+        ) {
         // ── CANVAS: Looping background video (Spotify-style) ──────────────────
         // ── CANVAS: Looping background video (Spotify-style) ──────────────────
         androidx.compose.animation.AnimatedVisibility(
@@ -272,11 +282,13 @@ fun NowPlayingScreen(
                     )
                 )
         )
+        }
 
         val listState = rememberLazyListState()
         val isScrolledPastArtwork by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
 
-        Scaffold(
+        CompositionLocalProvider(com.example.ecodot.ui.components.LocalBackdrop provides playerBackdrop) {
+            Scaffold(
             containerColor = Color.Transparent,
             topBar = {
                 androidx.compose.animation.AnimatedVisibility(
@@ -1057,6 +1069,7 @@ fun NowPlayingScreen(
             }
         }
     }
+}
 
     // FULL SCREEN INFO OVERLAY
     AnimatedVisibility(

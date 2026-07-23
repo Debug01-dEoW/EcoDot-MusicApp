@@ -39,6 +39,8 @@ import com.example.ecodot.data.local.prefs.VideoQuality
 import com.example.ecodot.ui.viewmodel.MusicViewModel
 import com.example.ecodot.ui.theme.*
 import com.example.ecodot.ui.components.*
+import com.kashif_e.backdrop.backdrops.rememberLayerBackdrop
+import com.kashif_e.backdrop.backdrops.layerBackdrop
 
 @android.annotation.SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -90,14 +92,19 @@ fun ProfileScreen(
         }
     }
 
+    val settingsBackdrop = rememberLayerBackdrop()
+
     LiquidMeshBackground(
-        modifier = modifier.fillMaxSize()
+        modifier = modifier
+            .fillMaxSize()
+            .layerBackdrop(settingsBackdrop)
     ) {
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            containerColor = Color.Transparent
-        ) { _ ->
-            LazyColumn(
+        CompositionLocalProvider(LocalBackdrop provides settingsBackdrop) {
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
+                containerColor = Color.Transparent
+            ) { _ ->
+                LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                     top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
@@ -346,15 +353,11 @@ fun ProfileScreen(
                                     Text("Duration", color = Color.White, fontSize = 14.sp)
                                     Text("${crossfadeDuration}s", color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp)
                                 }
-                                androidx.compose.material3.Slider(
-                                    value = crossfadeDuration.toFloat(),
+                                LiquidSlider(
+                                    value = { crossfadeDuration.toFloat() },
                                     onValueChange = { viewModel.setCrossfadeDuration(it.toInt()) },
                                     valueRange = 1f..10f,
-                                    steps = 8,
-                                    colors = androidx.compose.material3.SliderDefaults.colors(
-                                        thumbColor = Color(0xFF1DB954),
-                                        activeTrackColor = Color(0xFF1DB954)
-                                    )
+                                    modifier = Modifier.padding(vertical = 8.dp)
                                 )
                             }
                         }
@@ -721,6 +724,7 @@ fun ProfileScreen(
                 containerColor      = Color(0xFF1C1C1E),
                 titleContentColor   = Color.White,
             )
+        }
         }
     }
 }
