@@ -274,7 +274,7 @@ fun ProfileScreen(
                 // ── General ─────────────────────────────────────────────
                 item {
                     val hazeState = com.example.ecodot.LocalHazeState.current
-                    IOSSettingsGroup("General", hazeState = hazeState) {
+                    IOSSettingsGroup(title = "General", hazeState = hazeState) {
                         IOSSettingsRow(
                             icon = Icons.Rounded.Person,
                             iconBackgroundColor = Color(0xFF007AFF), // iOS Blue
@@ -301,7 +301,7 @@ fun ProfileScreen(
                 // ── Playback ─────────────────────────────────────────────
                 item {
                     val hazeState = com.example.ecodot.LocalHazeState.current
-                    IOSSettingsGroup("Playback", hazeState = hazeState) {
+                    IOSSettingsGroup(title = "Playback", hazeState = hazeState) {
                         IOSSettingsRow(
                             icon = Icons.Rounded.HighQuality,
                             iconBackgroundColor = Color(0xFF5856D6), // iOS Purple
@@ -414,7 +414,7 @@ fun ProfileScreen(
                 // ── Storage & Data ────────────────────────────────────────
                 item {
                     val hazeState = com.example.ecodot.LocalHazeState.current
-                    IOSSettingsGroup("Storage & Data", hazeState = hazeState) {
+                    IOSSettingsGroup(title = "Storage & Data", hazeState = hazeState) {
                         val cacheMb = cacheSize / (1024 * 1024)
                         IOSSettingsRow(
                             icon = Icons.Rounded.Storage,
@@ -440,7 +440,7 @@ fun ProfileScreen(
                 // ── About ──────────────────────────────────────────────────
                 item {
                     val hazeState = com.example.ecodot.LocalHazeState.current
-                    IOSSettingsGroup("About", hazeState = hazeState) {
+                    IOSSettingsGroup(title = "About", hazeState = hazeState) {
                         IOSSettingsRow(
                             icon = Icons.Rounded.Info,
                             iconBackgroundColor = Color(0xFF007AFF),

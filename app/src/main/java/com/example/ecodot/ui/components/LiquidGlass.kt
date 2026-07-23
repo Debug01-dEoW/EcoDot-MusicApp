@@ -379,7 +379,7 @@ fun IOSSettingsRow(
             )
         } else {
             androidx.compose.material3.Icon(
-                imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                imageVector = androidx.compose.material.icons.Icons.Rounded.ChevronRight,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = 0.25f),
                 modifier = Modifier.size(18.dp)
