@@ -75,25 +75,9 @@ fun HomeScreen(
 
 
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.Black) // Solid dark background for immersive feel
+    LiquidMeshBackground(
+        modifier = modifier.fillMaxSize()
     ) {
-        // Slick minimal dark top ambient gradient
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(350.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF141517), // Sleek graphite dark-gray
-                            Color.Black
-                        )
-                    )
-                )
-        )
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
@@ -795,12 +779,11 @@ fun QuickPickCard(track: Track, onClick: () -> Unit, onLongClick: () -> Unit, mo
     Row(
         modifier = modifier
             .scale(scale)
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFF121214))
-            .border(
-                width = 0.5.dp,
-                color = Color.White.copy(alpha = 0.08f),
-                shape = RoundedCornerShape(12.dp)
+            .liquidGlass(
+                shape = RoundedCornerShape(16.dp),
+                backgroundColor = Color(0x3025283A),
+                specularAlpha = 0.35f,
+                elevation = 6.dp
             )
             .animatedCombinedClickable(
                 onLongClick = onLongClick,

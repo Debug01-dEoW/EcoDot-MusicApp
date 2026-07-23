@@ -110,25 +110,9 @@ fun SearchScreen(
         viewModel.performSearch(q, if (selectedFilter == "All") null else selectedFilter)
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.Black)
+    LiquidMeshBackground(
+        modifier = modifier.fillMaxSize()
     ) {
-        // Subtle ambient top gradient
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(300.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF141517), // Sleek graphite
-                            Color.Black
-                        )
-                    )
-                )
-        )
 
         // ── Scrollable Body Content ──────────────────────────────────────────
         val isSuggestionsVisible = isFocused && query.isNotEmpty() && searchSuggestions.isNotEmpty()
@@ -274,14 +258,13 @@ fun SearchScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp)
+                    .height(52.dp)
                     .scale(searchBarScale)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color.White.copy(alpha = 0.06f))
-                    .border(
-                        width = 1.dp,
-                        color = searchBarBorderColor,
-                        shape = RoundedCornerShape(14.dp)
+                    .liquidGlass(
+                        shape = RoundedCornerShape(26.dp),
+                        backgroundColor = Color(0x35202336),
+                        specularAlpha = 0.38f,
+                        elevation = 8.dp
                     )
             ) {
                 Row(

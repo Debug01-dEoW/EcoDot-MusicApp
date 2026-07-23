@@ -90,18 +90,13 @@ fun ProfileScreen(
         }
     }
 
-    Scaffold(
-        modifier = modifier,
-        containerColor = EcoDotBlack
-    ) { _ ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            // Gradient header glow
-            val topGradient = Brush.verticalGradient(
-                colors = listOf(EcoDotRed.copy(alpha = 0.22f), EcoDotBlack),
-                startY = 0f, endY = 900f
-            )
-            Box(modifier = Modifier.fillMaxWidth().height(420.dp).background(topGradient))
-
+    LiquidMeshBackground(
+        modifier = modifier.fillMaxSize()
+    ) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = Color.Transparent
+        ) { _ ->
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
@@ -725,10 +720,10 @@ fun ProfileScreen(
                 },
                 containerColor      = Color(0xFF1C1C1E),
                 titleContentColor   = Color.White,
-                textContentColor    = Color.White.copy(alpha = 0.7f)
             )
         }
     }
+}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

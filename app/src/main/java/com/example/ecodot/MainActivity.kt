@@ -412,6 +412,8 @@ class MainActivity : ComponentActivity() {
 // Dynamic Island Nav Bar
 // ─────────────────────────────────────────────────────────────────────────────
 
+import com.example.ecodot.ui.components.liquidGlass
+
 @Composable
 fun DynamicIslandNavBar(
     currentRoute: String?,
@@ -430,23 +432,15 @@ fun DynamicIslandNavBar(
         else -> -1
     }
 
-    Surface(
+    Box(
         modifier = Modifier
             .wrapContentSize()
-            .shadow(
-                elevation = 24.dp,
+            .liquidGlass(
                 shape = RoundedCornerShape(percent = 50),
-                spotColor = Color.Black.copy(alpha = 0.8f),
-                ambientColor = Color.Black.copy(alpha = 0.5f)
+                backgroundColor = Color(0x38181A28),
+                specularAlpha = 0.42f,
+                elevation = 16.dp
             )
-            .border(
-                width = 0.5.dp,
-                color = Color.White.copy(alpha = 0.08f),
-                shape = RoundedCornerShape(percent = 50)
-            ),
-        color = Color(0xFF0C0C0E),
-        shape = RoundedCornerShape(percent = 50),
-        tonalElevation = 0.dp,
     ) {
         Box(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)

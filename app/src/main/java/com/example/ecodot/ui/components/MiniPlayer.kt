@@ -59,18 +59,14 @@ fun MiniPlayer(
         label = "artwork_pulse"
     )
 
-    Surface(
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = 20.dp,
-                shape = RoundedCornerShape(20.dp),
-                spotColor = Color.Black.copy(alpha = 0.6f)
-            )
-            .border(
-                width = 0.5.dp,
-                color = Color.White.copy(alpha = 0.08f),
-                shape = RoundedCornerShape(20.dp)
+            .liquidGlass(
+                shape = RoundedCornerShape(24.dp),
+                backgroundColor = Color(0x351E2030),
+                specularAlpha = 0.38f,
+                elevation = 12.dp
             )
             .pointerInput(Unit) {
                 detectVerticalDragGestures { _, dragAmount ->
@@ -79,9 +75,7 @@ fun MiniPlayer(
                     }
                 }
             }
-            .animatedClickable(onClick = onClick),
-        color = Color(0xFF0C0C0E),
-        shape = RoundedCornerShape(20.dp)
+            .animatedClickable(onClick = onClick)
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Row(

@@ -280,10 +280,13 @@ fun LibraryScreen(
         )
     }
 
-    Scaffold(
-        modifier = modifier,
-        containerColor = Color.Transparent, // Ambient haze from MainActivity bleeds through
-        topBar = {
+    LiquidMeshBackground(
+        modifier = modifier.fillMaxSize()
+    ) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = Color.Transparent,
+            topBar = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -928,6 +931,7 @@ fun LibraryScreen(
             }
         )
     }
+}
 }
 
 @Composable

@@ -39,6 +39,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
+import com.example.ecodot.ui.components.liquidGlass
+
 /**
  * Renders a beautiful shareable lyrics card.
  * This composable is both used for preview and for bitmap generation.
@@ -54,8 +56,12 @@ fun LyricsCardContent(
     Box(
         modifier = modifier
             .aspectRatio(9f / 16f)
-            .clip(RoundedCornerShape(24.dp))
-            .background(Color(0xFF0A0A0A))
+            .liquidGlass(
+                shape = RoundedCornerShape(28.dp),
+                backgroundColor = Color(0x35181A2A),
+                specularAlpha = 0.45f,
+                elevation = 16.dp
+            )
     ) {
         // 1. Blurred album art background
         if (!track.albumArtUri.isNullOrEmpty()) {
