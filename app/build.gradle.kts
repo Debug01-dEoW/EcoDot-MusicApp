@@ -28,6 +28,7 @@ android {
         }
     }
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -63,7 +64,6 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.haze)
     implementation(libs.haze.material)
-    implementation("io.github.kashif-mehmood-km:backdrop:0.0.1-alpha02")
     implementation(libs.kmpalette.core)
     implementation(libs.kmpalette.extensions.network)
     implementation(libs.retrofit)
@@ -95,6 +95,10 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation(libs.gson)
+    implementation(libs.koin.android)
+    implementation(libs.koin.androidx.compose)
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
+    implementation(libs.newpipe.extractor)
     "ksp"(libs.androidx.room.compiler)
     "ksp"(libs.moshi.kotlin.codegen)
 }

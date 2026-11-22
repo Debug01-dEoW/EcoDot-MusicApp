@@ -37,6 +37,9 @@ import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import androidx.room.Room
 import kotlinx.coroutines.flow.collectLatest
@@ -69,24 +72,9 @@ import com.example.ecodot.util.NetworkState
 
 data class LyricLine(val timeMs: Long, val text: String)
 
-data class Artist(
-    val id: String,
-    val name: String,
-    val imageUrl: String?
-)
-
-data class Album(
-    val id: String?,
-    val title: String,
-    val artist: String,
-    val artUri: String?,
-    val tracks: List<Track>
-)
-
-data class Genre(
-    val name: String,
-    val tracks: List<Track>
-)
+typealias Artist = com.example.ecodot.domain.model.Artist
+typealias Album = com.example.ecodot.domain.model.Album
+typealias Genre = com.example.ecodot.domain.model.Genre
 
 enum class HomeTab {
     Home, Library, Search
@@ -349,20 +337,54 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         _dataSaver.value = enabled
     }
 
+    private val _tracks = MutableStateFlow<List<Track>>(emptyList())
+    val tracks: StateFlow<List<Track>> = _tracks.asStateFlow()
+
     private val _cacheSize = MutableStateFlow(0L)
     val cacheSize: StateFlow<Long> = _cacheSize.asStateFlow()
+
+    val cachedTrackIds: StateFlow<Set<String>> = prefsManager.cachedTrackIdsFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, prefsManager.cachedTrackIds)
+
+    val cachedTracks: StateFlow<List<Track>> = combine(repository.allTracks, cachedTrackIds) { all, ids ->
+        val trackMap = all.associateBy { it.id }
+        ids.map { id ->
+            trackMap[id] 
+                ?: _currentTrack.value?.takeIf { it.id == id } 
+                ?: _playbackQueue.value.find { it.id == id }
+                ?: _suggestedTracks.value.find { it.id == id }
+                ?: Track(
+                    id = id,
+                    title = "Cached Track",
+                    artist = "YouTube Music",
+                    album = "Cache",
+                    duration = 0L,
+                    path = "yt://$id",
+                    isYouTube = true
+                )
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun updateCacheSize() {
         _cacheSize.value = com.example.ecodot.playback.CacheManager.getCacheSize(getApplication())
     }
 
-    fun clearCache() {
-        com.example.ecodot.playback.CacheManager.clearCache(getApplication())
+    fun markTrackAsCached(trackId: String) {
+        prefsManager.addCachedTrackId(trackId)
         updateCacheSize()
     }
-    
-    private val _tracks = MutableStateFlow<List<Track>>(emptyList())
-    val tracks: StateFlow<List<Track>> = _tracks.asStateFlow()
+
+    fun removeTrackFromCache(trackId: String) {
+        com.example.ecodot.playback.CacheManager.removeCachedSong(getApplication(), trackId)
+        prefsManager.removeCachedTrackId(trackId)
+        updateCacheSize()
+    }
+
+    fun clearCache() {
+        com.example.ecodot.playback.CacheManager.clearCache(getApplication())
+        prefsManager.clearCachedTrackIds()
+        _cacheSize.value = 0L
+    }
 
     private val _searchResults = MutableStateFlow<List<Track>>(emptyList())
     val searchResults: StateFlow<List<Track>> = _searchResults.asStateFlow()
@@ -445,6 +467,27 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private val _isSearching = MutableStateFlow(false)
     val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
 
+    private val _searchFocusEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val searchFocusEvent: SharedFlow<Unit> = _searchFocusEvent.asSharedFlow()
+
+    fun triggerSearchFocus() {
+        _searchFocusEvent.tryEmit(Unit)
+    }
+
+    private val _homeResetEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val homeResetEvent: SharedFlow<Unit> = _homeResetEvent.asSharedFlow()
+
+    fun triggerHomeReset() {
+        _homeResetEvent.tryEmit(Unit)
+    }
+
+    private val _libraryResetEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val libraryResetEvent: SharedFlow<Unit> = _libraryResetEvent.asSharedFlow()
+
+    fun triggerLibraryReset() {
+        _libraryResetEvent.tryEmit(Unit)
+    }
+
     private val _currentTab = MutableStateFlow(HomeTab.Home)
     val currentTab: StateFlow<HomeTab> = _currentTab.asStateFlow()
 
@@ -465,6 +508,10 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _isVideoMode = MutableStateFlow(false)
     val isVideoMode: StateFlow<Boolean> = _isVideoMode.asStateFlow()
+
+    fun toggleVideoMode() {
+        _isVideoMode.value = !_isVideoMode.value
+    }
 
     private val _isCanvasBufferingTimeout = MutableStateFlow(false)
     val isCanvasBufferingTimeout: StateFlow<Boolean> = _isCanvasBufferingTimeout.asStateFlow()
@@ -487,12 +534,20 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     private var canvasBufferingJob: Job? = null
 
+    private val _isCanvasEnabledByUser = MutableStateFlow(false)
+    val isCanvasEnabledByUser: StateFlow<Boolean> = _isCanvasEnabledByUser.asStateFlow()
+
     private val _canvasPlayer = MutableStateFlow<ExoPlayer?>(null)
     val canvasPlayer: StateFlow<ExoPlayer?> = _canvasPlayer.asStateFlow()
 
     /** Call this to start/replace the canvas for the current track. */
     @androidx.media3.common.util.UnstableApi
     fun setupCanvasPlayer(context: Context, url: String) {
+        if (!_isCanvasEnabledByUser.value) {
+            Log.d("MusicViewModel", "setupCanvasPlayer: Suppressed canvas because user has not explicitly enabled canvas")
+            releaseCanvasPlayer()
+            return
+        }
         if (url == "DISABLED") {
             releaseCanvasPlayer()
             return
@@ -618,7 +673,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             database.trackDao().upsertTrack(updated)
             if (_currentTrack.value?.id == track.id) {
                 _currentTrack.value = updated
-                if (updated.canvasUrl.isNullOrBlank() || updated.canvasUrl == "DISABLED") {
+                if (updated.canvasUrl.isNullOrBlank() || updated.canvasUrl == "DISABLED" || !_isCanvasEnabledByUser.value) {
                     releaseCanvasPlayer()
                 } else {
                     setupCanvasPlayer(getApplication(), updated.canvasUrl)
@@ -654,6 +709,27 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                 setCanvasUrl(track, fallbackUrl)
             }
         }
+    }
+
+    fun enableCanvasForCurrentTrack(context: Context) {
+        val track = _currentTrack.value ?: return
+        _isCanvasEnabledByUser.value = true
+        val url = track.canvasUrl
+        if (!url.isNullOrEmpty() && url != "DISABLED") {
+            setupCanvasPlayer(context, url)
+        } else {
+            enableCanvasForTrack(track)
+        }
+    }
+
+    fun disableCanvas() {
+        _isCanvasEnabledByUser.value = false
+        releaseCanvasPlayer()
+    }
+
+    fun resetCanvasForNewTrack() {
+        _isCanvasEnabledByUser.value = false
+        releaseCanvasPlayer()
     }
 
     fun releaseCanvasPlayer() {
@@ -779,8 +855,22 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private val _eqEnabled = MutableStateFlow(false)
     val eqEnabled: StateFlow<Boolean> = _eqEnabled.asStateFlow()
 
-    private val _eqBands = MutableStateFlow(mapOf<Int, Int>(0 to 0, 1 to 0, 2 to 0, 3 to 0, 4 to 0))
+    private val initialEqBands: Map<Int, Int> = run {
+        val savedPreset = com.example.ecodot.domain.model.DEFAULT_EQ_PRESETS.find { it.name == prefsManager.selectedEqPreset }
+        if (savedPreset != null) {
+            savedPreset.bands.mapIndexed { idx, value -> idx to value }.toMap()
+        } else {
+            mapOf(0 to 0, 1 to 0, 2 to 0, 3 to 0, 4 to 0)
+        }
+    }
+    private val _eqBands = MutableStateFlow(initialEqBands)
     val eqBands: StateFlow<Map<Int, Int>> = _eqBands.asStateFlow()
+
+    private val _selectedEqPreset = MutableStateFlow(prefsManager.selectedEqPreset)
+    val selectedEqPreset: StateFlow<String> = _selectedEqPreset.asStateFlow()
+
+    private val _playerStyle = MutableStateFlow(prefsManager.playerStyle)
+    val playerStyle: StateFlow<com.example.ecodot.data.local.prefs.PlayerStyle> = _playerStyle.asStateFlow()
 
     private val _virtualizerStrength = MutableStateFlow(0)
     val virtualizerStrength: StateFlow<Int> = _virtualizerStrength.asStateFlow()
@@ -910,6 +1000,8 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                         val trackId = mediaItem?.mediaId
                         if (trackId != null) {
+                            markTrackAsCached(trackId)
+                            resetCanvasForNewTrack()
                             viewModelScope.launch {
                                 val track = database.trackDao().getTrackById(trackId)
                                     ?: findTrackInQueue(trackId)
@@ -972,15 +1064,12 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                                             queue[idx] = updatedTrack
                                             _playbackQueue.value = queue
                                         }
-                                        // Retry lyrics fetch with real duration
-                                        fetchLyrics(updatedTrack)
+                                        // Only retry lyrics fetch with real duration if we do not already have lyrics
+                                        if (_lyrics.value == null && !lyricsMemoryCache.containsKey(updatedTrack.id)) {
+                                            fetchLyrics(updatedTrack)
+                                        }
                                     }
                                 }
-                            }
-                            
-                            // If lyrics still null, ensure we have a fetch triggered
-                            if (_lyrics.value == null) {
-                                _currentTrack.value?.let { fetchLyrics(it) }
                             }
                         } else if (playbackState == Player.STATE_ENDED) {
                             // Service now handles auto-skip internally for background stability.
@@ -1011,6 +1100,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                                 ?: findTrackInQueue(trackId)
                             if (track != null) {
                                 _currentTrack.value = track
+                                markTrackAsCached(track.id)
                                 track.albumArtUri?.let { updateThemeFromArt(it) }
                                 fetchLyrics(track)
                             } else {
@@ -1048,23 +1138,53 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         _currentTab.value = tab
     }
 
-    private fun fetchHomeContent() {
+    fun fetchHomeContent(params: String? = null) {
         viewModelScope.launch {
-            _homeSections.value = repository.getHomeFeed()
-            fetchMoodRecommendations()
+            val sections = repository.getHomeFeed(params)
+            if (sections.isNotEmpty()) {
+                _homeSections.value = sections
+            }
+            if (params == null) {
+                fetchMoodRecommendations()
+            }
         }
     }
 
-    fun fetchMoodRecommendations() {
+    fun setHomeMood(mood: String?) {
+        viewModelScope.launch {
+            val params = when (mood) {
+                "Relax" -> "ggM8SgQIBxADSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAB"
+                "Sleep" -> "ggM8SgQIBxABSgQIBRADSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAB"
+                "Energize" -> "ggM8SgQIBxABSgQIBRABSgQICRADSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAB"
+                "Sad" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChADSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAB"
+                "Romance" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRADSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAB"
+                "Feel good", "Feel Good" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBADSgQIBBABSgQIDhABSgQIAxABSgQIBhAB"
+                "Workout" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBADSgQIDhABSgQIAxABSgQIBhAB"
+                "Party" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhADSgQIAxABSgQIBhAB"
+                "Commute" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxADSgQIBhAB"
+                "Focus" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAD"
+                else -> null
+            }
+            val sections = repository.getHomeFeed(params)
+            if (sections.isNotEmpty()) {
+                _homeSections.value = sections
+            }
+            fetchMoodRecommendations(mood)
+        }
+    }
+
+    fun fetchMoodRecommendations(moodOverride: String? = null) {
         viewModelScope.launch {
             val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-            val mood = when (hour) {
+            val mood = moodOverride ?: when (hour) {
                 in 5..10 -> "Chill"      // 5 AM to 10:59 AM
                 in 11..16 -> "Upbeat"    // 11 AM to 4:59 PM
                 in 17..20 -> "Focus"     // 5 PM to 8:59 PM
                 else -> "Chill"          // 9 PM to 4:59 AM
             }
-            val greeting = when (hour) {
+            val greeting = if (moodOverride != null) {
+                "$moodOverride Mix"
+            } else when (hour) {
                 in 5..10 -> "Good Morning • Chill Mix"
                 in 11..16 -> "Good Afternoon • Upbeat Hype"
                 in 17..20 -> "Good Evening • Focus Beats"
@@ -1073,10 +1193,12 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             _moodGreeting.value = greeting
 
             val keywords = when (mood) {
-                "Chill" -> listOf("chill", "lofi", "lo-fi", "sleep", "relax", "acoustic", "calm", "slow", "ambient", "soft", "jazz", "piano", "soul")
+                "Chill", "Relax", "Sleep" -> listOf("chill", "lofi", "lo-fi", "sleep", "relax", "acoustic", "calm", "slow", "ambient", "soft", "jazz", "piano", "soul")
                 "Focus" -> listOf("focus", "study", "beats", "instrumental", "classical", "synthwave", "coding", "ambient", "calm", "relax")
-                "Upbeat" -> listOf("upbeat", "dance", "rock", "pop", "workout", "energetic", "gym", "hype", "electronic", "electro", "party", "rap", "hip hop", "techno")
-                else -> emptyList()
+                "Upbeat", "Workout", "Energize", "Party" -> listOf("upbeat", "dance", "rock", "pop", "workout", "energetic", "gym", "hype", "electronic", "electro", "party", "rap", "hip hop", "techno")
+                "Romance", "Feel Good" -> listOf("love", "romance", "acoustic", "pop", "sweet", "feel good", "happy")
+                "Sad" -> listOf("sad", "slow", "melancholy", "acoustic", "piano", "cry", "heartbreak")
+                else -> listOf("chill", "lofi", "pop")
             }
 
             try {
@@ -1094,9 +1216,11 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                 } else {
                     // Fallback/Supplement: Search YouTube for mood
                     val ytQuery = when (mood) {
-                        "Chill" -> "lofi chill beats"
+                        "Chill", "Relax", "Sleep" -> "lofi chill beats"
                         "Focus" -> "synthwave focus study"
-                        "Upbeat" -> "upbeat workout energetic pop"
+                        "Upbeat", "Workout", "Energize", "Party" -> "upbeat workout energetic pop"
+                        "Romance", "Feel Good" -> "love romantic acoustic songs"
+                        "Sad" -> "sad slow emotional songs"
                         else -> "chill music"
                     }
                     val ytResults = repository.searchYouTube(ytQuery)
@@ -1242,27 +1366,72 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         _repeatMode.value = nextMode
     }
 
-    fun fetchLyricsManual(track: Track) {
-        fetchLyrics(track)
-    }
-
+    val lyricsMemoryCache = java.util.concurrent.ConcurrentHashMap<String, Pair<LrcLibResponse?, List<LyricLine>>>()
+    @Volatile private var currentLyricsTrackId: String? = null
     private var lyricsJob: kotlinx.coroutines.Job? = null
 
-    private fun fetchLyrics(track: Track) {
-        lyricsJob?.cancel()
-        lyricsJob = viewModelScope.launch {
-            _isLyricsLoading.value = true
-            _lyrics.value = null
-            _syncedLyrics.value = emptyList()
-            // Prioritize SimpMusic API by passing track.id (videoId)
-            val response = lyricsRepository.fetchLyrics(track.id, track.artist, track.title, track.duration)
-            
-            if (coroutineContext[kotlinx.coroutines.Job]?.isActive == true) {
-                _lyrics.value = response
-                response?.syncedLyrics?.let {
-                    _syncedLyrics.value = parseLrc(it)
-                }
+    fun fetchLyricsManual(track: Track) {
+        fetchLyrics(track, forceRefresh = true)
+    }
+
+    private fun fetchLyrics(track: Track, forceRefresh: Boolean = false) {
+        val trackId = track.id
+        if (trackId.isBlank()) return
+
+        // 1. If already active for this track and we already have a cached or loaded entry, avoid duplicate work
+        if (!forceRefresh && currentLyricsTrackId == trackId && (_lyrics.value != null || lyricsMemoryCache.containsKey(trackId))) {
+            val cached = lyricsMemoryCache[trackId]
+            if (cached != null) {
+                _lyrics.value = cached.first
+                _syncedLyrics.value = cached.second
                 _isLyricsLoading.value = false
+            }
+            return
+        }
+
+        currentLyricsTrackId = trackId
+
+        // 2. Check instant memory cache: if present, apply synchronously without resetting or loading spinner!
+        val cached = lyricsMemoryCache[trackId]
+        if (cached != null && !forceRefresh) {
+            _lyrics.value = cached.first
+            _syncedLyrics.value = cached.second
+            _isLyricsLoading.value = false
+            return
+        }
+
+        // 3. For new tracks, start loading cleanly
+        lyricsJob?.cancel()
+        lyricsJob = viewModelScope.launch(Dispatchers.IO) {
+            withContext(Dispatchers.Main) {
+                _isLyricsLoading.value = true
+                _lyrics.value = null
+                _syncedLyrics.value = emptyList()
+            }
+
+            try {
+                // Prioritize SimpMusic API by passing track.id (videoId)
+                val response = lyricsRepository.fetchLyrics(track.id, track.artist, track.title, track.duration)
+                val parsedLines = response?.syncedLyrics?.let { parseLrc(it) } ?: emptyList()
+                
+                // Cache result (even if null, to remember this track has no lyrics)
+                lyricsMemoryCache[trackId] = Pair(response, parsedLines)
+
+                withContext(Dispatchers.Main) {
+                    if (currentLyricsTrackId == trackId) {
+                        _lyrics.value = response
+                        _syncedLyrics.value = parsedLines
+                        _isLyricsLoading.value = false
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Lyrics fetch error for ${track.title}: ${e.message}")
+                lyricsMemoryCache[trackId] = Pair(null, emptyList())
+                withContext(Dispatchers.Main) {
+                    if (currentLyricsTrackId == trackId) {
+                        _isLyricsLoading.value = false
+                    }
+                }
             }
         }
     }
@@ -1333,7 +1502,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private val _searchError = MutableStateFlow<String?>(null)
     val searchError: StateFlow<String?> = _searchError.asStateFlow()
 
-    fun performSearch(query: String, type: String? = null) {
+    fun performSearch(query: String, type: String? = null, saveToHistory: Boolean = false) {
         if (query.isBlank()) {
             clearSearch()
             return
@@ -1347,9 +1516,11 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         lastSearchQuery = query
         lastSearchType = type
         
-        // Add to Room history
-        viewModelScope.launch(Dispatchers.IO) {
-            repository.addRecentSearch(query, "Query", null)
+        // Add to Room history only when explicitly requested (e.g. user pressed enter or tapped chip)
+        if (saveToHistory) {
+            viewModelScope.launch(Dispatchers.IO) {
+                repository.addRecentSearch(query, "Query", null)
+            }
         }
 
         _isSearching.value = true
@@ -1452,6 +1623,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun playQueue(tracks: List<Track>, startIndex: Int = 0, isVideo: Boolean = false) {
         val controller = _controller.value ?: return
         
+        resetCanvasForNewTrack()
         _isVideoMode.value = isVideo
 
         loadTrackJob?.cancel()
@@ -1489,8 +1661,11 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                     checkAndFetchRelatedTracks(track.id)
                 }
 
-                if (track.isYouTube) {
-                    try { repository.saveTrack(track) } catch(e:Exception){ Log.e(TAG, "DB error", e) }
+                try {
+                    repository.saveTrack(track)
+                    markTrackAsCached(track.id)
+                } catch(e: Exception) {
+                    Log.e(TAG, "DB error", e)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Playback error", e)
@@ -1515,6 +1690,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             playQueue(listOf(track), 0, isVideo = isVideo)
             return
         }
+        resetCanvasForNewTrack()
         _isVideoMode.value = isVideo
         
         val controller = _controller.value ?: return
@@ -1528,6 +1704,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             val finalTrack = dbTrack ?: track
             _currentTrack.value = finalTrack
             _hasTrackLoaded.value = true
+            markTrackAsCached(finalTrack.id)
             
             // Set source based on current state
             _playbackSource.value = when {
@@ -1734,6 +1911,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         return MediaItem.Builder()
             .setMediaId(track.id)
             .setUri(uri.toUri())
+            .setCustomCacheKey("yt_${track.id}")
             .setMediaMetadata(MediaMetadata.Builder()
                 .setTitle(track.title)
                 .setArtist(track.artist)
@@ -1893,7 +2071,30 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     }
 
 
-    fun setEqBand(band: Int, level: Int) {
+    fun setPlayerStyle(style: com.example.ecodot.data.local.prefs.PlayerStyle) {
+        prefsManager.playerStyle = style
+        _playerStyle.value = style
+    }
+
+    fun applyEqPreset(preset: com.example.ecodot.domain.model.EqPreset) {
+        _selectedEqPreset.value = preset.name
+        prefsManager.selectedEqPreset = preset.name
+        val updated = _eqBands.value.toMutableMap()
+        preset.bands.forEachIndexed { band, level ->
+            updated[band] = level
+            sendCustomCommand("SET_EQ_BAND", Bundle().apply {
+                putInt("band", band)
+                putInt("level", level)
+            })
+        }
+        _eqBands.value = updated
+    }
+
+    fun setEqBand(band: Int, level: Int, isFromPreset: Boolean = false) {
+        if (!isFromPreset && _selectedEqPreset.value != "Custom") {
+            _selectedEqPreset.value = "Custom"
+            prefsManager.selectedEqPreset = "Custom"
+        }
         val updated = _eqBands.value.toMutableMap()
         updated[band] = level
         _eqBands.value = updated
@@ -2245,6 +2446,30 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun getTracksInPlaylistFlow(playlistId: Long) = repository.getTracksInPlaylist(playlistId)
     fun getPlaylistsForTrackFlow(trackId: String) = repository.getPlaylistsContainingTrack(trackId)
     fun isTrackLiked(trackId: String) = repository.isTrackLiked(trackId)
+
+    val userPrefs = com.example.ecodot.data.local.prefs.UserPreferencesManager(application)
+    private val _pinnedPlaylistIds = MutableStateFlow(userPrefs.pinnedPlaylistIds)
+    val pinnedPlaylistIds: StateFlow<Set<String>> = _pinnedPlaylistIds.asStateFlow()
+
+    fun isPlaylistPinned(playlistId: Long): Boolean {
+        return userPrefs.isPlaylistPinned(playlistId)
+    }
+
+    fun togglePinPlaylist(playlistId: Long): Boolean {
+        val pinned = userPrefs.togglePinPlaylist(playlistId)
+        _pinnedPlaylistIds.value = userPrefs.pinnedPlaylistIds
+        return pinned
+    }
+
+    fun playPlaylistNext(playlist: com.example.ecodot.data.local.entities.Playlist) {
+        viewModelScope.launch {
+            val tracks = repository.getTracksInPlaylist(playlist.id).first()
+            if (tracks.isNotEmpty()) {
+                tracks.reversed().forEach { playNext(it) }
+                Toast.makeText(getApplication(), "Playing \"${playlist.name}\" next", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     fun setTrackAsRingtone(
         track: Track,

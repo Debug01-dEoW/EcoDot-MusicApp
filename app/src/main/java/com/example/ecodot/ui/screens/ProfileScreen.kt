@@ -39,8 +39,8 @@ import com.example.ecodot.data.local.prefs.VideoQuality
 import com.example.ecodot.ui.viewmodel.MusicViewModel
 import com.example.ecodot.ui.theme.*
 import com.example.ecodot.ui.components.*
-import com.kashif_e.backdrop.backdrops.rememberLayerBackdrop
-import com.kashif_e.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
 
 @android.annotation.SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -92,14 +92,10 @@ fun ProfileScreen(
         }
     }
 
-    val settingsBackdrop = rememberLayerBackdrop()
-
     LiquidMeshBackground(
-        modifier = modifier
-            .fillMaxSize()
-            .layerBackdrop(settingsBackdrop)
+        modifier = modifier.fillMaxSize()
     ) {
-        CompositionLocalProvider(LocalBackdrop provides settingsBackdrop) {
+        CompositionLocalProvider(LocalBackdrop provides null) {
             Scaffold(
                 modifier = Modifier.fillMaxSize(),
                 containerColor = Color.Transparent
@@ -122,7 +118,11 @@ fun ProfileScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(
-                            onClick = { navController.popBackStack() },
+                            onClick = {
+                                if (!navController.popBackStack()) {
+                                    navController.navigate("home")
+                                }
+                            },
                             modifier = Modifier.clip(CircleShape).background(Color.White.copy(alpha = 0.1f))
                         ) {
                             Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back", tint = Color.White)

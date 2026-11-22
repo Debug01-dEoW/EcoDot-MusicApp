@@ -33,30 +33,31 @@ class MusicRepository(
     private val profileDao: UserProfileDao,
     private val playlistDao: PlaylistDao,
     private val recentSearchDao: RecentSearchDao,
-    private val followedArtistDao: FollowedArtistDao
-) {
+    private val followedArtistDao: FollowedArtistDao,
+    private val streamResolver: com.example.ecodot.data.remote.YouTubeStreamResolver = com.example.ecodot.data.remote.YouTubeStreamResolver(sharedHttpClient)
+) : com.example.ecodot.domain.repository.IMusicRepository {
     
     private val lyricsRepository = LyricsRepository()
     
-    val allTracks: Flow<List<Track>> = trackDao.getAllTracks()
-    val recentlyPlayed: Flow<List<Track>> = trackDao.getRecentlyPlayed()
-    val mostPlayed: Flow<List<Track>> = trackDao.getMostPlayed()
-    val userProfile: Flow<UserProfile?> = profileDao.getUserProfile()
-    val allPlaylists: Flow<List<Playlist>> = playlistDao.getAllPlaylists()
-    val playbackHistory: Flow<List<PlaybackHistoryWithTrack>> = historyDao.getHistoryWithTracks()
-    val recentSearches: Flow<List<RecentSearchItem>> = recentSearchDao.getRecentSearches()
-    val followedArtists: Flow<List<FollowedArtist>> = followedArtistDao.getFollowedArtists()
+    override val allTracks: Flow<List<Track>> = trackDao.getAllTracks()
+    override val recentlyPlayed: Flow<List<Track>> = trackDao.getRecentlyPlayed()
+    override val mostPlayed: Flow<List<Track>> = trackDao.getMostPlayed()
+    override val userProfile: Flow<UserProfile?> = profileDao.getUserProfile()
+    override val allPlaylists: Flow<List<Playlist>> = playlistDao.getAllPlaylists()
+    override val playbackHistory: Flow<List<PlaybackHistoryWithTrack>> = historyDao.getHistoryWithTracks()
+    override val recentSearches: Flow<List<RecentSearchItem>> = recentSearchDao.getRecentSearches()
+    override val followedArtists: Flow<List<FollowedArtist>> = followedArtistDao.getFollowedArtists()
 
     fun getOnRepeatTracks(sinceTimestamp: Long): Flow<List<Track>> {
         return historyDao.getTopTracksSince(sinceTimestamp)
     }
 
 
-    suspend fun followArtist(artistId: String, name: String, imageUrl: String?) {
+    override suspend fun followArtist(artistId: String, name: String, imageUrl: String?) {
         followedArtistDao.followArtist(FollowedArtist(artistId, name, imageUrl))
     }
 
-    suspend fun unfollowArtist(artistId: String) {
+    override suspend fun unfollowArtist(artistId: String) {
         followedArtistDao.unfollowArtist(artistId)
     }
 
@@ -350,11 +351,11 @@ class MusicRepository(
     }
 
 
-    suspend fun getSearchSuggestions(query: String): List<String> {
-        val client = Client.WEB
-        val url = "https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&q=$query&oe=utf-8"
+    suspend fun getSearchSuggestions(query: String): List<String> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
+        val url = "https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&q=$encodedQuery&oe=utf-8"
         
-        return try {
+        try {
             val response = sharedHttpClient.newCall(
                 okhttp3.Request.Builder().url(url).build()
             ).execute().body?.string() ?: ""
@@ -554,7 +555,7 @@ class MusicRepository(
         }
     }
 
-        suspend fun getArtistDetails(artistId: String): YouTubeBrowseResponse? {
+    override suspend fun getArtistDetails(artistId: String): YouTubeBrowseResponse? {
         val client = Client.WEB_REMIX
         val json = JSONObject().apply {
             put("context", getContext(client))
@@ -575,7 +576,7 @@ class MusicRepository(
      * Step 2: Browse `VL` + audioPlaylistId → fetch tracks from the playlist container
      * Returns a pair of (headerJson, tracksJson) raw strings for the ViewModel to parse.
      */
-    suspend fun getAlbumJsonPair(albumId: String): Pair<String, String>? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    override suspend fun getAlbumJsonPair(albumId: String): Pair<String, String>? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         val apiKey = YouTubeApiService.API_KEY
         val httpClient = sharedHttpClient
         val clientsToTry = listOf(
@@ -890,11 +891,14 @@ class MusicRepository(
     }
     
     // Add getHomeFeed
-    suspend fun getHomeFeed(): List<HomeSection> = withContext(Dispatchers.IO) {
+    override suspend fun getHomeFeed(params: String?): List<HomeSection> = withContext(Dispatchers.IO) {
         val client = Client.WEB_REMIX
         val json = JSONObject().apply {
             put("context", getContext(client))
             put("browseId", "FEmusic_home")
+            if (!params.isNullOrBlank()) {
+                put("params", params)
+            }
         }
         val requestBody = json.toString().toRequestBody("application/json".toMediaType())
         try {
@@ -907,7 +911,7 @@ class MusicRepository(
     }
 
     // Wrappers pointing to YouTubeParser
-    suspend fun searchYouTube(query: String): List<Track> = withContext(Dispatchers.IO) {
+    override suspend fun searchYouTube(query: String): List<Track> = withContext(Dispatchers.IO) {
         val client = Client.WEB_REMIX
         val json = JSONObject().apply {
             put("context", getContext(client))
@@ -986,7 +990,7 @@ class MusicRepository(
         return SearchResults()
     }
 
-    suspend fun searchYouTubeCategorized(query: String, type: String? = null): SearchResults = withContext(Dispatchers.IO) {
+    override suspend fun searchYouTubeCategorized(query: String, type: String?): SearchResults = withContext(Dispatchers.IO) {
         val suggestions = getSearchSuggestions(query)
         val topSuggestion = suggestions.firstOrNull { it.lowercase() != query.lowercase() }
         
@@ -1055,7 +1059,23 @@ class MusicRepository(
         }
     }
 
-    suspend fun getYouTubeStreamUrl(videoId: String, quality: AudioQuality, videoQuality: VideoQuality = VideoQuality.NORMAL, isVideo: Boolean = false): String? = withContext(Dispatchers.IO) {
+    override suspend fun getYouTubeStreamUrl(videoId: String, quality: AudioQuality, videoQuality: VideoQuality, isVideo: Boolean): String? = withContext(Dispatchers.IO) {
+        // 1. Resolve unthrottled stream via NewPipeExtractor (solves JS n-param challenge & cipher signatures)
+        try {
+            val unthrottledUrl = if (isVideo) {
+                streamResolver.resolveVideoStream(videoId, videoQuality)
+            } else {
+                streamResolver.resolveAudioStream(videoId, quality)
+            }
+            if (!unthrottledUrl.isNullOrEmpty()) {
+                Log.d(TAG, "Successfully resolved unthrottled stream for $videoId via NewPipeExtractor")
+                return@withContext unthrottledUrl
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "NewPipe stream extraction failed for $videoId, trying fallback clients: ${e.message}")
+        }
+
+        // 2. Fallback to InnerTube multi-client extraction if needed
         getStreamUrl(videoId, quality, videoQuality, isVideo)
     }
 

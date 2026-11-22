@@ -87,7 +87,8 @@ data class CarouselHeader(
 
 @JsonClass(generateAdapter = true)
 data class MusicCarouselShelfBasicHeaderRenderer(
-    val title: TextContent?
+    val title: TextContent?,
+    val strapline: TextContent? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -107,6 +108,7 @@ data class MusicTwoRowItemRenderer(
 @JsonClass(generateAdapter = true)
 data class MusicShelfRenderer(
     val title: TextContent? = null,
+    val strapline: TextContent? = null,
     val contents: List<MusicItem>?
 )
 
@@ -351,7 +353,8 @@ data class HomeMediaItem(
 
 data class HomeSection(
     val title: String,
-    val items: List<HomeMediaItem>
+    val items: List<HomeMediaItem>,
+    val strapline: String? = null
 )
 
 @JsonClass(generateAdapter = true)

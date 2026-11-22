@@ -14,6 +14,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.border
 import com.example.ecodot.ui.theme.EcoDotRed
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.Explicit
 
 @Composable
 fun PlayingIndicator(modifier: Modifier = Modifier, color: Color = EcoDotRed) {
@@ -51,16 +53,20 @@ fun PlayingIndicator(modifier: Modifier = Modifier, color: Color = EcoDotRed) {
 fun ExplicitBadge(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .size(13.dp)
-            .background(Color(0xFF7F7F7F), RoundedCornerShape(2.dp)),
+            .clip(RoundedCornerShape(3.dp))
+            .background(Color.White.copy(alpha = 0.22f))
+            .padding(horizontal = 3.5.dp, vertical = 0.5.dp),
         contentAlignment = Alignment.Center
     ) {
         androidx.compose.material3.Text(
             text = "E",
-            color = Color(0xFF121212),
-            fontSize = 9.sp,
-            fontWeight = FontWeight.Bold,
-            lineHeight = 9.sp
+            style = androidx.compose.ui.text.TextStyle(
+                color = Color.White.copy(alpha = 0.92f),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Default
+            ),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
     }
 }

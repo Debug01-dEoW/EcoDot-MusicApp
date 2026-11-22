@@ -65,20 +65,20 @@ import androidx.compose.ui.util.fastFirstOrNull
 import androidx.compose.ui.util.fastRoundToInt
 import androidx.compose.ui.util.lerp
 import com.example.ecodot.ui.theme.animatedCombinedClickable
-import com.kashif_e.backdrop.Backdrop
-import com.kashif_e.backdrop.backdrops.LayerBackdrop
-import com.kashif_e.backdrop.backdrops.layerBackdrop
-import com.kashif_e.backdrop.backdrops.rememberBackdrop
-import com.kashif_e.backdrop.backdrops.rememberCombinedBackdrop
-import com.kashif_e.backdrop.backdrops.rememberLayerBackdrop
-import com.kashif_e.backdrop.drawBackdrop
-import com.kashif_e.backdrop.effects.blur
-import com.kashif_e.backdrop.effects.lens
-import com.kashif_e.backdrop.effects.vibrancy
-import com.kashif_e.backdrop.effects.colorControls
-import com.kashif_e.backdrop.highlight.Highlight
-import com.kashif_e.backdrop.shadow.InnerShadow
-import com.kashif_e.backdrop.shadow.Shadow
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.LayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberBackdrop
+import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+import com.kyant.backdrop.effects.colorControls
+import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.shadow.InnerShadow
+import com.kyant.backdrop.shadow.Shadow
 import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
@@ -356,21 +356,7 @@ fun Modifier.liquidGlass(
         )
         .clip(shape)
 
-    val withBlur = if (parentBackdrop != null) {
-        base.drawBackdrop(
-            backdrop = parentBackdrop,
-            shape = { shape },
-            effects = {
-                vibrancy()
-                blur(blurRadius.toPx())
-                lens(10f.dp.toPx(), 20f.dp.toPx(), depthEffect = true, chromaticAberration = true)
-            },
-            highlight = { Highlight.Plain },
-            onDrawSurface = {
-                drawRect(tintColor.copy(alpha = 0.4f))
-            }
-        )
-    } else if (hazeState != null) {
+    val withBlur = if (hazeState != null) {
         val glassStyle = HazeStyle(
             backgroundColor = tintColor.copy(alpha = 0.48f),
             tint = HazeDefaults.tint(tintColor.copy(alpha = 0.28f)),
@@ -493,21 +479,7 @@ fun MotionLiquidGlassCard(
         )
         .clip(shape)
 
-    val withBlur = if (parentBackdrop != null) {
-        baseModifier.drawBackdrop(
-            backdrop = parentBackdrop,
-            shape = { shape },
-            effects = {
-                vibrancy()
-                blur(24.dp.toPx())
-                lens(14f.dp.toPx(), 28f.dp.toPx(), depthEffect = true, chromaticAberration = true)
-            },
-            highlight = { Highlight.Plain },
-            onDrawSurface = {
-                drawRect(tintColor.copy(alpha = 0.4f))
-            }
-        )
-    } else if (hazeState != null) {
+    val withBlur = if (hazeState != null) {
         val glassStyle = HazeStyle(
             backgroundColor = tintColor.copy(alpha = 0.50f),
             tint = HazeDefaults.tint(tintColor.copy(alpha = 0.30f)),

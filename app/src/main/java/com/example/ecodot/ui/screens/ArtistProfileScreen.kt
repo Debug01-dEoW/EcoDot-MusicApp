@@ -127,7 +127,11 @@ fun ArtistProfileScreen(
                 },
                 navigationIcon = {
                     IconButton(
-                        onClick = { navController.popBackStack() },
+                        onClick = {
+                            if (!navController.popBackStack()) {
+                                navController.navigate("home")
+                            }
+                        },
                         modifier = Modifier
                             .background(Color.Black.copy(0.2f), CircleShape)
                             .padding(4.dp)

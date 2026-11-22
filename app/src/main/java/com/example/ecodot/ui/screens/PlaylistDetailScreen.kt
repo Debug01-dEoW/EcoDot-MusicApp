@@ -1,6 +1,7 @@
 package com.example.ecodot.ui.screens
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -84,6 +85,15 @@ fun PlaylistDetailScreen(
     LaunchedEffect(tracks) {
         if (draggingIndex == null) {
             localTracks = tracks
+        }
+    }
+
+    // Dismiss active edit dialogs or exit edit mode on back press before exiting the playlist screen
+    BackHandler(enabled = isEditMode || showEditDialog || showPlaylistPicker != null) {
+        when {
+            showEditDialog -> showEditDialog = false
+            showPlaylistPicker != null -> showPlaylistPicker = null
+            isEditMode -> isEditMode = false
         }
     }
 

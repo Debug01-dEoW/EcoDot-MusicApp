@@ -28,11 +28,15 @@ import android.os.Environment
 import java.io.File
 import androidx.media3.exoplayer.source.MediaSourceFactory
 
+import org.koin.android.ext.android.inject
+
 class EcoDotSessionService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null
     private var effectManager: AudioEffectManager? = null
-    private lateinit var repository: MusicRepository
+    private val repository: MusicRepository by inject()
+    private val prefsManager: com.example.ecodot.data.local.prefs.UserPreferencesManager by inject()
+    private val getSponsorSegmentsUseCase: com.example.ecodot.domain.usecase.GetSponsorSegmentsUseCase by inject()
 
     private val serviceJob = SupervisorJob()
     private val serviceScope = CoroutineScope(
@@ -46,7 +50,11 @@ class EcoDotSessionService : MediaSessionService() {
     private val players = arrayOfNulls<ExoPlayer>(2)
     private var crossfadeMonitorJob: Job? = null
     private var isCrossfading = false
-    private lateinit var prefsManager: com.example.ecodot.data.local.prefs.UserPreferencesManager
+
+    // ── SponsorBlock State ──
+    private var sponsorBlockJob: Job? = null
+    private var currentSponsorSegments: List<com.example.ecodot.domain.model.SponsorSegment> = emptyList()
+    private var lastSkippedSegmentStart: Long? = null
 
     // ── URL Cache: Prevents runBlocking from hitting network on every buffer refill ──
     private data class CachedUrl(val url: String, val timestamp: Long)
@@ -83,14 +91,17 @@ class EcoDotSessionService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
-        val db = EcoDotDatabase.getInstance(this)
-        repository = MusicRepository(this, db.trackDao(), db.historyDao(),
-            db.profileDao(), db.playlistDao(), db.recentSearchDao(), db.followedArtistDao())
 
-        prefsManager = com.example.ecodot.data.local.prefs.UserPreferencesManager(this)
+        val httpDataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
+            .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36")
+            .setConnectTimeoutMs(15000)
+            .setReadTimeoutMs(15000)
+            .setAllowCrossProtocolRedirects(true)
+
+        val baseDataSourceFactory = DefaultDataSource.Factory(this, httpDataSourceFactory)
 
         val resolvingDataSourceFactory = ResolvingDataSource.Factory(
-            DefaultDataSource.Factory(this),
+            baseDataSourceFactory,
             object : ResolvingDataSource.Resolver {
                 override fun resolveDataSpec(dataSpec: DataSpec): DataSpec {
                     val uri = dataSpec.uri
@@ -110,7 +121,11 @@ class EcoDotSessionService : MediaSessionService() {
                         val cacheKey = "${videoId}_${isVideo}"
                         val cached = urlCache[cacheKey]
                         if (cached != null && System.currentTimeMillis() - cached.timestamp < URL_CACHE_TTL_MS) {
-                            return dataSpec.buildUpon().setUri(android.net.Uri.parse(cached.url)).build()
+                            prefsManager.addCachedTrackId(videoId)
+                            return dataSpec.buildUpon()
+                                .setUri(android.net.Uri.parse(cached.url))
+                                .setKey(videoId)
+                                .build()
                         }
                         
                         // Cache miss — resolve with timeout to prevent indefinite thread blocking
@@ -126,7 +141,11 @@ class EcoDotSessionService : MediaSessionService() {
                         }
                         if (streamUrl != null) {
                             urlCache[cacheKey] = CachedUrl(streamUrl, System.currentTimeMillis())
-                            return dataSpec.buildUpon().setUri(android.net.Uri.parse(streamUrl)).build()
+                            prefsManager.addCachedTrackId(videoId)
+                            return dataSpec.buildUpon()
+                                .setUri(android.net.Uri.parse(streamUrl))
+                                .setKey(videoId)
+                                .build()
                         }
                     }
                     return dataSpec
@@ -198,6 +217,33 @@ class EcoDotSessionService : MediaSessionService() {
                     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                         if (players[activePlayerIndex] == this@apply) {
                             val trackId = mediaItem?.mediaId
+                            if (trackId != null) {
+                                prefsManager.addCachedTrackId(trackId)
+                                serviceScope.launch(Dispatchers.IO) {
+                                    try {
+                                        val title = mediaItem.mediaMetadata.title?.toString() ?: "Unknown Title"
+                                        val artist = mediaItem.mediaMetadata.artist?.toString() ?: "Unknown Artist"
+                                        val artUri = mediaItem.mediaMetadata.artworkUri?.toString()
+                                        val db = EcoDotDatabase.getInstance(this@EcoDotSessionService)
+                                        if (db.trackDao().getTrackById(trackId) == null) {
+                                            db.trackDao().insertTracks(listOf(
+                                                Track(
+                                                    id = trackId,
+                                                    title = title,
+                                                    artist = artist,
+                                                    album = "Cached",
+                                                    duration = 0L,
+                                                    path = "yt://$trackId",
+                                                    albumArtUri = artUri,
+                                                    isYouTube = true
+                                                )
+                                            ))
+                                        }
+                                    } catch (e: Exception) {
+                                        // ignore
+                                    }
+                                }
+                            }
                             if (trackId != currentPlayingTrackId) {
                                 currentPlayingTrackId = trackId
                                 isCrossfading = false // Reset lock on transition
@@ -218,6 +264,7 @@ class EcoDotSessionService : MediaSessionService() {
                                         artist = artist,
                                         duration = duration
                                     )
+                                    loadSponsorSegments(mediaItem.mediaId)
                                 }
 
                                 // Prefetch the next track in queue to avoid runBlocking network delays during transition
@@ -322,6 +369,7 @@ class EcoDotSessionService : MediaSessionService() {
                     
                     val dataSpec = androidx.media3.datasource.DataSpec.Builder()
                         .setUri(android.net.Uri.parse(streamUrl))
+                        .setKey("yt_$videoId")
                         .setLength(1024 * 1024 * 3 / 2) // Cache first 1.5 MB
                         .build()
 
@@ -344,13 +392,32 @@ class EcoDotSessionService : MediaSessionService() {
         crossfadeMonitorJob?.cancel()
         crossfadeMonitorJob = serviceScope.launch {
             while (isActive) {
-                delay(500)
+                delay(300)
 
                 val activePlayer = players[activePlayerIndex] ?: continue
                 if (activePlayer.playWhenReady && activePlayer.playbackState == Player.STATE_READY) {
                     val duration = activePlayer.duration
                     val currentPos = activePlayer.currentPosition
                     if (duration != C.TIME_UNSET && currentPos != C.TIME_UNSET) {
+                        // 0. SponsorBlock auto-skip
+                        if (prefsManager.sponsorBlockEnabled && currentSponsorSegments.isNotEmpty()) {
+                            val segment = currentSponsorSegments.firstOrNull { seg ->
+                                currentPos in seg.start until seg.end
+                            }
+                            if (segment != null) {
+                                if (lastSkippedSegmentStart != segment.start) {
+                                    lastSkippedSegmentStart = segment.start
+                                    Log.i(TAG, "SponsorBlock: auto-skipping [${segment.category}] from ${segment.start}ms to ${segment.end}ms")
+                                    activePlayer.seekTo(segment.end + 50L)
+                                }
+                            } else {
+                                if (lastSkippedSegmentStart != null) {
+                                    val inAny = currentSponsorSegments.any { currentPos in it.start until it.end }
+                                    if (!inAny) lastSkippedSegmentStart = null
+                                }
+                            }
+                        }
+
                         val remaining = duration - currentPos
 
                         // 1. Trigger pre-caching 15 seconds before the track ends
@@ -854,6 +921,29 @@ class EcoDotSessionService : MediaSessionService() {
             
             player.replaceMediaItem(currentIndex, updatedMediaItem)
             Log.d(TAG, "Notification Lyrics updated: $displayArtist")
+        }
+    }
+
+    private fun loadSponsorSegments(videoId: String) {
+        sponsorBlockJob?.cancel()
+        currentSponsorSegments = emptyList()
+        lastSkippedSegmentStart = null
+
+        // Skip local file paths
+        if (videoId.startsWith("/") || videoId.startsWith("content://") || videoId.contains(File.separator)) {
+            return
+        }
+
+        sponsorBlockJob = serviceScope.launch(Dispatchers.IO) {
+            try {
+                val segments = getSponsorSegmentsUseCase(videoId)
+                currentSponsorSegments = segments.sortedBy { it.start }
+                if (segments.isNotEmpty()) {
+                    Log.d(TAG, "Loaded ${segments.size} SponsorBlock segments for $videoId: ${segments.map { "${it.category}(${it.start}..${it.end})" }}")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to load SponsorBlock segments for $videoId: ${e.message}")
+            }
         }
     }
 }

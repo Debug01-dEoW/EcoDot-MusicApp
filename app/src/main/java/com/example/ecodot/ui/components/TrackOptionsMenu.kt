@@ -33,6 +33,8 @@ import coil.compose.AsyncImage
 import com.example.ecodot.data.local.entities.Playlist
 import com.example.ecodot.data.local.entities.Track
 import com.example.ecodot.ui.theme.EcoDotRed
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.Tune
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Cancel
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -60,7 +62,9 @@ fun TrackOptionsBottomSheet(
     onSetSleepTimerAtEndOfTrack: () -> Unit = {},
     onCancelSleepTimer: () -> Unit = {},
     sleepTimerRemaining: Long? = null,
-    onSetAsRingtone: () -> Unit = {}
+    onSetAsRingtone: () -> Unit = {},
+    onEqualizerClick: (() -> Unit)? = null,
+    isCanvasActive: Boolean = false
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -230,8 +234,16 @@ fun TrackOptionsBottomSheet(
                         modifier = Modifier.clickable { onGoToArtist(); onDismiss() }
                     )
                 }
+                if (onEqualizerClick != null) {
+                    ListItem(
+                        headlineContent = { Text("Equalizer", color = Color.White) },
+                        leadingContent = { Icon(SimpIcons.Tune, contentDescription = null, tint = Color.White) },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        modifier = Modifier.clickable { onEqualizerClick(); onDismiss() }
+                    )
+                }
                 if (onSetCanvasUrl != null) {
-                    val hasCanvas = !track.canvasUrl.isNullOrEmpty() && track.canvasUrl != "DISABLED"
+                    val hasCanvas = isCanvasActive
                     ListItem(
                         headlineContent = { Text(if (hasCanvas) "Disable Looping Canvas" else "Enable Looping Canvas", color = Color.White) },
                         leadingContent = { 

@@ -371,7 +371,11 @@ fun AlbumDetailScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
-                        onClick = { navController.popBackStack() },
+                        onClick = {
+                            if (!navController.popBackStack()) {
+                                navController.navigate("home")
+                            }
+                        },
                         modifier = Modifier.background(Color.Black.copy(0.3f), CircleShape)
                     ) {
                         Icon(Icons.Rounded.ArrowBack, contentDescription = "Back", tint = Color.White)

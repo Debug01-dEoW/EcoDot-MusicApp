@@ -348,6 +348,7 @@ object YouTubeParser {
         for (content in sectionListContents) {
             content.musicCarouselShelfRenderer?.let { carousel ->
                 val title = carousel.header?.musicCarouselShelfBasicHeaderRenderer?.title?.runs?.joinToString("") { it.text } ?: "Unknown Section"
+                val strapline = carousel.header?.musicCarouselShelfBasicHeaderRenderer?.strapline?.runs?.joinToString("") { it.text }
                 val items = mutableListOf<HomeMediaItem>()
                 
                 carousel.contents?.forEach { item ->
@@ -387,12 +388,13 @@ object YouTubeParser {
                     }
                 }
                 if (items.isNotEmpty()) {
-                    sections.add(HomeSection(title, items))
+                    sections.add(HomeSection(title, items, strapline))
                 }
             }
 
             content.musicShelfRenderer?.let { listShelf ->
                 val title = listShelf.title?.runs?.joinToString("") { it.text } ?: "Quick Picks"
+                val strapline = listShelf.strapline?.runs?.joinToString("") { it.text } ?: "LET'S START WITH A RADIO"
                 val items = mutableListOf<HomeMediaItem>()
                 
                 listShelf.contents?.forEach { item ->
@@ -414,7 +416,7 @@ object YouTubeParser {
                 }
                 
                 if (items.isNotEmpty()) {
-                    sections.add(HomeSection(title, items))
+                    sections.add(HomeSection(title, items, strapline))
                 }
             }
         }

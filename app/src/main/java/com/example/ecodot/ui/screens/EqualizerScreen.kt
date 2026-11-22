@@ -33,6 +33,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
+import com.example.ecodot.domain.model.DEFAULT_EQ_PRESETS
 import com.example.ecodot.ui.viewmodel.MusicViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,6 +52,7 @@ fun EqualizerScreen(
     val eqBands by viewModel.eqBands.collectAsState()
     val virtualizerStrength by viewModel.virtualizerStrength.collectAsState()
     val accentColor by viewModel.accentColor.collectAsState()
+    val selectedPreset by viewModel.selectedEqPreset.collectAsState()
     val context = LocalContext.current
 
     val bandLabels = listOf("60 Hz", "230 Hz", "910 Hz", "3.6 kHz", "14 kHz")
@@ -79,10 +87,12 @@ fun EqualizerScreen(
                     )
             )
 
+            val scrollState = rememberScrollState()
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
+                    .verticalScroll(scrollState)
                     .padding(horizontal = 24.dp)
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -123,7 +133,89 @@ fun EqualizerScreen(
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(36.dp))
+                        // Presets Row
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Text(
+                            text = "PRESET SOUND PROFILES",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White.copy(alpha = 0.5f),
+                            letterSpacing = 1.2.sp
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(DEFAULT_EQ_PRESETS) { preset ->
+                                val isSelected = selectedPreset == preset.name
+                                val chipBg = if (isSelected) accentColor.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f)
+                                val chipBorder = if (isSelected) accentColor else Color.White.copy(alpha = 0.1f)
+                                val textColor = if (isSelected) accentColor else Color.White.copy(alpha = 0.7f)
+
+                                Surface(
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = chipBg,
+                                    border = BorderStroke(1.dp, chipBorder),
+                                    modifier = Modifier.clickable {
+                                        if (!eqEnabled) viewModel.toggleEq()
+                                        viewModel.applyEqPreset(preset)
+                                    }
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                                    ) {
+                                        if (isSelected) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(6.dp)
+                                                    .clip(CircleShape)
+                                                    .background(accentColor)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                        }
+                                        Text(
+                                            text = preset.name,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            color = textColor
+                                        )
+                                    }
+                                }
+                            }
+                            if (selectedPreset == "Custom") {
+                                item {
+                                    Surface(
+                                        shape = RoundedCornerShape(16.dp),
+                                        color = accentColor.copy(alpha = 0.2f),
+                                        border = BorderStroke(1.dp, accentColor)
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(6.dp)
+                                                    .clip(CircleShape)
+                                                    .background(accentColor)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "Custom",
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = accentColor
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(28.dp))
 
                         // Bands
                         Row(
@@ -236,7 +328,7 @@ fun EqualizerScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(32.dp))
 
                 // ── System Equalizer Button ────────────────────────────────────
                 OutlinedButton(

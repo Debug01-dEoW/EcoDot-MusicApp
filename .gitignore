@@ -38,3 +38,6 @@ input_images/
 # Agent files
 .agent/
 .agents/
+
+# Root screenshot and verification captures
+/*.png

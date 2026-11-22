@@ -40,8 +40,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 import com.example.ecodot.ui.components.MotionLiquidGlassCard
-import com.kashif_e.backdrop.backdrops.rememberLayerBackdrop
-import com.kashif_e.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
 
 /**
  * Renders a beautiful shareable lyrics card.
@@ -55,17 +55,13 @@ fun LyricsCardContent(
     accentColor: Color,
     modifier: Modifier = Modifier
 ) {
-    val lyricsBackdrop = rememberLayerBackdrop()
-
     Box(
         modifier = modifier.aspectRatio(9f / 16f),
         contentAlignment = Alignment.Center
     ) {
-        // 1. Blurred album art background (drawn inside layerBackdrop)
+        // 1. Blurred album art background
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .layerBackdrop(lyricsBackdrop)
+            modifier = Modifier.fillMaxSize()
         ) {
             if (!track.albumArtUri.isNullOrEmpty()) {
                 AsyncImage(
@@ -100,7 +96,7 @@ fun LyricsCardContent(
         }
 
         // 3. Motion Liquid Glass card on top
-        CompositionLocalProvider(com.example.ecodot.ui.components.LocalBackdrop provides lyricsBackdrop) {
+        CompositionLocalProvider(com.example.ecodot.ui.components.LocalBackdrop provides null) {
             MotionLiquidGlassCard(
                 modifier = Modifier.fillMaxSize(),
                 shape = RoundedCornerShape(28.dp),

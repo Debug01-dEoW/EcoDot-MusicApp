@@ -33,10 +33,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.example.ecodot.ui.components.MiniPlayer
+import com.example.ecodot.ui.components.SimpBottomNavigationBar
 import com.example.ecodot.ui.components.liquidGlass
-import com.kashif_e.backdrop.backdrops.rememberLayerBackdrop
-import com.kashif_e.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
 import com.example.ecodot.ui.screens.HomeScreen
 import com.example.ecodot.ui.screens.LibraryScreen
 import com.example.ecodot.ui.screens.NowPlayingScreen
@@ -46,6 +48,9 @@ import com.example.ecodot.ui.viewmodel.MusicViewModel
 import com.example.ecodot.util.RequestNotificationPermission
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeStyle
 import kotlinx.coroutines.delay
 
 val LocalHazeState = compositionLocalOf { HazeState() }
@@ -86,8 +91,6 @@ class MainActivity : ComponentActivity() {
                 val currentTrack by viewModel.currentTrack.collectAsState()
                 val isPlaying by viewModel.isPlaying.collectAsState()
                 val hasTrackLoaded by viewModel.hasTrackLoaded.collectAsState()
-                val position by viewModel.position.collectAsState()
-                val duration by viewModel.duration.collectAsState()
                 val isCurrentTrackLiked by viewModel.isCurrentTrackLiked.collectAsState()
 
                 // Smoothly animate ambient haze color as song changes
@@ -97,10 +100,6 @@ class MainActivity : ComponentActivity() {
                     label = "ambient_haze"
                 )
 
-                val progress = remember(position, duration) {
-                    if (duration > 0) position.toFloat() / duration.toFloat() else 0f
-                }
-
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination?.route
 
@@ -108,6 +107,7 @@ class MainActivity : ComponentActivity() {
                 var isEqualizerVisible by remember { mutableStateOf(false) }
                 var isVideoPlayerVisible by remember { mutableStateOf(false) }
                 val appHazeState = remember { HazeState() }
+                val appBackdrop = rememberLayerBackdrop()
 
                 // Hardware back button handling
                 BackHandler(enabled = isNowPlayingVisible || isEqualizerVisible || isVideoPlayerVisible) {
@@ -140,16 +140,24 @@ class MainActivity : ComponentActivity() {
 
                 RequestNotificationPermission()
 
-                val backdrop = com.kashif_e.backdrop.backdrops.rememberLayerBackdrop()
+                val deviceTilt by com.example.ecodot.ui.components.rememberDeviceTilt()
 
                 CompositionLocalProvider(
                     LocalHazeState provides appHazeState,
-                    com.example.ecodot.ui.components.LocalBackdrop provides backdrop
+                    com.example.ecodot.ui.components.LocalBackdrop provides appBackdrop,
+                    com.example.ecodot.ui.components.LocalTiltState provides deviceTilt
                 ) {
-                    Scaffold(
-                        containerColor = Color(0xFF000000),
-                    ) { _ ->
-                        Box(modifier = Modifier.fillMaxSize().hazeSource(appHazeState)) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color(0xFF000000))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .layerBackdrop(appBackdrop)
+                                .hazeSource(appHazeState)
+                        ) {
 
                             // ── Global Ambient Haze (album art color bleeds into all screens) ──
                             Box(
@@ -169,55 +177,71 @@ class MainActivity : ComponentActivity() {
 
                             // ── Page Content ──────────────────────────────────
                             Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .layerBackdrop(backdrop)
+                                modifier = Modifier.fillMaxSize()
                             ) {
                                 NavHost(
                                     navController = navController,
                                     startDestination = "home",
                                     modifier = Modifier.fillMaxSize(),
                                     enterTransition = {
-                                        slideIntoContainer(
-                                            AnimatedContentTransitionScope.SlideDirection.Left,
-                                            animationSpec = spring(stiffness = Spring.StiffnessLow)
-                                        ) + fadeIn(animationSpec = tween(300))
+                                        val topLevel = setOf("home", "search", "library")
+                                        val isBetweenTopLevel = initialState.destination.route in topLevel && targetState.destination.route in topLevel
+                                        if (isBetweenTopLevel) {
+                                            fadeIn(animationSpec = tween(160))
+                                        } else {
+                                            slideIntoContainer(
+                                                AnimatedContentTransitionScope.SlideDirection.Start,
+                                                animationSpec = tween(250, easing = FastOutSlowInEasing)
+                                            ) + fadeIn(animationSpec = tween(200))
+                                        }
                                     },
                                     exitTransition = {
-                                        slideOutOfContainer(
-                                            AnimatedContentTransitionScope.SlideDirection.Left,
-                                            animationSpec = spring(stiffness = Spring.StiffnessLow)
-                                        ) + fadeOut(animationSpec = tween(300))
+                                        val topLevel = setOf("home", "search", "library")
+                                        val isBetweenTopLevel = initialState.destination.route in topLevel && targetState.destination.route in topLevel
+                                        if (isBetweenTopLevel) {
+                                            fadeOut(animationSpec = tween(160))
+                                        } else {
+                                            slideOutOfContainer(
+                                                AnimatedContentTransitionScope.SlideDirection.Start,
+                                                animationSpec = tween(250, easing = FastOutSlowInEasing)
+                                            ) + fadeOut(animationSpec = tween(200))
+                                        }
                                     },
                                     popEnterTransition = {
-                                        slideIntoContainer(
-                                            AnimatedContentTransitionScope.SlideDirection.Right,
-                                            animationSpec = spring(stiffness = Spring.StiffnessLow)
-                                        ) + fadeIn(animationSpec = tween(300))
+                                        val topLevel = setOf("home", "search", "library")
+                                        val isBetweenTopLevel = initialState.destination.route in topLevel && targetState.destination.route in topLevel
+                                        if (isBetweenTopLevel) {
+                                            fadeIn(animationSpec = tween(160))
+                                        } else {
+                                            slideIntoContainer(
+                                                AnimatedContentTransitionScope.SlideDirection.End,
+                                                animationSpec = tween(250, easing = FastOutSlowInEasing)
+                                            ) + fadeIn(animationSpec = tween(200))
+                                        }
                                     },
                                     popExitTransition = {
-                                        slideOutOfContainer(
-                                            AnimatedContentTransitionScope.SlideDirection.Right,
-                                            animationSpec = spring(stiffness = Spring.StiffnessLow)
-                                        ) + fadeOut(animationSpec = tween(300))
+                                        val topLevel = setOf("home", "search", "library")
+                                        val isBetweenTopLevel = initialState.destination.route in topLevel && targetState.destination.route in topLevel
+                                        if (isBetweenTopLevel) {
+                                            fadeOut(animationSpec = tween(160))
+                                        } else {
+                                            slideOutOfContainer(
+                                                AnimatedContentTransitionScope.SlideDirection.End,
+                                                animationSpec = tween(250, easing = FastOutSlowInEasing)
+                                            ) + fadeOut(animationSpec = tween(200))
+                                        }
                                     }
                                 ) {
                                     composable("home") {
                                     HomeScreen(
                                         viewModel = viewModel,
                                         navController = navController,
+                                        onEqualizerClick = { isEqualizerVisible = true },
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 }
                                 composable("library") {
                                     LibraryScreen(
-                                        viewModel = viewModel,
-                                        navController = navController,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                }
-                                composable("daily_mix") {
-                                    com.example.ecodot.ui.screens.DailyMixGeneratorScreen(
                                         viewModel = viewModel,
                                         navController = navController,
                                         modifier = Modifier.fillMaxSize()
@@ -261,164 +285,185 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
-                        }
+                        } // end Box (Page Content)
+                    } // end Box (layerBackdrop & hazeSource)
 
-                        // ── Dynamic Island Nav Bar ────────────────────────
-                            val showBottomBar = currentDestination in listOf("home", "library", "search", "artist/{artistId}")
-                            AnimatedVisibility(
-                                visible = showBottomBar && !isNowPlayingVisible,
-                                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                        // ── Floating Controls Layer (No black container — true floating over content) ──
+                        val showBottomBar = currentDestination in listOf("home", "library", "search", "artist/{artistId}", "album/{albumId}")
+                        AnimatedVisibility(
+                            visible = showBottomBar && !isNowPlayingVisible,
+                            enter = fadeIn(animationSpec = tween(200)),
+                            exit = fadeOut(animationSpec = tween(150)),
+                            modifier = Modifier.align(Alignment.BottomCenter)
+                        ) {
+                            Column(
                                 modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .navigationBarsPadding()
-                                    .padding(bottom = 16.dp)
+                                    .fillMaxWidth()
+                                    .navigationBarsPadding(),
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                DynamicIslandNavBar(
+                                // MiniPlayer directly on top of floating squircle buttons
+                                AnimatedVisibility(
+                                    visible = hasTrackLoaded && currentTrack != null,
+                                    enter = fadeIn() + slideInVertically { it },
+                                    exit = fadeOut() + slideOutVertically { it }
+                                ) {
+                                    MiniPlayer(
+                                        track = currentTrack,
+                                        isPlaying = isPlaying,
+                                        progressProvider = {
+                                            val d = viewModel.duration.value
+                                            if (d > 0) viewModel.position.value.toFloat() / d.toFloat() else 0f
+                                        },
+                                        dominantColor = dominantColor,
+                                        onTogglePlayback = { viewModel.togglePlayback() },
+                                        onSkipNext = { viewModel.skipNext() },
+                                        onSkipPrevious = { viewModel.skipPrevious() },
+                                        onLike = { viewModel.likeCurrentTrack() },
+                                        isLiked = isCurrentTrackLiked,
+                                        onClick = { isNowPlayingVisible = true },
+                                        onClose = { viewModel.togglePlayback() },
+                                        backdrop = appBackdrop,
+                                        modifier = Modifier
+                                            .height(56.dp)
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp)
+                                            .padding(bottom = 6.dp)
+                                    )
+                                }
+
+                                // Floating 3-Squircle Navbar (Completely transparent background, only the 3 squircles)
+                                SimpBottomNavigationBar(
                                     currentRoute = currentDestination,
-                                    onTabSelected = { route ->
+                                    backdrop = appBackdrop,
+                                    onNavigate = { route: String ->
+                                        if (route == currentDestination) {
+                                            when (route) {
+                                                "search" -> viewModel.triggerSearchFocus()
+                                                "home" -> viewModel.triggerHomeReset()
+                                                "library" -> viewModel.triggerLibraryReset()
+                                            }
+                                            return@SimpBottomNavigationBar
+                                        }
                                         navController.navigate(route) {
-                                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
                                             launchSingleTop = true
                                             restoreState = true
                                         }
-                                    },
-                                    hazeState = appHazeState
-                                )
-                            }
-
-                            // ── Mini Player (floats above island nav) ─────────
-                            AnimatedVisibility(
-                                visible = hasTrackLoaded && currentTrack != null && !isNowPlayingVisible,
-                                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .navigationBarsPadding()
-                                    .padding(bottom = 80.dp, start = 12.dp, end = 12.dp)
-                            ) {
-                                MiniPlayer(
-                                    track = currentTrack,
-                                    isPlaying = isPlaying,
-                                    progress = progress,
-                                    onTogglePlayback = { viewModel.togglePlayback() },
-                                    onSkipNext = { viewModel.skipNext() },
-                                    onSkipPrevious = { viewModel.skipPrevious() },
-                                    onLike = { viewModel.likeCurrentTrack() },
-                                    isLiked = isCurrentTrackLiked,
-                                    onClick = { isNowPlayingVisible = true },
-                                    hazeState = appHazeState
-                                )
-                            }
-
-                            // ── Full Screen Now Playing overlay ───────────────
-                            // Sync canvas lifecycle: release video player when screen is dismissed
-                            LaunchedEffect(isNowPlayingVisible) {
-                                viewModel.setNowPlayingVisible(isNowPlayingVisible)
-                            }
-
-                            AnimatedVisibility(
-                                visible = isNowPlayingVisible,
-                                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                NowPlayingScreen(
-                                    viewModel = viewModel,
-                                    navController = navController,
-                                    onBackClick = { isNowPlayingVisible = false },
-                                    onEqualizerClick = { isEqualizerVisible = true },
-                                    onWatchVideoClick = { isVideoPlayerVisible = true },
-                                    isFullScreenVisible = isVideoPlayerVisible
-                                )
-                            }
-
-                            // ── Video Player Overlay ──────────────────────────
-                            AnimatedVisibility(
-                                visible = isVideoPlayerVisible,
-                                enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
-                                exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                com.example.ecodot.ui.screens.VideoPlayerScreen(
-                                    viewModel = viewModel,
-                                    onClose = { isVideoPlayerVisible = false }
-                                )
-                            }
-
-                            // ── Equalizer Overlay ─────────────────────────────
-                            AnimatedVisibility(
-                                visible = isEqualizerVisible,
-                                enter = fadeIn() + slideInHorizontally(initialOffsetX = { it }),
-                                exit = fadeOut() + slideOutHorizontally(targetOffsetX = { it }),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                com.example.ecodot.ui.screens.EqualizerScreen(
-                                    viewModel = viewModel,
-                                    onBack = { isEqualizerVisible = false }
-                                )
-                            }
-
-                            // ── Floating Offline/Online Banner ───────────────
-                            AnimatedVisibility(
-                                visible = showOfflineBanner,
-                                enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
-                                exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
-                                modifier = Modifier
-                                    .align(Alignment.TopCenter)
-                                    .statusBarsPadding()
-                                    .padding(top = 16.dp, start = 20.dp, end = 20.dp)
-                                    .zIndex(999f)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(
-                                            if (isBannerSuccess) {
-                                                Color(0xFF0D2C1D).copy(alpha = 0.9f)
-                                            } else {
-                                                Color(0xFF2E1216).copy(alpha = 0.9f)
-                                            }
-                                        )
-                                        .border(
-                                            width = 1.dp,
-                                            brush = Brush.horizontalGradient(
-                                                colors = if (isBannerSuccess) {
-                                                    listOf(Color(0xFF1DB954).copy(alpha = 0.6f), Color(0xFF1DB954).copy(alpha = 0.1f))
-                                                } else {
-                                                    listOf(Color(0xFFFF3B30).copy(alpha = 0.6f), Color(0xFFFF3B30).copy(alpha = 0.1f))
-                                                }
-                                            ),
-                                            shape = RoundedCornerShape(16.dp)
-                                        )
-                                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center,
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Icon(
-                                            imageVector = if (isBannerSuccess) Icons.Rounded.Wifi else Icons.Rounded.WifiOff,
-                                            contentDescription = null,
-                                            tint = if (isBannerSuccess) Color(0xFF1DB954) else Color(0xFFFF3B30),
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Text(
-                                            text = bannerMessage,
-                                            color = Color.White,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
                                     }
-                                }
+                                )
                             }
+                        }
 
-                        } // end Box
-                    } // end Scaffold
-                } // end CompositionLocalProvider
+                // ── Full Screen Now Playing overlay ───────────────
+                // Sync canvas lifecycle: release video player when screen is dismissed
+                LaunchedEffect(isNowPlayingVisible) {
+                    viewModel.setNowPlayingVisible(isNowPlayingVisible)
+                }
+
+                AnimatedVisibility(
+                    visible = isNowPlayingVisible,
+                    enter = slideInVertically(initialOffsetY = { it }, animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy)) + fadeIn(tween(180)),
+                    exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(200, easing = FastOutSlowInEasing)) + fadeOut(tween(150)),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    NowPlayingScreen(
+                        viewModel = viewModel,
+                        navController = navController,
+                        onBackClick = { isNowPlayingVisible = false },
+                        onEqualizerClick = { isEqualizerVisible = true },
+                        onWatchVideoClick = { isVideoPlayerVisible = true },
+                        isFullScreenVisible = isVideoPlayerVisible
+                    )
+                }
+
+                // ── Video Player Overlay ──────────────────────────
+                AnimatedVisibility(
+                    visible = isVideoPlayerVisible,
+                    enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+                    exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    com.example.ecodot.ui.screens.VideoPlayerScreen(
+                        viewModel = viewModel,
+                        onClose = { isVideoPlayerVisible = false }
+                    )
+                }
+
+                // ── Equalizer Overlay ─────────────────────────────
+                AnimatedVisibility(
+                    visible = isEqualizerVisible,
+                    enter = fadeIn() + slideInHorizontally(initialOffsetX = { it }),
+                    exit = fadeOut() + slideOutHorizontally(targetOffsetX = { it }),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    com.example.ecodot.ui.screens.EqualizerScreen(
+                        viewModel = viewModel,
+                        onBack = { isEqualizerVisible = false }
+                    )
+                }
+
+                // ── Floating Offline/Online Banner ───────────────
+                AnimatedVisibility(
+                    visible = showOfflineBanner,
+                    enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .statusBarsPadding()
+                        .padding(top = 16.dp, start = 20.dp, end = 20.dp)
+                        .zIndex(999f)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(
+                                if (isBannerSuccess) {
+                                    Color(0xFF0D2C1D).copy(alpha = 0.9f)
+                                } else {
+                                    Color(0xFF2E1216).copy(alpha = 0.9f)
+                                }
+                            )
+                            .border(
+                                width = 1.dp,
+                                brush = Brush.horizontalGradient(
+                                    colors = if (isBannerSuccess) {
+                                        listOf(Color(0xFF1DB954).copy(alpha = 0.6f), Color(0xFF1DB954).copy(alpha = 0.1f))
+                                    } else {
+                                        listOf(Color(0xFFFF3B30).copy(alpha = 0.6f), Color(0xFFFF3B30).copy(alpha = 0.1f))
+                                    }
+                                ),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = if (isBannerSuccess) Icons.Rounded.Wifi else Icons.Rounded.WifiOff,
+                                contentDescription = null,
+                                tint = if (isBannerSuccess) Color(0xFF1DB954) else Color(0xFFFF3B30),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = bannerMessage,
+                                color = Color.White,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+
+            } // end Root Box
+        } // end CompositionLocalProvider
             } // end EcoDotTheme
         } // end setContent
     }
@@ -447,16 +492,29 @@ fun DynamicIslandNavBar(
         else -> -1
     }
 
+    val navBarShape = RoundedCornerShape(percent = 50)
     Box(
         modifier = Modifier
             .wrapContentSize()
-            .liquidGlass(
-                shape = RoundedCornerShape(percent = 50),
-                specularAlpha = 0.38f,
-                elevation = 16.dp,
-                hazeState = hazeState,
-                tintColor = Color(0xFF10111A),
-                blurRadius = 24.dp
+            .shadow(
+                elevation = 20.dp,
+                shape = navBarShape,
+                clip = false,
+                ambientColor = Color.Black.copy(alpha = 0.7f),
+                spotColor = Color.Black.copy(alpha = 0.95f)
+            )
+            .clip(navBarShape)
+            .background(Color(0xFF0F1018))
+            .border(
+                width = 1.dp,
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.22f),
+                        Color.White.copy(alpha = 0.05f),
+                        Color.Black.copy(alpha = 0.4f)
+                    )
+                ),
+                shape = navBarShape
             )
     ) {
         Box(
