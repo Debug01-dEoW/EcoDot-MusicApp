@@ -17,6 +17,7 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -38,6 +39,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -114,6 +116,13 @@ fun VideoPlayerScreen(
     var isFullscreen by remember { mutableStateOf(false) }
     var showControls by remember { mutableStateOf(true) }
     var resizeOption by remember { mutableStateOf(VideoResizeOption.FIT) }
+
+    var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    val animatedDragOffset by animateFloatAsState(
+        targetValue = dragOffsetY,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = 600f),
+        label = "drag_dismiss_offset"
+    )
 
     // Double-tap visual feedback state: "left" (-10s), "right" (+10s), or null
     var doubleTapFeedback by remember { mutableStateOf<String?>(null) }
@@ -193,7 +202,28 @@ fun VideoPlayerScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .offset { IntOffset(0, animatedDragOffset.toInt()) }
             .background(Color.Black)
+            .pointerInput(isFullscreen) {
+                if (!isFullscreen) {
+                    detectVerticalDragGestures(
+                        onDragEnd = {
+                            if (dragOffsetY > 180f) {
+                                viewModel.setVideoMode(false)
+                                onClose()
+                            } else {
+                                dragOffsetY = 0f
+                            }
+                        },
+                        onDragCancel = { dragOffsetY = 0f },
+                        onVerticalDrag = { _, dragAmount ->
+                            if (dragAmount > 0 || dragOffsetY > 0) {
+                                dragOffsetY = (dragOffsetY + dragAmount).coerceAtLeast(0f)
+                            }
+                        }
+                    )
+                }
+            }
     ) {
         // ── 1. Video Surface (ExoPlayer PlayerView) ───────────────────────────
         AndroidView(

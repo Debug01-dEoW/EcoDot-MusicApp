@@ -52,6 +52,7 @@ import com.example.ecodot.data.local.entities.UserProfile
 import com.example.ecodot.data.remote.HomeMediaItem
 import com.example.ecodot.data.remote.HomeSection
 import com.example.ecodot.data.remote.MediaType
+import com.example.ecodot.data.remote.RealHomeData
 import com.example.ecodot.ui.components.*
 import com.example.ecodot.ui.theme.*
 import com.example.ecodot.LocalHazeState
@@ -96,10 +97,14 @@ fun HomeScreen(
     val isPlaying by viewModel.isPlaying.collectAsState()
     val dominantColor by viewModel.dominantColor.collectAsState()
 
+    val realMusicVideos by viewModel.realMusicVideos.collectAsState()
+    val selectedCountry by viewModel.selectedHomeCountry.collectAsState()
+    val countryVideoCharts by viewModel.countryVideoCharts.collectAsState()
+    val topChartArtists by viewModel.topChartArtists.collectAsState()
+
     var selectedMood by remember { mutableStateOf<String?>(null) }
     var isMoodExpanded by remember { mutableStateOf(false) }
 
-    var selectedCountry by remember { mutableStateOf("Canada") }
     var isCountryDropdownOpen by remember { mutableStateOf(false) }
 
     var showCreatePlaylistSheet by remember { mutableStateOf(false) }
@@ -378,12 +383,12 @@ fun HomeScreen(
                         title = "Music video",
                         actionText = "More",
                         onActionClick = {
-                            viewModel.performSearch("Trending Music Videos")
+                            viewModel.performSearch("Trending Music Videos", type = "Videos", saveToHistory = true)
                             navController.navigate("search")
                         }
                     )
 
-                    val videoItems = getSampleMusicVideos()
+                    val videoItems = realMusicVideos
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -395,7 +400,7 @@ fun HomeScreen(
                                     val track = Track(
                                         id = video.id,
                                         title = video.title,
-                                        artist = video.subtitle ?: "Artist",
+                                        artist = video.subtitle?.split("•")?.firstOrNull()?.trim() ?: "Artist",
                                         album = "Music Video",
                                         albumArtUri = video.thumbnailUrl,
                                         duration = 0,
@@ -503,20 +508,7 @@ fun HomeScreen(
                         title = "Genres"
                     )
 
-                    val genreCards = listOf(
-                        Pair("Pop", Color(0xFFFF4081)),
-                        Pair("Hip-Hop & Rap", Color(0xFFFF6D00)),
-                        Pair("Rock & Metal", Color(0xFF7C4DFF)),
-                        Pair("Bollywood & Desi", Color(0xFFFFD600)),
-                        Pair("R&B & Soul", Color(0xFF536DFE)),
-                        Pair("EDM & Dance", Color(0xFF00E5FF)),
-                        Pair("Lo-Fi Chill", Color(0xFFB388FF)),
-                        Pair("K-Pop", Color(0xFFFF1744)),
-                        Pair("Indie & Folk", Color(0xFF00E676)),
-                        Pair("Workout Pump", Color(0xFFFF3D00)),
-                        Pair("Romance", Color(0xFFFF80AB)),
-                        Pair("Focus & Study", Color(0xFF1DE9B6))
-                    )
+                    val genreCards = RealHomeData.getRealGenres()
 
                     Column(
                         modifier = Modifier
@@ -600,9 +592,8 @@ fun HomeScreen(
                                 DropdownMenuItem(
                                     text = { Text(country, color = Color.White) },
                                     onClick = {
-                                        selectedCountry = country
                                         isCountryDropdownOpen = false
-                                        viewModel.performSearch("Top 50 $country")
+                                        viewModel.loadHomeContentForCountry(country)
                                     }
                                 )
                             }
@@ -617,31 +608,28 @@ fun HomeScreen(
                         title = "Video charts"
                     )
 
-                    val videoChartItems = listOf(
-                        HomeMediaItem(
-                            id = "kPa7bsKwL-8",
-                            title = "Top 100 Live Performances",
-                            subtitle = "Global • YouTube Charts",
-                            thumbnailUrl = "https://i.ytimg.com/vi/kPa7bsKwL-8/hqdefault.jpg",
-                            type = MediaType.TRACK
-                        ),
-                        HomeMediaItem(
-                            id = "34Na4j8AVgA",
-                            title = "Trending 20 $selectedCountry",
-                            subtitle = "Daily • Top Viral Videos",
-                            thumbnailUrl = "https://i.ytimg.com/vi/34Na4j8AVgA/hqdefault.jpg",
-                            type = MediaType.TRACK
-                        )
-                    )
-
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        items(videoChartItems, key = { it.id }) { item ->
+                        items(countryVideoCharts, key = { "chart_${it.id}_${it.title}" }) { item ->
                             SimpMusicCard(
                                 item = item,
-                                onClick = { handleMediaItemClick(item, viewModel, navController) }
+                                onClick = {
+                                    val track = Track(
+                                        id = item.id,
+                                        title = item.title,
+                                        artist = item.subtitle ?: "YouTube Chart",
+                                        album = "Video Chart",
+                                        albumArtUri = item.thumbnailUrl,
+                                        duration = 0,
+                                        path = "https://www.youtube.com/watch?v=${item.id}",
+                                        isYouTube = true
+                                    )
+                                    viewModel.playTrack(track, isVideo = true)
+                                    viewModel.setVideoMode(true)
+                                    onWatchVideo()
+                                }
                             )
                         }
                     }
@@ -654,26 +642,19 @@ fun HomeScreen(
                         title = "Top artists"
                     )
 
-                    val topArtistsList = listOf(
-                        Triple("Arijit Singh", "44.2M subscribers", "https://i.ytimg.com/vi/JFcgOboQZ08/hqdefault.jpg"),
-                        Triple("The Weeknd", "36.5M subscribers", "https://i.ytimg.com/vi/34Na4j8AVgA/hqdefault.jpg"),
-                        Triple("Taylor Swift", "59.1M subscribers", "https://i.ytimg.com/vi/e-ORhEE9VVg/hqdefault.jpg"),
-                        Triple("Diljit Dosanjh", "16.8M subscribers", "https://i.ytimg.com/vi/mH_LFkW_oao/hqdefault.jpg")
-                    )
-
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        topArtistsList.forEachIndexed { idx, (name, subs, thumb) ->
+                        topChartArtists.forEachIndexed { idx, (name, subs, thumb) ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(10.dp))
                                     .clickable {
-                                        viewModel.performSearch(name)
+                                        viewModel.performSearch(name, type = "Artists", saveToHistory = true)
                                         navController.navigate("search")
                                     }
                                     .padding(vertical = 4.dp),
@@ -727,11 +708,7 @@ fun HomeScreen(
                         title = "Weekly top podcast shows"
                     )
 
-                    val topPodcastsList = listOf(
-                        Triple("The Joe Rogan Experience", "Joe Rogan", "https://i.ytimg.com/vi/WPni755-Krg/hqdefault.jpg"),
-                        Triple("The Diary Of A CEO", "Steven Bartlett", "https://i.ytimg.com/vi/DWcJFNfaw9c/hqdefault.jpg"),
-                        Triple("Huberman Lab", "Dr. Andrew Huberman", "https://i.ytimg.com/vi/n61ULEU7SU0/hqdefault.jpg")
-                    )
+                    val topPodcastsList = RealHomeData.getRealPodcasts()
 
                     Column(
                         modifier = Modifier
@@ -1700,7 +1677,7 @@ fun SimpMusicCard(
     }
 }
 
-// ── Music Video 16:9 Card ───────────────────────────────────────────────────
+// ── Music Video 16:9 Widescreen Card (SimpMusic Style) ──────────────────────
 @Composable
 fun MusicVideoCard(
     video: HomeMediaItem,
@@ -1711,17 +1688,17 @@ fun MusicVideoCard(
 
     Column(
         modifier = modifier
-            .width(220.dp)
+            .width(250.dp)
             .carouselCard3D { itemDelta = it }
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(124.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF1C1E26))
+                .height(140.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(Color(0xFF181924))
         ) {
             AsyncImage(
                 model = video.thumbnailUrl,
@@ -1729,40 +1706,68 @@ fun MusicVideoCard(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        scaleX = 1.08f
-                        scaleY = 1.08f
-                        translationX = itemDelta * 8.dp.toPx()
+                        scaleX = 1.05f
+                        scaleY = 1.05f
+                        translationX = itemDelta * 6.dp.toPx()
                     },
                 contentScale = ContentScale.Crop
             )
-            // Duration badge
+
+            // Top-left MV badge
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(6.dp)
-                    .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(4.dp))
+                    .align(Alignment.TopStart)
+                    .padding(8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(EcoDotRed.copy(alpha = 0.90f))
                     .padding(horizontal = 6.dp, vertical = 2.dp)
             ) {
                 Text(
-                    text = "3:42",
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                    color = Color.White
+                    text = "MV",
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+
+            // Bottom-right Circular Glass Play Button Badge
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(8.dp)
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.65f))
+                    .border(0.8.dp, Color.White.copy(alpha = 0.25f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.PlayArrow,
+                    contentDescription = "Play Video",
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
+
         Spacer(modifier = Modifier.height(8.dp))
+
         Text(
             text = video.title,
             style = MaterialTheme.typography.bodyMedium.copy(
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 14.sp
+                fontSize = 14.5.sp,
+                lineHeight = 19.sp
             ),
             color = Color.White,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
+
+        Spacer(modifier = Modifier.height(2.dp))
+
         Text(
-            text = video.subtitle ?: "Music Video",
+            text = video.subtitle ?: "YouTube Music",
             style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
             color = Color.White.copy(alpha = 0.55f),
             maxLines = 1,

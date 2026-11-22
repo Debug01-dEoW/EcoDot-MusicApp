@@ -914,13 +914,51 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private val _moodRecommendedTracks = MutableStateFlow<List<Track>>(emptyList())
     val moodRecommendedTracks: StateFlow<List<Track>> = _moodRecommendedTracks.asStateFlow()
 
-    private val _suggestedTracks = MutableStateFlow<List<Track>>(emptyList())
+    private val _suggestedTracks = MutableStateFlow<List<Track>>(com.example.ecodot.data.remote.RealHomeData.getRealQuickPicks())
     val suggestedTracks: StateFlow<List<Track>> = _suggestedTracks.asStateFlow()
+
+    private val _realMusicVideos = MutableStateFlow<List<com.example.ecodot.data.remote.HomeMediaItem>>(com.example.ecodot.data.remote.RealHomeData.getRealMusicVideos())
+    val realMusicVideos: StateFlow<List<com.example.ecodot.data.remote.HomeMediaItem>> = _realMusicVideos.asStateFlow()
+
+    private val _selectedHomeCountry = MutableStateFlow("Canada")
+    val selectedHomeCountry: StateFlow<String> = _selectedHomeCountry.asStateFlow()
+
+    private val _countryVideoCharts = MutableStateFlow<List<com.example.ecodot.data.remote.HomeMediaItem>>(com.example.ecodot.data.remote.RealHomeData.getRealCountryCharts("Canada"))
+    val countryVideoCharts: StateFlow<List<com.example.ecodot.data.remote.HomeMediaItem>> = _countryVideoCharts.asStateFlow()
+
+    private val _topChartArtists = MutableStateFlow<List<Triple<String, String, String>>>(com.example.ecodot.data.remote.RealHomeData.getRealTopArtists("Canada"))
+    val topChartArtists: StateFlow<List<Triple<String, String, String>>> = _topChartArtists.asStateFlow()
+
+    fun loadHomeContentForCountry(country: String) {
+        _selectedHomeCountry.value = country
+        _countryVideoCharts.value = com.example.ecodot.data.remote.RealHomeData.getRealCountryCharts(country)
+        _topChartArtists.value = com.example.ecodot.data.remote.RealHomeData.getRealTopArtists(country)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val results = repository.searchYouTubeCategorized("$country Trending Music Videos", "Videos")
+                if (results.songs.isNotEmpty()) {
+                    val mediaItems = results.songs.map { track ->
+                        com.example.ecodot.data.remote.HomeMediaItem(
+                            id = track.id,
+                            title = track.title,
+                            subtitle = "${track.artist} • YouTube Video",
+                            thumbnailUrl = track.albumArtUri ?: "https://i.ytimg.com/vi/${track.id}/hqdefault.jpg",
+                            type = com.example.ecodot.data.remote.MediaType.TRACK
+                        )
+                    }
+                    _realMusicVideos.value = mediaItems
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error fetching trending videos for $country", e)
+            }
+        }
+    }
 
     private val _historyRecommendations = MutableStateFlow<List<Track>>(emptyList())
     val historyRecommendations: StateFlow<List<Track>> = _historyRecommendations.asStateFlow()
 
     init {
+        loadHomeContentForCountry("Canada")
         viewModelScope.launch {
             repository.initDefaultPlaylists()
         }
