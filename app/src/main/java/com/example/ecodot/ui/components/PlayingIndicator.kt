@@ -4,15 +4,13 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.foundation.border
 import com.example.ecodot.ui.theme.EcoDotRed
 import com.example.ecodot.ui.theme.SimpIcons
 import com.example.ecodot.ui.theme.Explicit
@@ -49,24 +47,18 @@ fun PlayingIndicator(modifier: Modifier = Modifier, color: Color = EcoDotRed) {
     }
 }
 
+/**
+ * Authentic SimpMusic Explicit Badge using the exact SimpIcons.Explicit vector icon.
+ */
 @Composable
-fun ExplicitBadge(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(3.dp))
-            .background(Color.White.copy(alpha = 0.22f))
-            .padding(horizontal = 3.5.dp, vertical = 0.5.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        androidx.compose.material3.Text(
-            text = "E",
-            style = androidx.compose.ui.text.TextStyle(
-                color = Color.White.copy(alpha = 0.92f),
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Default
-            ),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-        )
-    }
+fun ExplicitBadge(
+    modifier: Modifier = Modifier,
+    tint: Color = Color.White.copy(alpha = 0.70f)
+) {
+    Icon(
+        imageVector = SimpIcons.Explicit,
+        contentDescription = "Explicit",
+        tint = tint,
+        modifier = modifier.size(15.dp)
+    )
 }

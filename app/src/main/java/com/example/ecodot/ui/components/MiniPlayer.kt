@@ -294,7 +294,10 @@ fun MiniPlayer(
                                         .fillMaxWidth()
                                         .basicMarquee(
                                             iterations = Int.MAX_VALUE,
-                                            animationMode = MarqueeAnimationMode.Immediately
+                                            animationMode = MarqueeAnimationMode.Immediately,
+                                            repeatDelayMillis = 2000,
+                                            initialDelayMillis = 2000,
+                                            spacing = androidx.compose.foundation.MarqueeSpacing(40.dp)
                                         )
                                         .focusable()
                                 )
@@ -303,7 +306,6 @@ fun MiniPlayer(
                                     if (curTrack.isExplicit || curTrack.title.contains("explicit", true) || curTrack.album.contains("explicit", true)) {
                                         ExplicitBadge(
                                             modifier = Modifier
-                                                .size(16.dp)
                                                 .padding(end = 4.dp)
                                         )
                                     }

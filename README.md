@@ -35,10 +35,12 @@
 - Silky smooth low-pass filtering (`0.15f`) ensures 60–120fps motion with zero jitter.
 - The directional highlight angle and specular border gradient physically shift across the MiniPlayer and navigation bar rims as you tilt the phone in your hand.
 
-### 💧 Liquid Morphing Navigation Bar
-- 3-Squircle floating bottom bar (`Home`, `Search`, `Library`).
-- Transitioning between tabs animates an active fluid drop with asymmetric spring physics.
-- **Squash & Stretch Volume Preservation**: Droplet stretches horizontally up to $\approx 110\,\text{dp}$ during flight while squashing vertically to $52\,\text{dp}$, before snapping into place with an organic fluid bounce.
+### 🧭 SimpMusic Unified Collapsible Navigation & MiniPlayer
+- **Unified Single-Row Architecture (Media Active)**: When music is playing, the navigation bar collapses into a compact 54dp circular glass tab button on the left with the MiniPlayer taking the remaining width. Eliminates bulky vertical stacks and keeps your screen open for content browsing.
+- **Expanded Liquid Glass Capsule (Idle / Expanded)**: Features an elongated capsule holding Home and Library with an organic sliding frosted glass blob indicator, paired with a standalone 56dp circular glass Search FAB.
+- **Fluid Morphing Transitions**: Transitioning between states animates with spring-damped physics and liquid squash & stretch volume preservation.
+- **Authentic SimpMusic Explicit Vector Badge**: Embedded vector SimpIcons.Explicit icon for pristine high-DPI rendering, matching SimpMusic pixel-for-pixel.
+- **Fixed Marquee & Typography**: Added 2000ms delay and 40dp spacing to prevent duplicate text looping artifacts on short titles.
 
 ### 🖼️ 3D Card Depth Parallax on Scroll
 - Carousel cards calculate their position relative to the viewport center during horizontal scrolling.
