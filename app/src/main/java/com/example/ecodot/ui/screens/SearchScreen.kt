@@ -175,9 +175,11 @@ fun SearchScreen(
     // Re-focus search when clicking Search button while already on Search screen (SimpMusic feature)
     LaunchedEffect(Unit) {
         viewModel.searchFocusEvent.collect {
-            focusRequester.requestFocus()
-            keyboardController?.show()
-            isFocused = true
+            runCatching {
+                focusRequester.requestFocus()
+                keyboardController?.show()
+                isFocused = true
+            }
         }
     }
 
@@ -327,7 +329,7 @@ fun SearchScreen(
                         onInsertClick = { text ->
                             searchText = text
                             isSearchSubmitted = false
-                            focusRequester.requestFocus()
+                            runCatching { focusRequester.requestFocus() }
                         },
                         onRemoveItem = { item ->
                             viewModel.removeSearchHistory(item)
@@ -353,7 +355,7 @@ fun SearchScreen(
                         onInsertClick = { suggestion ->
                             searchText = suggestion
                             isSearchSubmitted = false
-                            focusRequester.requestFocus()
+                            runCatching { focusRequester.requestFocus() }
                         }
                     )
                 }
@@ -439,61 +441,24 @@ fun SearchScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 // Authentic SimpMusic Liquid Glass Search Input Bar
-                val backdrop = LocalBackdrop.current
                 val tilt = LocalTiltState.current
-                val hazeState = LocalHazeState.current
                 val searchBarShape = RoundedCornerShape(26.dp)
 
-                val searchGlassModifier = if (backdrop != null) {
-                    Modifier.drawBackdrop(
-                        backdrop = backdrop,
-                        shape = { searchBarShape },
-                        highlight = {
-                            Highlight(
-                                style = com.kyant.backdrop.highlight.HighlightStyle.Default(
-                                    angle = 45f + (tilt.tiltX * 35f) + (tilt.tiltY * 20f),
-                                    falloff = 1.0f
-                                ),
-                                alpha = if (isFocused) 0.95f else 0.75f
+                val searchGlassModifier = Modifier
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0x30FFFFFF),
+                                Color(0x10FFFFFF),
+                                Color(0x06000000)
                             )
-                        },
-                        shadow = { Shadow(radius = 8.dp, color = Color.Black.copy(alpha = 0.35f)) },
-                        innerShadow = {
-                            InnerShadow(
-                                radius = 8.dp,
-                                alpha = if (isFocused) 0.35f else 0.18f,
-                                color = if (isFocused) EcoDotRed else Color.White
-                            )
-                        },
-                        effects = {
-                            vibrancy()
-                            colorControls(
-                                brightness = if (isFocused) 0.08f else 0.03f,
-                                contrast = 1.08f,
-                                saturation = 1.30f
-                            )
-                            blur(1.5.dp.toPx())
-                            lens(
-                                refractionHeight = 8.dp.toPx(),
-                                refractionAmount = 16.dp.toPx(),
-                                depthEffect = true,
-                                chromaticAberration = true
-                            )
-                        }
+                        ),
+                        shape = searchBarShape
                     )
-                } else if (hazeState != null) {
-                    Modifier.hazeEffect(
-                        state = hazeState,
-                        style = HazeStyle(
-                            backgroundColor = Color(0x35161926),
-                            tint = HazeDefaults.tint(Color(0x2812131D)),
-                            blurRadius = 20.dp,
-                            noiseFactor = 0.05f
-                        )
+                    .background(
+                        color = if (isFocused) Color(0xFF1B1D2C).copy(alpha = 0.92f) else Color(0xFF11121C).copy(alpha = 0.88f),
+                        shape = searchBarShape
                     )
-                } else {
-                    Modifier.background(Color(0xFF13141D).copy(alpha = 0.85f))
-                }
 
                 val searchRimBrush = remember(tilt.tiltX, tilt.tiltY, isFocused) {
                     if (isFocused) {
@@ -530,10 +495,6 @@ fun SearchScreen(
                         )
                         .clip(searchBarShape)
                         .then(searchGlassModifier)
-                        .background(
-                            color = if (isFocused) Color(0x301F2338) else Color(0x2012131D),
-                            shape = searchBarShape
-                        )
                         .border(1.dp, searchRimBrush, searchBarShape)
                         .padding(horizontal = 14.dp),
                     contentAlignment = Alignment.CenterStart
