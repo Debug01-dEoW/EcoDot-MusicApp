@@ -304,30 +304,46 @@ class MainActivity : ComponentActivity() {
                             exit = fadeOut(animationSpec = tween(150)),
                             modifier = Modifier.align(Alignment.BottomCenter)
                         ) {
-                            Box(
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .navigationBarsPadding(),
-                                contentAlignment = Alignment.BottomCenter
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
+                                // MiniPlayer directly on top of floating squircle buttons
+                                AnimatedVisibility(
+                                    visible = hasTrackLoaded && currentTrack != null,
+                                    enter = fadeIn() + slideInVertically { it },
+                                    exit = fadeOut() + slideOutVertically { it }
+                                ) {
+                                    MiniPlayer(
+                                        track = currentTrack,
+                                        isPlaying = isPlaying,
+                                        progressProvider = {
+                                            val d = viewModel.duration.value
+                                            if (d > 0) viewModel.position.value.toFloat() / d.toFloat() else 0f
+                                        },
+                                        dominantColor = dominantColor,
+                                        onTogglePlayback = { viewModel.togglePlayback() },
+                                        onSkipNext = { viewModel.skipNext() },
+                                        onSkipPrevious = { viewModel.skipPrevious() },
+                                        onLike = { viewModel.likeCurrentTrack() },
+                                        isLiked = isCurrentTrackLiked,
+                                        onClick = { isNowPlayingVisible = true },
+                                        onClose = { viewModel.togglePlayback() },
+                                        backdrop = appBackdrop,
+                                        modifier = Modifier
+                                            .height(56.dp)
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp)
+                                            .padding(bottom = 6.dp)
+                                    )
+                                }
+
+                                // Floating 3-Squircle Navbar (Completely transparent background, only the 3 squircles)
                                 SimpBottomNavigationBar(
                                     currentRoute = currentDestination,
                                     backdrop = appBackdrop,
-                                    hasTrack = hasTrackLoaded && currentTrack != null,
-                                    track = currentTrack,
-                                    isPlaying = isPlaying,
-                                    progressProvider = {
-                                        val d = viewModel.duration.value
-                                        if (d > 0) viewModel.position.value.toFloat() / d.toFloat() else 0f
-                                    },
-                                    dominantColor = dominantColor,
-                                    onTogglePlayback = { viewModel.togglePlayback() },
-                                    onSkipNext = { viewModel.skipNext() },
-                                    onSkipPrevious = { viewModel.skipPrevious() },
-                                    onLike = { viewModel.likeCurrentTrack() },
-                                    isLiked = isCurrentTrackLiked,
-                                    onOpenNowPlaying = { isNowPlayingVisible = true },
-                                    onClosePlayer = { viewModel.togglePlayback() },
                                     onNavigate = { route: String ->
                                         if (route == currentDestination) {
                                             when (route) {
