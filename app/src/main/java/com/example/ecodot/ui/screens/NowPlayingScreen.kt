@@ -613,6 +613,55 @@ fun NowPlayingScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         userScrollEnabled = !isCleanCanvasMode
                     ) {
+                        // 0. Song / Video Toggle Pill (SimpMusic / YouTube Music Style)
+                        if (track.isYouTube) {
+                            item {
+                                Row(
+                                    modifier = Modifier
+                                        .padding(top = 2.dp, bottom = 10.dp)
+                                        .height(34.dp)
+                                        .clip(RoundedCornerShape(17.dp))
+                                        .background(Color.White.copy(alpha = 0.08f))
+                                        .border(0.85.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(17.dp))
+                                        .padding(2.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Song option
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(15.dp))
+                                            .background(if (!isVideoMode) Color.White else Color.Transparent)
+                                            .clickable { viewModel.setVideoMode(false) }
+                                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "Song",
+                                            color = if (!isVideoMode) Color(0xFF0C0D12) else Color.White.copy(alpha = 0.70f),
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    // Video option
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(15.dp))
+                                            .background(if (isVideoMode) Color.White else Color.Transparent)
+                                            .clickable { viewModel.setVideoMode(true) }
+                                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "Video",
+                                            color = if (isVideoMode) Color(0xFF0C0D12) else Color.White.copy(alpha = 0.70f),
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         // 1. Artwork Squircle with horizontal swipe to skip & drag down to minimize
                         item {
                             if (canvasPlayer != null) {
@@ -861,6 +910,62 @@ fun NowPlayingScreen(
                                             },
                                             modifier = Modifier.fillMaxSize()
                                         )
+
+                                        // Fullscreen button on video card (SimpMusic feature)
+                                        IconButton(
+                                            onClick = {
+                                                viewModel.setVideoMode(true)
+                                                onWatchVideoClick()
+                                            },
+                                            modifier = Modifier
+                                                .align(Alignment.TopEnd)
+                                                .padding(10.dp)
+                                                .size(38.dp)
+                                                .background(Color.Black.copy(alpha = 0.60f), CircleShape)
+                                                .border(1.dp, Color.White.copy(alpha = 0.20f), CircleShape)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Fullscreen,
+                                                contentDescription = "Fullscreen",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
+                                    }
+
+                                    // Floating "Watch Video" badge on artwork when in song mode
+                                    if (!isVideo && track.isYouTube) {
+                                        Box(
+                                            modifier = Modifier
+                                                .align(Alignment.BottomEnd)
+                                                .padding(12.dp)
+                                                .clip(RoundedCornerShape(18.dp))
+                                                .background(Color.Black.copy(alpha = 0.70f))
+                                                .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(18.dp))
+                                                .clickable {
+                                                    viewModel.setVideoMode(true)
+                                                    onWatchVideoClick()
+                                                }
+                                                .padding(horizontal = 14.dp, vertical = 7.dp)
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Rounded.PlayCircle,
+                                                    contentDescription = null,
+                                                    tint = EcoDotRed,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Text(
+                                                    text = "Watch Video",
+                                                    color = Color.White,
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }

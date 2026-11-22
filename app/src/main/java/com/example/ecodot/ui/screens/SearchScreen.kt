@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -63,6 +64,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.example.ecodot.LocalHazeState
 import com.example.ecodot.data.local.entities.Playlist
 import com.example.ecodot.data.local.entities.RecentSearchItem
 import com.example.ecodot.data.local.entities.Track
@@ -71,6 +73,18 @@ import com.example.ecodot.ui.theme.*
 import com.example.ecodot.ui.viewmodel.Album
 import com.example.ecodot.ui.viewmodel.Artist
 import com.example.ecodot.ui.viewmodel.MusicViewModel
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.colorControls
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+import com.kyant.backdrop.highlight.Highlight
+import com.kyant.backdrop.shadow.InnerShadow
+import com.kyant.backdrop.shadow.Shadow
+import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.hazeEffect
 import kotlinx.coroutines.delay
 
 /**
@@ -91,7 +105,8 @@ enum class SearchUIType {
 fun SearchScreen(
     viewModel: MusicViewModel,
     navController: NavController,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onWatchVideo: () -> Unit = {}
 ) {
     val searchResults     by viewModel.searchResults.collectAsState()
     val searchAlbums      by viewModel.searchAlbums.collectAsState()
@@ -369,6 +384,8 @@ fun SearchScreen(
                         onVideoClick = { track ->
                             viewModel.selectSearchResult(track.title, "Video", track.id, track.albumArtUri, track.artist)
                             viewModel.playTrack(track, isVideo = true)
+                            viewModel.setVideoMode(true)
+                            onWatchVideo()
                         }
                     )
                 }
@@ -421,26 +438,104 @@ fun SearchScreen(
                     .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                // SimpMusic Floating Search Input Bar
-                val searchBarBorderColor by animateColorAsState(
-                    targetValue = if (isFocused) EcoDotRed.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.08f),
-                    animationSpec = tween(220),
-                    label = "bar_border"
-                )
-                val searchBarBgColor by animateColorAsState(
-                    targetValue = if (isFocused) Color(0xFF161824) else Color(0xFF13141D),
-                    animationSpec = tween(220),
-                    label = "bar_bg"
-                )
+                // Authentic SimpMusic Liquid Glass Search Input Bar
+                val backdrop = LocalBackdrop.current
+                val tilt = LocalTiltState.current
+                val hazeState = LocalHazeState.current
+                val searchBarShape = RoundedCornerShape(26.dp)
+
+                val searchGlassModifier = if (backdrop != null) {
+                    Modifier.drawBackdrop(
+                        backdrop = backdrop,
+                        shape = { searchBarShape },
+                        highlight = {
+                            Highlight(
+                                style = com.kyant.backdrop.highlight.HighlightStyle.Default(
+                                    angle = 45f + (tilt.tiltX * 35f) + (tilt.tiltY * 20f),
+                                    falloff = 1.0f
+                                ),
+                                alpha = if (isFocused) 0.95f else 0.75f
+                            )
+                        },
+                        shadow = { Shadow(radius = 8.dp, color = Color.Black.copy(alpha = 0.35f)) },
+                        innerShadow = {
+                            InnerShadow(
+                                radius = 8.dp,
+                                alpha = if (isFocused) 0.35f else 0.18f,
+                                color = if (isFocused) EcoDotRed else Color.White
+                            )
+                        },
+                        effects = {
+                            vibrancy()
+                            colorControls(
+                                brightness = if (isFocused) 0.08f else 0.03f,
+                                contrast = 1.08f,
+                                saturation = 1.30f
+                            )
+                            blur(1.5.dp.toPx())
+                            lens(
+                                refractionHeight = 8.dp.toPx(),
+                                refractionAmount = 16.dp.toPx(),
+                                depthEffect = true,
+                                chromaticAberration = true
+                            )
+                        }
+                    )
+                } else if (hazeState != null) {
+                    Modifier.hazeEffect(
+                        state = hazeState,
+                        style = HazeStyle(
+                            backgroundColor = Color(0x35161926),
+                            tint = HazeDefaults.tint(Color(0x2812131D)),
+                            blurRadius = 20.dp,
+                            noiseFactor = 0.05f
+                        )
+                    )
+                } else {
+                    Modifier.background(Color(0xFF13141D).copy(alpha = 0.85f))
+                }
+
+                val searchRimBrush = remember(tilt.tiltX, tilt.tiltY, isFocused) {
+                    if (isFocused) {
+                        Brush.linearGradient(
+                            colors = listOf(
+                                EcoDotRed.copy(alpha = 0.85f),
+                                EcoDotRed.copy(alpha = 0.40f),
+                                Color.White.copy(alpha = 0.20f),
+                                Color.White.copy(alpha = 0.05f)
+                            ),
+                            start = Offset(0f, 0f),
+                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                        )
+                    } else {
+                        createSpecularRimBrush(
+                            tiltX = tilt.tiltX,
+                            tiltY = tilt.tiltY,
+                            baseAlpha = 0.45f,
+                            secondaryAlpha = 0.18f
+                        )
+                    }
+                }
 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(searchBarBgColor)
-                        .border(1.dp, searchBarBorderColor, RoundedCornerShape(12.dp))
-                        .padding(horizontal = 12.dp),
+                        .height(54.dp)
+                        .shadow(
+                            elevation = if (isFocused) 10.dp else 4.dp,
+                            shape = searchBarShape,
+                            clip = false,
+                            ambientColor = Color.Black.copy(alpha = 0.45f),
+                            spotColor = if (isFocused) EcoDotRed.copy(alpha = 0.35f) else Color.Black.copy(alpha = 0.5f)
+                        )
+                        .clip(searchBarShape)
+                        .then(searchGlassModifier)
+                        .background(
+                            color = if (isFocused) Color(0x301F2338) else Color(0x2012131D),
+                            shape = searchBarShape
+                        )
+                        .border(1.dp, searchRimBrush, searchBarShape)
+                        .padding(horizontal = 14.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
                     Row(
@@ -1429,7 +1524,7 @@ private fun SimpSearchResultsBody(
                     }
                 )
             }
-        } else if (selectedFilter == "Songs" && tracks.isNotEmpty()) {
+        } else if ((selectedFilter == "All" || selectedFilter == "Songs") && tracks.isNotEmpty()) {
             val topTrack = tracks.first()
             val isCurrentPlaying = isPlaying && currentTrack?.id == topTrack.id
             item(key = "spotlight_track_${topTrack.id}") {
@@ -1451,18 +1546,22 @@ private fun SimpSearchResultsBody(
         }
 
         // ── Songs Section ────────────────────────────────────────────────────
-        if (tracks.isNotEmpty() && (selectedFilter == "All" || selectedFilter == "Songs" || selectedFilter == "Videos")) {
+        if (tracks.isNotEmpty() && (selectedFilter == "All" || selectedFilter == "Songs")) {
+            val displaySongs = if (selectedFilter == "All") tracks.take(4) else tracks
             item {
-                SimpSectionHeader(if (selectedFilter == "Videos") "Videos" else "Songs")
+                SimpSectionHeaderWithAction(
+                    title = "Songs",
+                    onSeeAll = if (selectedFilter == "All" && tracks.size > 4) { { onFilterChange("Songs") } } else null
+                )
             }
 
-            items(tracks, key = { track -> track.id }) { track ->
+            items(displaySongs, key = { track -> "song_${track.id}" }) { track ->
                 val isCurrentPlaying = isPlaying && currentTrack?.id == track.id
                 val isLiked by viewModel.isTrackLiked(track.id).collectAsState(initial = false)
 
                 SimpSongResultRow(
                     track = track,
-                    type = if (selectedFilter == "Videos") "Video" else "Song",
+                    type = "Song",
                     isPlaying = isCurrentPlaying,
                     isLiked = isLiked,
                     onLikeToggle = { viewModel.toggleTrackLike(track) },
@@ -1474,18 +1573,32 @@ private fun SimpSearchResultsBody(
                     },
                     onOptionsClick = { onOptionsClick(track) },
                     onClick = {
-                        viewModel.selectSearchResult(
-                            track.title,
-                            if (selectedFilter == "Videos") "Video" else "Song",
-                            track.id,
-                            track.albumArtUri,
-                            track.artist
-                        )
-                        if (selectedFilter == "Videos") {
-                            onVideoClick(track)
-                        } else {
-                            viewModel.playTrack(track)
-                        }
+                        viewModel.selectSearchResult(track.title, "Song", track.id, track.albumArtUri, track.artist)
+                        viewModel.playTrack(track)
+                    }
+                )
+            }
+        }
+
+        // ── Music Videos Section (16:9 Widescreen Cards like SimpMusic) ───────
+        if (tracks.isNotEmpty() && (selectedFilter == "All" || selectedFilter == "Videos")) {
+            val displayVideos = if (selectedFilter == "All") tracks.take(4) else tracks
+            item {
+                SimpSectionHeaderWithAction(
+                    title = "Music Videos",
+                    onSeeAll = if (selectedFilter == "All" && tracks.size > 4) { { onFilterChange("Videos") } } else null
+                )
+            }
+
+            items(displayVideos, key = { track -> "video_${track.id}" }) { track ->
+                val isCurrentPlaying = isPlaying && currentTrack?.id == track.id
+                SimpVideoResultCard(
+                    track = track,
+                    isPlaying = isCurrentPlaying,
+                    onClick = {
+                        viewModel.selectSearchResult(track.title, "Video", track.id, track.albumArtUri, track.artist)
+                        viewModel.playTrack(track, isVideo = true)
+                        onVideoClick(track)
                     }
                 )
             }
@@ -1493,8 +1606,14 @@ private fun SimpSearchResultsBody(
 
         // ── Albums Section ───────────────────────────────────────────────────
         if (albums.isNotEmpty() && (selectedFilter == "All" || selectedFilter == "Albums")) {
-            item { SimpSectionHeader("Albums") }
-            items(albums, key = { album -> album.id ?: album.title }) { album ->
+            val displayAlbums = if (selectedFilter == "All") albums.take(4) else albums
+            item {
+                SimpSectionHeaderWithAction(
+                    title = "Albums",
+                    onSeeAll = if (selectedFilter == "All" && albums.size > 4) { { onFilterChange("Albums") } } else null
+                )
+            }
+            items(displayAlbums, key = { album -> "album_${album.id ?: album.title}" }) { album ->
                 SimpAlbumResultRow(
                     album = album,
                     onLongClick = { onAlbumLongClick(album) },
@@ -1508,10 +1627,15 @@ private fun SimpSearchResultsBody(
 
         // ── Artists Section ──────────────────────────────────────────────────
         if (artists.isNotEmpty() && (selectedFilter == "All" || selectedFilter == "Artists")) {
-            val moreArtists = if (selectedFilter == "All") artists.drop(1) else artists
+            val moreArtists = if (selectedFilter == "All") artists.drop(1).take(5) else artists
             if (moreArtists.isNotEmpty()) {
-                item { SimpSectionHeader(if (selectedFilter == "All") "More Artists" else "Artists") }
-                items(moreArtists, key = { artist -> artist.id.ifEmpty { artist.name } }) { artist ->
+                item {
+                    SimpSectionHeaderWithAction(
+                        title = if (selectedFilter == "All") "More Artists" else "Artists",
+                        onSeeAll = if (selectedFilter == "All" && artists.size > 6) { { onFilterChange("Artists") } } else null
+                    )
+                }
+                items(moreArtists, key = { artist -> "artist_${artist.id.ifEmpty { artist.name }}" }) { artist ->
                     SimpArtistResultRow(
                         artist = artist,
                         onClick = {
@@ -1541,6 +1665,196 @@ private fun SimpSectionHeader(title: String) {
         letterSpacing = 1.8.sp,
         modifier = Modifier.padding(start = 18.dp, top = 20.dp, bottom = 6.dp)
     )
+}
+
+@Composable
+private fun SimpSectionHeaderWithAction(
+    title: String,
+    onSeeAll: (() -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 18.dp, end = 18.dp, top = 20.dp, bottom = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title.uppercase(),
+            color = Color.White.copy(alpha = 0.50f),
+            fontSize = 11.5.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 1.6.sp
+        )
+        if (onSeeAll != null) {
+            Text(
+                text = "See all >",
+                color = EcoDotRed,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(onClick = onSeeAll)
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            )
+        }
+    }
+}
+
+/**
+ * 16:9 Dedicated Music Video Card (SimpMusic Style).
+ * Includes 16:9 widescreen thumbnail, duration pill, MV tag, channel name, and instant video player launch.
+ */
+@Composable
+private fun SimpVideoResultCard(
+    track: Track,
+    isPlaying: Boolean,
+    onClick: () -> Unit
+) {
+    var artworkUrl by remember(track.id, track.albumArtUri) {
+        mutableStateOf(track.albumArtUri)
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0x18FFFFFF))
+            .border(
+                1.dp,
+                if (isPlaying) EcoDotRed.copy(alpha = 0.60f) else Color.White.copy(alpha = 0.08f),
+                RoundedCornerShape(16.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 16:9 Thumbnail
+            Box(
+                modifier = Modifier
+                    .width(132.dp)
+                    .aspectRatio(16f / 9f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color.Black)
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(artworkUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = track.title,
+                    placeholder = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Rounded.SmartDisplay),
+                    error = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Rounded.SmartDisplay),
+                    onError = {
+                        val fallback = artworkUrl?.replace("maxresdefault", "hqdefault")
+                        if (fallback != null && fallback != artworkUrl) {
+                            artworkUrl = fallback
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+
+                // Bottom-right duration pill badge
+                val formattedDuration = remember(track.duration) {
+                    val totalSec = track.duration / 1000L
+                    val min = totalSec / 60
+                    val sec = totalSec % 60
+                    if (min > 0 || sec > 0) String.format("%02d:%02d", min, sec) else "Video"
+                }
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(5.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color.Black.copy(alpha = 0.75f))
+                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                ) {
+                    Text(
+                        text = formattedDuration,
+                        color = Color.White,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // Top-left MV badge
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(5.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(EcoDotRed.copy(alpha = 0.85f))
+                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                ) {
+                    Text(
+                        text = "MV",
+                        color = Color.White,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Video details
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 4.dp)
+            ) {
+                Text(
+                    text = track.title,
+                    color = if (isPlaying) EcoDotRed else Color.White,
+                    fontSize = 14.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 18.sp
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.SmartDisplay,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.45f),
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Text(
+                        text = track.artist.ifEmpty { "YouTube Music" },
+                        color = Color.White.copy(alpha = 0.55f),
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            // Play Icon
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(if (isPlaying) EcoDotRed else Color.White.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isPlaying) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
+                    contentDescription = "Play",
+                    tint = if (isPlaying) Color.White else Color.White.copy(alpha = 0.90f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    }
 }
 
 @Composable

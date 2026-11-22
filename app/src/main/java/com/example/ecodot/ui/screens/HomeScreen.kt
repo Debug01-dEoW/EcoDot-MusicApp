@@ -78,6 +78,7 @@ fun HomeScreen(
     viewModel: MusicViewModel,
     navController: NavController,
     onEqualizerClick: () -> Unit = {},
+    onWatchVideo: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val homeSections by viewModel.homeSections.collectAsState()
@@ -401,7 +402,9 @@ fun HomeScreen(
                                         path = "https://www.youtube.com/watch?v=${video.id}",
                                         isYouTube = true
                                     )
-                                    viewModel.playTrack(track)
+                                    viewModel.playTrack(track, isVideo = true)
+                                    viewModel.setVideoMode(true)
+                                    onWatchVideo()
                                 }
                             )
                         }

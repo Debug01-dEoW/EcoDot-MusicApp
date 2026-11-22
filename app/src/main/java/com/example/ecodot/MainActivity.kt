@@ -237,6 +237,10 @@ class MainActivity : ComponentActivity() {
                                         viewModel = viewModel,
                                         navController = navController,
                                         onEqualizerClick = { isEqualizerVisible = true },
+                                        onWatchVideo = {
+                                            viewModel.setVideoMode(true)
+                                            isVideoPlayerVisible = true
+                                        },
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 }
@@ -251,7 +255,11 @@ class MainActivity : ComponentActivity() {
                                     com.example.ecodot.ui.screens.SearchScreen(
                                         viewModel = viewModel,
                                         navController = navController,
-                                        modifier = Modifier.fillMaxSize()
+                                        modifier = Modifier.fillMaxSize(),
+                                        onWatchVideo = {
+                                            viewModel.setVideoMode(true)
+                                            isVideoPlayerVisible = true
+                                        }
                                     )
                                 }
                                 composable(
