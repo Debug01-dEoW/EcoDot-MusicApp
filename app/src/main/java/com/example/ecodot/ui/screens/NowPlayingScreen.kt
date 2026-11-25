@@ -1,5 +1,6 @@
 package com.example.ecodot.ui.screens
 
+import android.content.pm.ActivityInfo
 import com.example.ecodot.ui.components.player.*
 import com.example.ecodot.ui.theme.SimpIcons
 import com.example.ecodot.ui.theme.Shuffle
@@ -15,6 +16,11 @@ import com.example.ecodot.ui.theme.PictureInPictureAlt
 import com.example.ecodot.ui.theme.PlaylistAdd
 import com.example.ecodot.ui.theme.AccessAlarm
 import com.example.ecodot.ui.theme.QueueMusic
+import com.example.ecodot.ui.theme.Replay5
+import com.example.ecodot.ui.theme.Forward5
+import com.example.ecodot.ui.theme.Fullscreen
+import com.example.ecodot.ui.theme.Subtitles
+import com.example.ecodot.ui.theme.SubtitlesOff
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -127,6 +133,7 @@ fun NowPlayingScreen(
     val isLyricsLoading by viewModel.isLyricsLoading.collectAsState()
     val historyRecommendations by viewModel.historyRecommendations.collectAsState()
     val endlessMode by viewModel.endlessMode.collectAsState()
+    val isCrossfading by viewModel.isCrossfading.collectAsState()
     val videoInfo by viewModel.videoInfo.collectAsState()
     val isVideoInfoLoading by viewModel.isVideoInfoLoading.collectAsState()
     val sleepTimerRemaining by viewModel.sleepTimerRemaining.collectAsState()
@@ -134,11 +141,17 @@ fun NowPlayingScreen(
     val downloadProgressMap by viewModel.downloadProgress.collectAsState()
     val controller by viewModel.controller.collectAsState()
     val isVideoMode by viewModel.isVideoMode.collectAsState()
+    val videoAspectRatio by viewModel.videoAspectRatio.collectAsState()
+    val activeStreamLabel by viewModel.activeStreamLabel.collectAsState()
+    val playbackSource by viewModel.playbackSource.collectAsState()
+    val audioQuality by viewModel.audioQuality.collectAsState()
     val canvasPlayer by viewModel.canvasPlayer.collectAsState()
     val playerStyle by viewModel.playerStyle.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
 
     var showPlayerStyleSheet by remember { mutableStateOf(false) }
+    var showAudioOutputSheet by remember { mutableStateOf(false) }
+    var showSleepTimerSheet by remember { mutableStateOf(false) }
     var showQueueSheet by remember { mutableStateOf(false) }
     var showInfoSheet  by remember { mutableStateOf(false) }
     var showFullScreenLyrics by remember { mutableStateOf(false) }
@@ -146,7 +159,10 @@ fun NowPlayingScreen(
     var optionsMenuTrack by remember { mutableStateOf<com.example.ecodot.data.local.entities.Track?>(null) }
     var showPlaylistPicker by remember { mutableStateOf<com.example.ecodot.data.local.entities.Track?>(null) }
     var showRingtoneClipper by remember { mutableStateOf<com.example.ecodot.data.local.entities.Track?>(null) }
-    var showVideoControls by remember { mutableStateOf(true) }
+    var showVideoControls by remember { mutableStateOf(false) }
+    var showCaptions by remember { mutableStateOf(true) }
+    var isVideoFullscreen by remember { mutableStateOf(false) }
+    var videoResizeMode by remember { mutableIntStateOf(androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT) }
 
     val screenOffsetY = remember { androidx.compose.animation.core.Animatable(0f) }
     val artworkOffsetX = remember { androidx.compose.animation.core.Animatable(0f) }
@@ -239,9 +255,51 @@ fun NowPlayingScreen(
         }
     }
 
+    val activity = remember(context) { context.findActivity() }
+
+    LaunchedEffect(currentTrack, isVideoMode) {
+        if (currentTrack != null && !viewModel.isTrackVideo(currentTrack) && !isVideoMode) {
+            isVideoFullscreen = false
+        }
+    }
+
+    LaunchedEffect(isVideoFullscreen) {
+        if (activity != null) {
+            if (isVideoFullscreen) {
+                activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                androidx.core.view.WindowCompat.setDecorFitsSystemWindows(activity.window, false)
+                androidx.core.view.WindowInsetsControllerCompat(activity.window, activity.window.decorView).apply {
+                    hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                    systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                }
+                activity.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            } else {
+                activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                androidx.core.view.WindowCompat.setDecorFitsSystemWindows(activity.window, true)
+                androidx.core.view.WindowInsetsControllerCompat(activity.window, activity.window.decorView).apply {
+                    show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                }
+                activity.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            if (activity != null) {
+                activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                androidx.core.view.WindowCompat.setDecorFitsSystemWindows(activity.window, true)
+                androidx.core.view.WindowInsetsControllerCompat(activity.window, activity.window.decorView).apply {
+                    show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                }
+                activity.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+        }
+    }
+
     LaunchedEffect(showVideoControls, isPlaying, currentTrack, isVideoMode) {
         if (showVideoControls && isPlaying && currentTrack?.isYouTube == true && isVideoMode) {
-            kotlinx.coroutines.delay(3000)
+            kotlinx.coroutines.delay(3500)
             showVideoControls = false
         }
     }
@@ -283,8 +341,57 @@ fun NowPlayingScreen(
         derivedStateOf { (screenOffsetY.value / 1200f).coerceIn(0f, 1f) }
     }
 
-    Box(
-        modifier = modifier
+    val isTrackAVideo = isVideoMode || viewModel.isTrackVideo(currentTrack)
+
+    // Ambient glow — static scale (no breathing/pulsing), only alpha drifts for subtlety
+    val ambientTransition = rememberInfiniteTransition(label = "ambient_drift")
+    val ambientDriftX by ambientTransition.animateFloat(
+        initialValue = -50f,
+        targetValue = 50f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 9000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "ambient_drift_x"
+    )
+    val ambientPulseScale = 1.0f  // Static — no breathing/pulsing animation
+    val ambientAlpha by ambientTransition.animateFloat(
+        initialValue = 0.72f,
+        targetValue = 0.96f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 5500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "ambient_alpha"
+    )
+
+    if (isVideoFullscreen && isTrackAVideo && currentTrack != null) {
+        FullscreenVideoPlayer(
+            track = currentTrack!!,
+            controller = controller,
+            position = position,
+            duration = duration,
+            isPlaying = isPlaying,
+            syncedLyrics = syncedLyrics,
+            videoResizeMode = videoResizeMode,
+            onToggleResizeMode = {
+                videoResizeMode = if (videoResizeMode == androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
+                    androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                } else {
+                    androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                }
+            },
+            onExitFullscreen = { isVideoFullscreen = false },
+            onPrevious = { viewModel.skipPrevious() },
+            onNext = { viewModel.skipNext() },
+            onPlayPause = { viewModel.togglePlayback() },
+            onSeek = { viewModel.seekTo(it) },
+            formatDuration = { viewModel.formatDuration(it) },
+            modifier = modifier
+        )
+    } else {
+        Box(
+            modifier = modifier
             .fillMaxSize()
             .offset { IntOffset(0, screenOffsetY.value.roundToInt().coerceAtLeast(0)) }
             .graphicsLayer {
@@ -306,6 +413,191 @@ fun NowPlayingScreen(
             }
             .background(Color(0xFF070708)) // Slick OLED dark base
     ) {
+        val activeTrackForStyle = currentTrack
+        val resolvedStreamBadge = remember(activeStreamLabel, audioQuality, activeTrackForStyle?.id, downloadedTracks) {
+            activeStreamLabel ?: PlayerStyleMath.formatAudioStreamBadge(
+                bitrateBps = 0,
+                sampleRateHz = 0,
+                mimeType = null,
+                codecs = null,
+                fallbackQuality = audioQuality,
+                isLocalOrDownloaded = activeTrackForStyle?.let { t ->
+                    t.path.startsWith("/") || downloadedTracks.any { it.id == t.id }
+                } ?: false
+            )
+        }
+        val safeSeekBackward5s: () -> Unit = { viewModel.seekTo((position - 5000L).coerceAtLeast(0L)) }
+        val safeSeekForward5s: () -> Unit = { viewModel.seekTo((position + 5000L).coerceAtMost(duration.coerceAtLeast(1L))) }
+        val toggleVideoResizeMode: () -> Unit = {
+            videoResizeMode = if (videoResizeMode == androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
+                androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+            } else {
+                androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            }
+        }
+        val navigateArtistFromPlayer: () -> Unit = {
+            currentTrack?.artistId?.let { aid ->
+                onBackClick()
+                navController?.navigate("artist/$aid")
+            }
+        }
+
+        if (activeTrackForStyle != null && playerStyle == com.example.ecodot.data.local.prefs.PlayerStyle.APPLE_MUSIC) {
+            AppleMusicStyleContent(
+                track = activeTrackForStyle,
+                queue = playbackQueue,
+                currentQueueIndex = currentQueueIndex,
+                queueSourceTitle = playbackSource,
+                controller = controller,
+                isPlaying = isPlaying,
+                isLiked = isLiked,
+                shuffleMode = shuffleMode,
+                repeatMode = repeatMode,
+                endlessMode = endlessMode,
+                position = position,
+                duration = duration,
+                dominantColor = dominantColor,
+                accentColor = accentColor,
+                syncedLyrics = syncedLyrics,
+                plainLyrics = rawLyrics?.plainLyrics,
+                isLyricsLoading = isLyricsLoading,
+                isCrossfading = isCrossfading,
+                isTrackAVideo = isTrackAVideo,
+                videoAspectRatio = videoAspectRatio,
+                videoResizeMode = videoResizeMode,
+                streamBadgeLabel = activeStreamLabel,
+                onBackClick = {
+                    coroutineScope.launch { screenOffsetY.snapTo(0f) }
+                    onBackClick()
+                },
+                onPlayPause = { viewModel.togglePlayback() },
+                onPrevious = { viewModel.skipPrevious() },
+                onNext = { viewModel.skipNext() },
+                onSeekTo = { viewModel.seekTo(it) },
+                onSelectQueueIndex = { idx -> viewModel.skipToQueueItem(idx) },
+                onToggleLike = { viewModel.likeCurrentTrack() },
+                onToggleShuffle = { viewModel.toggleShuffle() },
+                onToggleRepeat = { viewModel.cycleRepeatMode() },
+                onToggleEndlessMode = { viewModel.toggleEndlessMode() },
+                onToggleVideoResizeMode = toggleVideoResizeMode,
+                onEnterVideoFullscreen = { isVideoFullscreen = true },
+                onOpenEqualizer = onEqualizerClick,
+                onOpenPlaylistPicker = { showPlaylistPicker = activeTrackForStyle },
+                onOpenFullLyrics = { showFullScreenLyrics = true },
+                onOpenShareLyrics = { showShareStorySheet = true },
+                onOpenTrackInfo = { showInfoSheet = true },
+                onOpenOptionsMenu = { optionsMenuTrack = it },
+                onOpenArtist = navigateArtistFromPlayer,
+                onOpenOutputSheet = { showAudioOutputSheet = true },
+                formatDuration = { viewModel.formatDuration(it) },
+                modifier = Modifier.fillMaxSize()
+            )
+        } else if (activeTrackForStyle != null && playerStyle == com.example.ecodot.data.local.prefs.PlayerStyle.VINYL) {
+            VinylStyleContent(
+                track = activeTrackForStyle,
+                controller = controller,
+                isPlaying = isPlaying,
+                isLiked = isLiked,
+                shuffleMode = shuffleMode,
+                repeatMode = repeatMode,
+                sleepTimerRemaining = sleepTimerRemaining,
+                position = position,
+                duration = duration,
+                dominantColor = dominantColor,
+                accentColor = accentColor,
+                syncedLyrics = syncedLyrics,
+                plainLyrics = rawLyrics?.plainLyrics,
+                isLyricsLoading = isLyricsLoading,
+                isCrossfading = isCrossfading,
+                isTrackAVideo = isTrackAVideo,
+                videoAspectRatio = videoAspectRatio,
+                videoResizeMode = videoResizeMode,
+                streamBadgeLabel = resolvedStreamBadge,
+                onBackClick = {
+                    coroutineScope.launch { screenOffsetY.snapTo(0f) }
+                    onBackClick()
+                },
+                onPlayPause = { viewModel.togglePlayback() },
+                onPrevious = { viewModel.skipPrevious() },
+                onNext = { viewModel.skipNext() },
+                onSeekTo = { viewModel.seekTo(it) },
+                onToggleLike = { viewModel.likeCurrentTrack() },
+                onToggleShuffle = { viewModel.toggleShuffle() },
+                onToggleRepeat = { viewModel.cycleRepeatMode() },
+                onSetVideoMode = { viewModel.setVideoMode(it) },
+                onToggleVideoResizeMode = toggleVideoResizeMode,
+                onEnterVideoFullscreen = { isVideoFullscreen = true },
+                onOpenEqualizer = onEqualizerClick,
+                onOpenPlaylistPicker = { showPlaylistPicker = activeTrackForStyle },
+                onOpenQueueSheet = { showQueueSheet = true },
+                onOpenFullLyrics = { showFullScreenLyrics = true },
+                onOpenTrackInfo = { showInfoSheet = true },
+                onOpenSleepTimer = { showSleepTimerSheet = true },
+                onOpenStylePicker = { showPlayerStyleSheet = true },
+                onOpenOptionsMenu = { optionsMenuTrack = it },
+                onOpenArtist = navigateArtistFromPlayer,
+                onOpenOutputSheet = { showAudioOutputSheet = true },
+                formatDuration = { viewModel.formatDuration(it) },
+                modifier = Modifier.fillMaxSize()
+            )
+        } else if (activeTrackForStyle != null && playerStyle == com.example.ecodot.data.local.prefs.PlayerStyle.SPOTIFY) {
+            val artistStatsSummary = remember(activeTrackForStyle.artist, artistUiState.subscribers) {
+                getArtistStats(activeTrackForStyle.artist, artistUiState.subscribers).let { (monthly, _) ->
+                    "$monthly monthly listeners"
+                }
+            }
+            SpotifyStyleContent(
+                track = activeTrackForStyle,
+                queue = playbackQueue,
+                currentQueueIndex = currentQueueIndex,
+                controller = controller,
+                isPlaying = isPlaying,
+                isLiked = isLiked,
+                shuffleMode = shuffleMode,
+                repeatMode = repeatMode,
+                position = position,
+                duration = duration,
+                dominantColor = dominantColor,
+                accentColor = accentColor,
+                syncedLyrics = syncedLyrics,
+                plainLyrics = rawLyrics?.plainLyrics,
+                isLyricsLoading = isLyricsLoading,
+                isCrossfading = isCrossfading,
+                isTrackAVideo = isTrackAVideo,
+                videoAspectRatio = videoAspectRatio,
+                videoResizeMode = videoResizeMode,
+                streamBadgeLabel = resolvedStreamBadge,
+                artistHeaderImageUrl = artistUiState.headerImageUrl,
+                artistFollowersText = artistStatsSummary,
+                onBackClick = {
+                    coroutineScope.launch { screenOffsetY.snapTo(0f) }
+                    onBackClick()
+                },
+                onPlayPause = { viewModel.togglePlayback() },
+                onPrevious = { viewModel.skipPrevious() },
+                onNext = { viewModel.skipNext() },
+                onSeekTo = { viewModel.seekTo(it) },
+                onSelectQueueIndex = { idx -> viewModel.skipToQueueItem(idx) },
+                onToggleLike = { viewModel.likeCurrentTrack() },
+                onToggleShuffle = { viewModel.toggleShuffle() },
+                onToggleRepeat = { viewModel.cycleRepeatMode() },
+                onSetVideoMode = { viewModel.setVideoMode(it) },
+                onToggleVideoResizeMode = toggleVideoResizeMode,
+                onEnterVideoFullscreen = { isVideoFullscreen = true },
+                onOpenEqualizer = onEqualizerClick,
+                onOpenPlaylistPicker = { showPlaylistPicker = activeTrackForStyle },
+                onOpenQueueSheet = { showQueueSheet = true },
+                onOpenFullLyrics = { showFullScreenLyrics = true },
+                onOpenShareLyrics = { showShareStorySheet = true },
+                onOpenTrackInfo = { showInfoSheet = true },
+                onOpenStylePicker = { showPlayerStyleSheet = true },
+                onOpenOptionsMenu = { optionsMenuTrack = it },
+                onOpenArtist = navigateArtistFromPlayer,
+                onOpenOutputSheet = { showAudioOutputSheet = true },
+                formatDuration = { viewModel.formatDuration(it) },
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
         // Background layers
         Box(
             modifier = Modifier.fillMaxSize()
@@ -352,27 +644,6 @@ fun NowPlayingScreen(
         }
 
         val ambientGlowAlpha by animateFloatAsState(if (isCleanCanvasMode) 0f else 1f)
-
-        // Ambient breathing motion for live concert glow effect
-        val ambientTransition = rememberInfiniteTransition(label = "ambient_drift")
-        val ambientDriftX by ambientTransition.animateFloat(
-            initialValue = -60f,
-            targetValue = 60f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 11000, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "ambient_drift_x"
-        )
-        val ambientPulseScale by ambientTransition.animateFloat(
-            initialValue = 0.92f,
-            targetValue = 1.14f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 7500, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "ambient_pulse_scale"
-        )
 
         when (playerStyle) {
             com.example.ecodot.data.local.prefs.PlayerStyle.APPLE_MUSIC -> {
@@ -421,33 +692,34 @@ fun NowPlayingScreen(
                 )
             }
             com.example.ecodot.data.local.prefs.PlayerStyle.ECODOT -> {
-                // SimpMusic-exact smooth palette gradient fading seamlessly into OLED black
+                // SimpMusic-exact vibrant radiant palette gradient fading seamlessly into OLED dark
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
-                                0.0f to dominantColor.copy(alpha = 0.52f),
-                                0.40f to dominantColor.copy(alpha = 0.22f),
-                                0.75f to Color(0xFF101014),
-                                1.0f to Color(0xFF070708)
+                                0.0f to dominantColor.copy(alpha = 0.80f * ambientAlpha),
+                                0.36f to dominantColor.copy(alpha = 0.48f * ambientAlpha),
+                                0.72f to Color(0xFF10111A),
+                                1.0f to Color(0xFF08090E)
                             )
                         )
                 )
 
-                // Soft subtle ambient glow with breathing motion
+                // Radiant breathing ambient light centered behind artwork/video
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .alpha(ambientGlowAlpha * 0.7f)
+                        .alpha(ambientGlowAlpha)
                         .background(
                             Brush.radialGradient(
                                 colors = listOf(
-                                    accentColor.copy(alpha = 0.16f),
+                                    accentColor.copy(alpha = 0.40f * ambientAlpha),
+                                    dominantColor.copy(alpha = 0.25f * ambientAlpha),
                                     Color.Transparent
                                 ),
-                                center = Offset(540f + ambientDriftX, 300f),
-                                radius = 1200f * ambientPulseScale
+                                center = Offset(540f + ambientDriftX, 360f),
+                                radius = 1200f
                             )
                         )
                 )
@@ -558,16 +830,42 @@ fun NowPlayingScreen(
                                 text = "NOW PLAYING",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontFamily = poppinsFamily,
-                                    fontSize = 11.sp,
+                                    fontSize = 11.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 1.2.sp
                                 ),
-                                color = Color.White.copy(alpha = 0.70f),
+                                color = Color.White.copy(alpha = 0.78f),
                                 maxLines = 1
                             )
                             Spacer(modifier = Modifier.height(2.dp))
+                            val topBarSubtitle = remember(currentTrack, isTrackAVideo) {
+                                when {
+                                    isTrackAVideo -> "Music Video"
+                                    else -> {
+                                        val album = currentTrack?.album.orEmpty()
+                                        val isViewCount = album.contains("view", ignoreCase = true)
+                                        val isLikeCount = Regex("""\b\d[\d.,]*\s*[kmb]?\s*likes?\b""", RegexOption.IGNORE_CASE).containsMatchIn(album)
+                                        val isGenericVideo = album.equals("YouTube Video", ignoreCase = true) ||
+                                            album.equals("Video", ignoreCase = true) ||
+                                            album.equals("Music Video", ignoreCase = true) ||
+                                            album.equals("Video Chart", ignoreCase = true)
+                                        val isGeneric = album.startsWith("Search", ignoreCase = true) ||
+                                            album.equals("Top Result", ignoreCase = true) ||
+                                            album.equals("Unknown", ignoreCase = true) ||
+                                            album.equals("Up Next", ignoreCase = true) ||
+                                            album.equals("Cached", ignoreCase = true) ||
+                                            album.equals("Cache", ignoreCase = true) ||
+                                            album.equals("YouTube Music", ignoreCase = true) ||
+                                            album.isBlank()
+
+                                        if (!isViewCount && !isLikeCount && !isGenericVideo && !isGeneric) album
+                                        else currentTrack?.artist?.takeIf { it.isNotBlank() && it != "Unknown" }
+                                            ?: "EcoDot Music"
+                                    }
+                                }
+                            }
                             Text(
-                                text = currentTrack?.title.orEmpty().ifEmpty { "EcoDot" },
+                                text = topBarSubtitle,
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     fontFamily = poppinsFamily,
                                     fontWeight = FontWeight.Bold,
@@ -592,6 +890,14 @@ fun NowPlayingScreen(
                                     )
                                 }
                             }
+                            IconButton(onClick = { showPlayerStyleSheet = true }) {
+                                Icon(
+                                    Icons.Rounded.Style,
+                                    contentDescription = "Switch player style",
+                                    tint = Color.White.copy(alpha = 0.9f),
+                                    modifier = Modifier.size(21.dp)
+                                )
+                            }
                             IconButton(onClick = { currentTrack?.let { optionsMenuTrack = it } }) {
                                 Icon(
                                     Icons.Rounded.MoreVert,
@@ -613,54 +919,6 @@ fun NowPlayingScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         userScrollEnabled = !isCleanCanvasMode
                     ) {
-                        // 0. Song / Video Toggle Pill (SimpMusic / YouTube Music Style)
-                        if (track.isYouTube) {
-                            item {
-                                Row(
-                                    modifier = Modifier
-                                        .padding(top = 2.dp, bottom = 10.dp)
-                                        .height(34.dp)
-                                        .clip(RoundedCornerShape(17.dp))
-                                        .background(Color.White.copy(alpha = 0.08f))
-                                        .border(0.85.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(17.dp))
-                                        .padding(2.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    // Song option
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(15.dp))
-                                            .background(if (!isVideoMode) Color.White else Color.Transparent)
-                                            .clickable { viewModel.setVideoMode(false) }
-                                            .padding(horizontal = 16.dp, vertical = 6.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = "Song",
-                                            color = if (!isVideoMode) Color(0xFF0C0D12) else Color.White.copy(alpha = 0.70f),
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                    // Video option
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(15.dp))
-                                            .background(if (isVideoMode) Color.White else Color.Transparent)
-                                            .clickable { viewModel.setVideoMode(true) }
-                                            .padding(horizontal = 16.dp, vertical = 6.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = "Video",
-                                            color = if (isVideoMode) Color(0xFF0C0D12) else Color.White.copy(alpha = 0.70f),
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                            }
-                        }
 
                         // 1. Artwork Squircle with horizontal swipe to skip & drag down to minimize
                         item {
@@ -748,11 +1006,13 @@ fun NowPlayingScreen(
                             } else {
                                 val view = androidx.compose.ui.platform.LocalView.current
                                 val coroutineScope = rememberCoroutineScope()
-                                val isVideo = track.isYouTube && isVideoMode
-                                val widthFraction = if (isVideo) 0.92f else 0.88f
+                                val isVideo = isTrackAVideo
+                                val widthFraction = if (isVideo) 0.94f else 0.88f
                                 val aspectRatio = if (isVideo) 16f / 9f else 1f
                                 val screenWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp.dp
                                 val estimatedHeight = screenWidth * widthFraction / aspectRatio
+                                val cornerRadius = if (isVideo) 16.dp else 12.dp
+                                val cardShape = RoundedCornerShape(cornerRadius)
 
                                 val artworkScale by animateFloatAsState(
                                     targetValue = if (isPlaying) 1.0f else 0.94f,
@@ -765,23 +1025,54 @@ fun NowPlayingScreen(
 
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxWidth(widthFraction)
-                                        .height(estimatedHeight)
-                                        .padding(top = 10.dp)
-                                        .offset { IntOffset(artworkOffsetX.value.roundToInt(), 0) }
-                                        .graphicsLayer {
-                                            scaleX = artworkScale * (1f - (kotlin.math.abs(artworkOffsetX.value) / 3000f)).coerceIn(0.92f, 1f)
-                                            scaleY = artworkScale * (1f - (kotlin.math.abs(artworkOffsetX.value) / 3000f)).coerceIn(0.92f, 1f)
-                                            alpha = (1f - (kotlin.math.abs(artworkOffsetX.value) / 900f) * 0.40f).coerceIn(0.60f, 1f)
-                                        }
-                                        .shadow(
-                                            elevation = 12.dp,
-                                            shape = RoundedCornerShape(8.dp),
-                                            spotColor = Color.Black.copy(alpha = 0.55f),
-                                            ambientColor = Color.Transparent
+                                        .fillMaxWidth()
+                                        .padding(top = if (isVideo) 2.dp else 10.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    // Ambient Light Aura directly behind 16:9 Video Card
+                                    if (isVideo) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth(widthFraction)
+                                                .height(estimatedHeight)
+                                                .offset { IntOffset(artworkOffsetX.value.roundToInt(), 0) }
+                                                .graphicsLayer {
+                                                    scaleX = ambientPulseScale * 1.08f
+                                                    scaleY = ambientPulseScale * 1.08f
+                                                    alpha = ambientAlpha * 0.85f
+                                                }
+                                                .blur(48.dp)
+                                                .background(
+                                                    Brush.radialGradient(
+                                                        colors = listOf(
+                                                            dominantColor.copy(alpha = 0.85f),
+                                                            accentColor.copy(alpha = 0.50f),
+                                                            Color.Transparent
+                                                        )
+                                                    ),
+                                                    shape = cardShape
+                                                )
                                         )
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(Color.Black.copy(alpha = 0.8f))
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(widthFraction)
+                                            .height(estimatedHeight)
+                                            .offset { IntOffset(artworkOffsetX.value.roundToInt(), 0) }
+                                            .graphicsLayer {
+                                                scaleX = artworkScale * (1f - (kotlin.math.abs(artworkOffsetX.value) / 3000f)).coerceIn(0.92f, 1f)
+                                                scaleY = artworkScale * (1f - (kotlin.math.abs(artworkOffsetX.value) / 3000f)).coerceIn(0.92f, 1f)
+                                                alpha = (1f - (kotlin.math.abs(artworkOffsetX.value) / 900f) * 0.40f).coerceIn(0.60f, 1f)
+                                            }
+                                            .shadow(
+                                                elevation = 16.dp,
+                                                shape = cardShape,
+                                                spotColor = Color.Black.copy(alpha = 0.65f),
+                                                ambientColor = Color.Transparent
+                                            )
+                                            .clip(cardShape)
+                                            .background(Color.Black)
                                         .then(
                                             if (!isVideo) {
                                                 Modifier.pointerInput(Unit) {
@@ -868,7 +1159,12 @@ fun NowPlayingScreen(
                                         )
                                 ) {
                                     var currentArtworkUrl by remember(track.id, track.albumArtUri) {
-                                        mutableStateOf(track.albumArtUri)
+                                        mutableStateOf(
+                                            com.example.ecodot.data.remote.YouTubeParser.getHighResUrl(
+                                                track.albumArtUri,
+                                                isWide = isVideo
+                                            ) ?: track.albumArtUri
+                                        )
                                     }
                                     if (playerStyle == com.example.ecodot.data.local.prefs.PlayerStyle.VINYL && !isVideo) {
                                         VinylArtworkView(
@@ -881,14 +1177,14 @@ fun NowPlayingScreen(
                                         AsyncImage(
                                             model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
                                                 .data(currentArtworkUrl)
+                                                .size(1440, 1440)
                                                 .crossfade(true)
                                                 .build(),
                                             contentDescription = track.title,
                                             placeholder = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Rounded.MusicNote),
                                             error = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Rounded.MusicNote),
                                             onError = {
-                                                val fallback = currentArtworkUrl?.replace("maxresdefault", "hqdefault")
-                                                if (fallback != null && fallback != currentArtworkUrl) {
+                                                com.example.ecodot.data.remote.YouTubeParser.getFallbackThumbUrl(currentArtworkUrl)?.let { fallback ->
                                                     currentArtworkUrl = fallback
                                                 }
                                             },
@@ -899,116 +1195,202 @@ fun NowPlayingScreen(
                                     if (isVideo && controller != null) {
                                         androidx.compose.ui.viewinterop.AndroidView(
                                             factory = { ctx ->
-                                                androidx.media3.ui.PlayerView(ctx).apply {
+                                                (android.view.LayoutInflater.from(ctx).inflate(
+                                                    com.example.ecodot.R.layout.canvas_player_view,
+                                                    null
+                                                ) as androidx.media3.ui.PlayerView).apply {
                                                     useController = false
-                                                    resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                                                    resizeMode = videoResizeMode
                                                     setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
+                                                    keepScreenOn = true
                                                 }
                                             },
                                             update = { playerView ->
-                                                playerView.player = if (isFullScreenVisible) null else controller
+                                                playerView.player = controller
+                                                playerView.resizeMode = videoResizeMode
+                                            },
+                                            onRelease = { playerView ->
+                                                playerView.player = null
                                             },
                                             modifier = Modifier.fillMaxSize()
                                         )
 
-                                        // Fullscreen button on video card (SimpMusic feature)
-                                        IconButton(
-                                            onClick = {
-                                                viewModel.setVideoMode(true)
-                                                onWatchVideoClick()
-                                            },
-                                            modifier = Modifier
-                                                .align(Alignment.TopEnd)
-                                                .padding(10.dp)
-                                                .size(38.dp)
-                                                .background(Color.Black.copy(alpha = 0.60f), CircleShape)
-                                                .border(1.dp, Color.White.copy(alpha = 0.20f), CircleShape)
+                                        // In-video Controls Overlay (SimpMusic: Fullscreen, Replay5, Forward5, Subtitles)
+                                        androidx.compose.animation.AnimatedVisibility(
+                                            visible = showVideoControls,
+                                            enter = androidx.compose.animation.fadeIn(tween(180)),
+                                            exit = androidx.compose.animation.fadeOut(tween(220)),
+                                            modifier = Modifier.fillMaxSize()
                                         ) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.Fullscreen,
-                                                contentDescription = "Fullscreen",
-                                                tint = Color.White,
-                                                modifier = Modifier.size(22.dp)
-                                            )
-                                        }
-                                    }
-
-                                    // Floating "Watch Video" badge on artwork when in song mode
-                                    if (!isVideo && track.isYouTube) {
-                                        Box(
-                                            modifier = Modifier
-                                                .align(Alignment.BottomEnd)
-                                                .padding(12.dp)
-                                                .clip(RoundedCornerShape(18.dp))
-                                                .background(Color.Black.copy(alpha = 0.70f))
-                                                .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(18.dp))
-                                                .clickable {
-                                                    viewModel.setVideoMode(true)
-                                                    onWatchVideoClick()
-                                                }
-                                                .padding(horizontal = 14.dp, vertical = 7.dp)
-                                        ) {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .background(Color.Black.copy(alpha = 0.45f))
                                             ) {
-                                                Icon(
-                                                    imageVector = Icons.Rounded.PlayCircle,
-                                                    contentDescription = null,
-                                                    tint = EcoDotRed,
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-                                                Text(
-                                                    text = "Watch Video",
-                                                    color = Color.White,
-                                                    fontSize = 12.sp,
-                                                    fontWeight = FontWeight.Bold
-                                                )
+                                                // Top-Right: Fullscreen orientation toggle
+                                                IconButton(
+                                                    onClick = {
+                                                        isVideoFullscreen = !isVideoFullscreen
+                                                    },
+                                                    modifier = Modifier
+                                                        .align(Alignment.TopEnd)
+                                                        .padding(6.dp)
+                                                        .size(42.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = SimpIcons.Fullscreen,
+                                                        contentDescription = "Fullscreen",
+                                                        tint = Color.White,
+                                                        modifier = Modifier.size(24.dp)
+                                                    )
+                                                }
+
+                                                // Center: Rewind 5s and Fast-forward 5s
+                                                Row(
+                                                    modifier = Modifier
+                                                        .align(Alignment.Center)
+                                                        .fillMaxWidth(0.68f),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    IconButton(
+                                                        onClick = {
+                                                            controller?.let { c ->
+                                                                val target = (c.currentPosition - 5000L).coerceAtLeast(0L)
+                                                                c.seekTo(target)
+                                                            }
+                                                        },
+                                                        modifier = Modifier
+                                                            .size(48.dp)
+                                                            .clip(CircleShape)
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = SimpIcons.Replay5,
+                                                            contentDescription = "Rewind 5s",
+                                                            tint = Color.White,
+                                                            modifier = Modifier.size(36.dp)
+                                                        )
+                                                    }
+
+                                                    IconButton(
+                                                        onClick = {
+                                                            controller?.let { c ->
+                                                                val dur = if (c.duration > 0) c.duration else Long.MAX_VALUE
+                                                                val target = (c.currentPosition + 5000L).coerceAtMost(dur)
+                                                                c.seekTo(target)
+                                                            }
+                                                        },
+                                                        modifier = Modifier
+                                                            .size(48.dp)
+                                                            .clip(CircleShape)
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = SimpIcons.Forward5,
+                                                            contentDescription = "Forward 5s",
+                                                            tint = Color.White,
+                                                            modifier = Modifier.size(36.dp)
+                                                        )
+                                                    }
+                                                }
+
+                                                // Bottom-Right: Subtitles toggle
+                                                IconButton(
+                                                    onClick = {
+                                                        showCaptions = !showCaptions
+                                                    },
+                                                    modifier = Modifier
+                                                        .align(Alignment.BottomEnd)
+                                                        .padding(6.dp)
+                                                        .size(42.dp)
+                                                ) {
+                                                    Icon(
+                                                        imageVector = if (showCaptions) SimpIcons.SubtitlesOff else SimpIcons.Subtitles,
+                                                        contentDescription = "Subtitles",
+                                                        tint = Color.White,
+                                                        modifier = Modifier.size(22.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        // Live Synced Subtitles/Captions pill on video when enabled
+                                        if (showCaptions) {
+                                            val currentCapLine by remember(syncedLyrics, position) {
+                                                derivedStateOf {
+                                                    syncedLyrics.lastOrNull { it.timeMs <= position }?.text.orEmpty()
+                                                }
+                                            }
+                                            if (currentCapLine.isNotBlank()) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .align(Alignment.BottomCenter)
+                                                        .padding(bottom = 12.dp, start = 14.dp, end = 14.dp)
+                                                        .clip(RoundedCornerShape(6.dp))
+                                                        .background(Color.Black.copy(alpha = 0.65f))
+                                                        .padding(horizontal = 12.dp, vertical = 5.dp)
+                                                ) {
+                                                    Text(
+                                                        text = currentCapLine,
+                                                        color = Color.White,
+                                                        fontSize = 13.5.sp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        fontFamily = poppinsFamily,
+                                                        textAlign = TextAlign.Center,
+                                                        maxLines = 2
+                                                    )
+                                                }
                                             }
                                         }
                                     }
                                 }
+                                } // Closes outer centering Box for ambient halo & video card
                             }
                         }
 
-                        // 2. Inline Lyric Line (SimpMusic Exact: Left-Aligned Bold Single Line on Screen)
-                        item {
-                            val activeLyricLine by remember(syncedLyrics, position) {
-                                derivedStateOf {
-                                    syncedLyrics.lastOrNull { it.timeMs <= position }?.text.orEmpty()
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(34.dp)
-                                    .padding(horizontal = 24.dp)
-                                    .clickable { showFullScreenLyrics = true },
-                                contentAlignment = Alignment.CenterStart
-                            ) {
-                                Crossfade(
-                                    targetState = activeLyricLine,
-                                    animationSpec = tween(durationMillis = 280),
-                                    label = "inline_lyric_crossfade"
-                                ) { lineText ->
-                                    if (lineText.isNotBlank()) {
-                                        Text(
-                                            text = lineText,
-                                            style = MaterialTheme.typography.bodyLarge.copy(
-                                                fontFamily = poppinsFamily,
-                                                fontSize = 15.sp,
-                                                fontWeight = FontWeight.SemiBold
-                                            ),
-                                            color = Color.White,
-                                            textAlign = TextAlign.Start,
-                                            maxLines = 1,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .basicMarquee()
-                                        )
+                        // 2. Inline Lyric Line (SimpMusic: Only when NOT in video mode)
+                        if (!isTrackAVideo) {
+                            item {
+                                val activeLyricLine by remember(syncedLyrics, position) {
+                                    derivedStateOf {
+                                        syncedLyrics.lastOrNull { it.timeMs <= position }?.text.orEmpty()
                                     }
                                 }
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(34.dp)
+                                        .padding(horizontal = 24.dp)
+                                        .clickable { showFullScreenLyrics = true },
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    Crossfade(
+                                        targetState = activeLyricLine,
+                                        animationSpec = tween(durationMillis = 280),
+                                        label = "inline_lyric_crossfade"
+                                    ) { lineText ->
+                                        if (lineText.isNotBlank()) {
+                                            Text(
+                                                text = lineText,
+                                                style = MaterialTheme.typography.bodyLarge.copy(
+                                                    fontFamily = poppinsFamily,
+                                                    fontSize = 15.sp,
+                                                    fontWeight = FontWeight.SemiBold
+                                                ),
+                                                color = Color.White,
+                                                textAlign = TextAlign.Start,
+                                                maxLines = 1,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .basicMarquee()
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            item {
+                                Spacer(modifier = Modifier.height(20.dp))
                             }
                         }
 
@@ -1084,6 +1466,7 @@ fun NowPlayingScreen(
                                 accentColor = accentColor,
                                 onSeek = { viewModel.seekTo(it) },
                                 formatDuration = { viewModel.formatDuration(it) },
+                                isCrossfading = isCrossfading,
                                 modifier = Modifier.padding(horizontal = 24.dp)
                             )
                         }
@@ -1148,7 +1531,7 @@ fun NowPlayingScreen(
                             }
                         }
 
-                        // 6. Bottom Action Quick Row (SimpMusic Exact: Info on Left, PlaylistAdd + Queue on Right)
+                        // 6. Bottom Action Quick Row (SimpMusic Exact: Info, Headphones, Lyrics on Left | PlaylistAdd, Queue on Right)
                         item {
                             Spacer(modifier = Modifier.height(14.dp))
                             Row(
@@ -1159,20 +1542,47 @@ fun NowPlayingScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Left: Info Button
-                                IconButton(
-                                    onClick = { showInfoSheet = true },
-                                    modifier = Modifier.size(32.dp)
+                                // Left cluster: Info + Audio Output/Equalizer + Lyrics
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = SimpIcons.Info,
-                                        contentDescription = "Track Info",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(24.dp)
-                                    )
+                                    IconButton(
+                                        onClick = { showInfoSheet = true },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = SimpIcons.Info,
+                                            contentDescription = "Track Info",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = onEqualizerClick,
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = SimpIcons.Headphones,
+                                            contentDescription = "Audio Output / Equalizer",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { showFullScreenLyrics = true },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = SimpIcons.CommentOutline,
+                                            contentDescription = "Lyrics / Subtitles",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
                                 }
 
-                                // Right: PlaylistAdd + Queue
+                                // Right cluster: PlaylistAdd + Queue
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                                     verticalAlignment = Alignment.CenterVertically
@@ -1205,7 +1615,7 @@ fun NowPlayingScreen(
 
                         // 7. SimpMusic-Style Synced Lyrics Card
                         item {
-                            Spacer(modifier = Modifier.height(18.dp))
+                            Spacer(modifier = Modifier.height(48.dp))
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -1619,11 +2029,12 @@ fun NowPlayingScreen(
                         trackTitle = track.title,
                         onSeek = { viewModel.seekTo(it) },
                         formatDuration = { viewModel.formatDuration(it) },
-                        isVideo = track.isYouTube && isVideoMode
+                        isVideo = isTrackAVideo
                     )
                 }
             }
         }
+        } // end else (EcoDot Classic player)
     }
 }
 
@@ -1989,7 +2400,10 @@ fun NowPlayingScreen(
             sleepTimerRemaining = sleepTimerRemaining,
             onSetAsRingtone = {
                 showRingtoneClipper = track
-            }
+            },
+            isVideoMode = isTrackAVideo,
+            onToggleVideoMode = { viewModel.setVideoMode(!isTrackAVideo) },
+            onSwitchPlayerStyle = { showPlayerStyleSheet = true }
         )
     }
 
@@ -2026,6 +2440,42 @@ fun NowPlayingScreen(
         )
     }
 
+    if (showAudioOutputSheet) {
+        QuickAudioOutputSheet(
+            currentDeviceName = queryActiveAudioOutputLabel(context),
+            accentColor = if (accentColor == Color.Black) Color(0xFF8C6EFF) else accentColor,
+            onOpenEqualizer = onEqualizerClick,
+            onOpenSystemBluetooth = {
+                runCatching {
+                    context.startActivity(
+                        android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS)
+                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                }
+            },
+            onDismiss = { showAudioOutputSheet = false }
+        )
+    }
+
+    if (showSleepTimerSheet) {
+        SleepTimerBottomSheet(
+            sleepTimerRemaining = sleepTimerRemaining,
+            onDismiss = { showSleepTimerSheet = false },
+            onSetSleepTimer = { minutes ->
+                viewModel.setSleepTimer(minutes)
+                showSleepTimerSheet = false
+            },
+            onSetSleepTimerAtEndOfTrack = {
+                viewModel.setSleepTimerAtEndOfTrack()
+                showSleepTimerSheet = false
+            },
+            onCancelSleepTimer = {
+                viewModel.cancelSleepTimer()
+                showSleepTimerSheet = false
+            }
+        )
+    }
+
     if (showShareStorySheet) {
         currentTrack?.let { track ->
             ShareStoryCardBottomSheet(
@@ -2036,5 +2486,6 @@ fun NowPlayingScreen(
                 onDismiss = { showShareStorySheet = false }
             )
         }
+    }
     }
 }

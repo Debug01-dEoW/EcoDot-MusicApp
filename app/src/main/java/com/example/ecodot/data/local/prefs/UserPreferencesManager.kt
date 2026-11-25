@@ -7,15 +7,50 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
 enum class AudioQuality {
-    LOW,    // ~48 kbps
-    NORMAL, // ~128 kbps
-    HIGH    // Max available
+    LOW,      // ~48 kbps
+    NORMAL,   // ~128 kbps
+    HIGH,     // High Opus (up to 256 kbps)
+    HIGH_AAC  // High AAC / M4A (up to 256 kbps)
 }
 
 enum class VideoQuality {
     LOW,
     NORMAL,
     HIGH
+}
+
+enum class ThemeMode(val label: String) {
+    OLED_BLACK("OLED Black"),
+    DARK_SLATE("Dark Slate")
+}
+
+enum class ThemeColorSource(val label: String) {
+    ALBUM_ART("Dynamic (Album Art)"),
+    SIMP_DEFAULT("SimpMusic Default"),
+    WALLPAPER("Wallpaper (Android 12+)"),
+    CUSTOM("Custom Color")
+}
+
+enum class SponsorBlockCategory(val key: String, val displayName: String) {
+    SPONSOR("sponsor", "Sponsor"),
+    SELF_PROMO("selfpromo", "Unpaid / Self Promotion"),
+    INTERACTION("interaction", "Interaction Reminder"),
+    INTRO("intro", "Intermission / Intro Animation"),
+    OUTRO("outro", "Endcards / Credits"),
+    PREVIEW("preview", "Preview / Recap"),
+    MUSIC_OFF_TOPIC("music_offtopic", "Music: Non-Music Section"),
+    FILLER("filler", "Filler Tangent / Jokes"),
+    POI_HIGHLIGHT("poi_highlight", "Highlight");
+
+    companion object {
+        val defaultKeys: Set<String> = setOf(
+            SPONSOR.key,
+            INTRO.key,
+            OUTRO.key,
+            MUSIC_OFF_TOPIC.key,
+            PREVIEW.key
+        )
+    }
 }
 
 class UserPreferencesManager(context: Context) {
@@ -36,11 +71,11 @@ class UserPreferencesManager(context: Context) {
 
     var videoQuality: VideoQuality
         get() {
-            val name = prefs.getString("video_quality", VideoQuality.NORMAL.name) ?: VideoQuality.NORMAL.name
+            val name = prefs.getString("video_quality", VideoQuality.HIGH.name) ?: VideoQuality.HIGH.name
             return try {
                 VideoQuality.valueOf(name)
             } catch (e: Exception) {
-                VideoQuality.NORMAL
+                VideoQuality.HIGH
             }
         }
         set(value) {
@@ -58,18 +93,43 @@ class UserPreferencesManager(context: Context) {
     var searchHistory: List<String>
         get() = prefs.getString("search_history", "")?.split("|||")?.filter { it.isNotBlank() } ?: emptyList()
         set(value) = prefs.edit().putString("search_history", value.joinToString("|||")).apply()
-        
+
     var killServiceOnExit: Boolean
         get() = prefs.getBoolean("kill_service_on_exit", false)
         set(value) = prefs.edit().putBoolean("kill_service_on_exit", value).apply()
-        
+
     var crossfadeEnabled: Boolean
         get() = prefs.getBoolean("crossfade_enabled", false)
         set(value) = prefs.edit().putBoolean("crossfade_enabled", value).apply()
-        
+
+    // Duration in seconds; 0 = Auto (SimpMusic AutoMix)
     var crossfadeDuration: Int
         get() = prefs.getInt("crossfade_duration", 3)
         set(value) = prefs.edit().putInt("crossfade_duration", value).apply()
+
+    var crossfadeDjMode: Boolean
+        get() = prefs.getBoolean("crossfade_dj_mode", false)
+        set(value) = prefs.edit().putBoolean("crossfade_dj_mode", value).apply()
+
+    var crossfadeSkipAlbum: Boolean
+        get() = prefs.getBoolean("crossfade_skip_album", true)
+        set(value) = prefs.edit().putBoolean("crossfade_skip_album", value).apply()
+
+    var normalizeVolume: Boolean
+        get() = prefs.getBoolean("normalize_volume", false)
+        set(value) = prefs.edit().putBoolean("normalize_volume", value).apply()
+
+    var skipSilent: Boolean
+        get() = prefs.getBoolean("skip_silent", false)
+        set(value) = prefs.edit().putBoolean("skip_silent", value).apply()
+
+    var equalizerEnabled: Boolean
+        get() = prefs.getBoolean("equalizer_enabled", false)
+        set(value) = prefs.edit().putBoolean("equalizer_enabled", value).apply()
+
+    var virtualizerStrength: Int
+        get() = prefs.getInt("virtualizer_strength", 0)
+        set(value) = prefs.edit().putInt("virtualizer_strength", value).apply()
 
     var autoCanvasEnabled: Boolean
         get() = prefs.getBoolean("auto_canvas_enabled", false)
@@ -82,6 +142,47 @@ class UserPreferencesManager(context: Context) {
     var sponsorBlockEnabled: Boolean
         get() = prefs.getBoolean("sponsor_block_enabled", true)
         set(value) = prefs.edit().putBoolean("sponsor_block_enabled", value).apply()
+
+    var sponsorBlockCategories: Set<String>
+        get() {
+            val saved = prefs.getStringSet("sponsor_block_categories", null)
+            return if (saved == null) {
+                SponsorBlockCategory.defaultKeys
+            } else {
+                saved.map { if (it == "music_off_topic") "music_offtopic" else it }.toSet()
+            }
+        }
+        set(value) = prefs.edit().putStringSet("sponsor_block_categories", HashSet(value)).apply()
+
+    var themeMode: ThemeMode
+        get() {
+            val name = prefs.getString("theme_mode", ThemeMode.OLED_BLACK.name) ?: ThemeMode.OLED_BLACK.name
+            return try {
+                ThemeMode.valueOf(name)
+            } catch (e: Exception) {
+                ThemeMode.OLED_BLACK
+            }
+        }
+        set(value) = prefs.edit().putString("theme_mode", value.name).apply()
+
+    var themeColorSource: ThemeColorSource
+        get() {
+            val name = prefs.getString("theme_color_source", ThemeColorSource.ALBUM_ART.name) ?: ThemeColorSource.ALBUM_ART.name
+            return try {
+                ThemeColorSource.valueOf(name)
+            } catch (e: Exception) {
+                ThemeColorSource.ALBUM_ART
+            }
+        }
+        set(value) = prefs.edit().putString("theme_color_source", value.name).apply()
+
+    var customThemeColorHex: String
+        get() = prefs.getString("custom_theme_color_hex", "FF1ED760") ?: "FF1ED760"
+        set(value) = prefs.edit().putString("custom_theme_color_hex", value).apply()
+
+    var liquidGlassEnabled: Boolean
+        get() = prefs.getBoolean("liquid_glass_enabled", true)
+        set(value) = prefs.edit().putBoolean("liquid_glass_enabled", value).apply()
 
     var playerStyle: PlayerStyle
         get() {
@@ -166,6 +267,53 @@ class UserPreferencesManager(context: Context) {
     var cacheLimitMb: Long
         get() = prefs.getLong("cache_limit_mb", 0L) // 0 = dynamic / unlimited (no artificial limit)
         set(value) = prefs.edit().putLong("cache_limit_mb", value).apply()
+
+    var autoCheckUpdates: Boolean
+        get() = prefs.getBoolean("auto_check_updates", true)
+        set(value) = prefs.edit().putBoolean("auto_check_updates", value).apply()
+
+    var lastUpdateCheckTime: Long
+        get() = prefs.getLong("last_update_check_time", 0L)
+        set(value) = prefs.edit().putLong("last_update_check_time", value).apply()
+
+    companion object {
+        const val DEFAULT_GITHUB_OWNER = "Debug01-dEoW"
+        const val DEFAULT_GITHUB_REPO = "EcoDot-MusicApp"
+        const val DEFAULT_GITHUB_PROFILE_URL = "https://github.com/Debug01-dEoW"
+        const val DEFAULT_GITHUB_REPO_URL = "https://github.com/Debug01-dEoW/EcoDot-MusicApp"
+        const val DEFAULT_GITHUB_RELEASES_URL = "https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases"
+        const val DEFAULT_UPDATE_JSON_URL = "https://raw.githubusercontent.com/Debug01-dEoW/EcoDot-MusicApp/main/version.json"
+        const val APP_DESCRIPTION = "A vibrant hybrid Android music player with realistic Liquid Glass optics, SimpMusic UI architecture, Apple Music/Vinyl/Spotify player styles, seamless 1080p video mode, AutoMix crossfade & YouTube Music streaming — made by Debug01-dEoW aka Deep."
+    }
+
+    var updateJsonUrl: String
+        get() {
+            val saved = prefs.getString("update_json_url", DEFAULT_UPDATE_JSON_URL)
+            return if (saved.isNullOrBlank() || saved.contains("deep082008/EcoDot/")) {
+                DEFAULT_UPDATE_JSON_URL
+            } else {
+                saved
+            }
+        }
+        set(value) = prefs.edit().putString("update_json_url", value).apply()
+
+    var githubOwner: String
+        get() {
+            val saved = prefs.getString("github_owner", DEFAULT_GITHUB_OWNER)
+            return if (saved.isNullOrBlank() || saved == "deep082008") DEFAULT_GITHUB_OWNER else saved
+        }
+        set(value) = prefs.edit().putString("github_owner", value).apply()
+
+    var githubRepo: String
+        get() {
+            val saved = prefs.getString("github_repo", DEFAULT_GITHUB_REPO)
+            return if (saved.isNullOrBlank() || saved == "EcoDot") DEFAULT_GITHUB_REPO else saved
+        }
+        set(value) = prefs.edit().putString("github_repo", value).apply()
+
+    var selectedHomeCountry: String
+        get() = prefs.getString("selected_home_country", "Global") ?: "Global"
+        set(value) = prefs.edit().putString("selected_home_country", value).apply()
 }
 
 enum class PlayerStyle {
@@ -174,4 +322,3 @@ enum class PlayerStyle {
     SPOTIFY,
     VINYL
 }
-

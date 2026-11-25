@@ -82,7 +82,7 @@ class LyricsRepository {
     private val okHttpClient = OkHttpClient.Builder()
         .addInterceptor { chain ->
             val request = chain.request().newBuilder()
-                .header("User-Agent", "EcoDot/1.0.0 (https://github.com/example/ecodot; contact@ecodot.com)")
+                .header("User-Agent", "EcoDot/1.0.0 (https://github.com/Debug01-dEoW/EcoDot-MusicApp; deep082008.patel@gmail.com)")
                 .build()
             chain.proceed(request)
         }

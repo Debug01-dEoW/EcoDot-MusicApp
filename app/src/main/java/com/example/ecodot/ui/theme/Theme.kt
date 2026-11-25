@@ -81,38 +81,55 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun EcoDotTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color disabled — we control our own OLED palette
+    // Dynamic color disabled — we control our own OLED / Slate palette
     dynamicColor: Boolean = false,
+    themeMode: com.example.ecodot.data.local.prefs.ThemeMode = com.example.ecodot.data.local.prefs.ThemeMode.OLED_BLACK,
     dominantColor: Color? = null,
     accentColor: Color? = null,
     content: @Composable () -> Unit
 ) {
+    val isSlate = themeMode == com.example.ecodot.data.local.prefs.ThemeMode.DARK_SLATE
+    val baseBg = if (isSlate) Color(0xFF12131A) else Color(0xFF08080A)
+    val baseCard = if (isSlate) Color(0xFF1E202B) else Color(0xFF17181E)
+
     val colorScheme = when {
         dominantColor != null && accentColor != null -> {
-            // Dynamic Theming: subtly shift the global app background with the dominant color (Haze effect)
+            // Dynamic Theming: subtly shift the global app background with the dominant color
+            val mixWeight = if (isSlate) 0.04f else 0.02f
             val bg = Color(
-                red = dominantColor.red * 0.02f + 0.03f * 0.98f,
-                green = dominantColor.green * 0.02f + 0.03f * 0.98f,
-                blue = dominantColor.blue * 0.02f + 0.03f * 0.98f
+                red = dominantColor.red * mixWeight + baseBg.red * (1f - mixWeight),
+                green = dominantColor.green * mixWeight + baseBg.green * (1f - mixWeight),
+                blue = dominantColor.blue * mixWeight + baseBg.blue * (1f - mixWeight)
             )
             darkColorScheme(
                 primary = accentColor,
                 onPrimary = if (accentColor.luminance() > 0.5f) Color.Black else Color.White,
-                primaryContainer = accentColor.copy(alpha = 0.15f),
+                primaryContainer = accentColor.copy(alpha = 0.16f),
                 onPrimaryContainer = accentColor,
+                secondary = accentColor.copy(alpha = 0.85f),
                 background = bg,
                 surface = bg,
+                surfaceContainer = baseCard,
+                surfaceContainerHigh = if (isSlate) Color(0xFF282A38) else Color(0xFF202129),
+                surfaceContainerHighest = if (isSlate) Color(0xFF323446) else Color(0xFF2A2B36),
+                surfaceVariant = baseCard,
+                outlineVariant = Color.White.copy(alpha = 0.08f),
                 onBackground = Color.White,
                 onSurface = Color.White,
-                surfaceVariant = Color(0xFF16161A),
-                onSurfaceVariant = Color.White.copy(alpha = 0.7f)
+                onSurfaceVariant = Color.White.copy(alpha = 0.68f)
             )
         }
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> DarkColorScheme
+        darkTheme -> DarkColorScheme.copy(
+            background = baseBg,
+            surface = baseBg,
+            surfaceContainer = baseCard,
+            surfaceVariant = baseCard,
+            outlineVariant = Color.White.copy(alpha = 0.08f)
+        )
         else -> LightColorScheme
     }
 
@@ -121,8 +138,7 @@ fun EcoDotTheme(
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = Color.Transparent.toArgb()
-            window.navigationBarColor = Color(0xFF050505).toArgb()
-            // Always force dark icons off — our bg is always OLED black
+            window.navigationBarColor = baseBg.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
             WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = false
         }

@@ -38,6 +38,9 @@ import com.example.ecodot.ui.theme.Tune
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Cancel
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.PlayCircle
+import androidx.compose.material.icons.rounded.Style
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.ContentCut
 
@@ -64,7 +67,10 @@ fun TrackOptionsBottomSheet(
     sleepTimerRemaining: Long? = null,
     onSetAsRingtone: () -> Unit = {},
     onEqualizerClick: (() -> Unit)? = null,
-    isCanvasActive: Boolean = false
+    isCanvasActive: Boolean = false,
+    isVideoMode: Boolean = false,
+    onToggleVideoMode: (() -> Unit)? = null,
+    onSwitchPlayerStyle: (() -> Unit)? = null
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -232,6 +238,33 @@ fun TrackOptionsBottomSheet(
                         leadingContent = { Icon(Icons.Rounded.Person, contentDescription = null, tint = Color.White) },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         modifier = Modifier.clickable { onGoToArtist(); onDismiss() }
+                    )
+                }
+                if (track.isYouTube && onToggleVideoMode != null) {
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                text = if (isVideoMode) "Switch to Song (Audio)" else "Switch to Music Video",
+                                color = Color.White
+                            )
+                        },
+                        leadingContent = {
+                            Icon(
+                                imageVector = if (isVideoMode) Icons.Rounded.MusicNote else Icons.Rounded.PlayCircle,
+                                contentDescription = null,
+                                tint = Color.White
+                            )
+                        },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        modifier = Modifier.clickable { onToggleVideoMode(); onDismiss() }
+                    )
+                }
+                if (onSwitchPlayerStyle != null) {
+                    ListItem(
+                        headlineContent = { Text("Now Playing Style", color = Color.White) },
+                        leadingContent = { Icon(Icons.Rounded.Style, contentDescription = null, tint = Color.White) },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        modifier = Modifier.clickable { onSwitchPlayerStyle(); onDismiss() }
                     )
                 }
                 if (onEqualizerClick != null) {

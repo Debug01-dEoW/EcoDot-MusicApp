@@ -687,13 +687,17 @@ private fun PlaylistTrackItem(
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .animatedClickable(onClick = onPlay)
-            .padding(horizontal = 20.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+    SwipeToQueueBox(
+        onAddToQueue = { viewModel.addToQueue(track) },
+        enabled = !isEditMode
     ) {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .animatedClickable(onClick = onPlay)
+                .padding(horizontal = 20.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
         // Index number or Playing Indicator
         if (isPlaying) {
             Box(modifier = Modifier.width(28.dp), contentAlignment = Alignment.CenterStart) {
@@ -819,6 +823,7 @@ private fun PlaylistTrackItem(
                 )
             }
         }
+    }
     }
 }
 

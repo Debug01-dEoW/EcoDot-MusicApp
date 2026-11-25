@@ -52,6 +52,8 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.HazeDefaults
 import dev.chrisbanes.haze.HazeStyle
 import kotlinx.coroutines.delay
+import com.example.ecodot.ui.components.UpdateDialog
+import com.example.ecodot.util.UpdateStatus
 
 val LocalHazeState = compositionLocalOf { HazeState() }
 
@@ -85,17 +87,50 @@ class MainActivity : ComponentActivity() {
 
             val dominantColor by viewModel.dominantColor.collectAsState()
             val accentColor by viewModel.accentColor.collectAsState()
+            val themeMode by viewModel.themeMode.collectAsState()
+            val themeColorSource by viewModel.themeColorSource.collectAsState()
+            val customThemeColorHex by viewModel.customThemeColorHex.collectAsState()
+            val liquidGlassEnabled by viewModel.liquidGlassEnabled.collectAsState()
+            val appContext = androidx.compose.ui.platform.LocalContext.current
 
-            EcoDotTheme(dominantColor = dominantColor, accentColor = accentColor) {
+            val resolvedAccent = remember(themeColorSource, customThemeColorHex, accentColor) {
+                when (themeColorSource) {
+                    com.example.ecodot.data.local.prefs.ThemeColorSource.ALBUM_ART -> accentColor
+                    com.example.ecodot.data.local.prefs.ThemeColorSource.SIMP_DEFAULT -> Color(0xFF9E8CFF)
+                    com.example.ecodot.data.local.prefs.ThemeColorSource.WALLPAPER -> {
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                            dynamicDarkColorScheme(appContext).primary
+                        } else {
+                            Color(0xFF9E8CFF)
+                        }
+                    }
+                    com.example.ecodot.data.local.prefs.ThemeColorSource.CUSTOM -> {
+                        com.example.ecodot.ui.screens.parseHexColor(customThemeColorHex) ?: Color(0xFF1ED760)
+                    }
+                }
+            }
+            val resolvedDominant = remember(themeColorSource, resolvedAccent, dominantColor) {
+                if (themeColorSource == com.example.ecodot.data.local.prefs.ThemeColorSource.ALBUM_ART) {
+                    dominantColor
+                } else {
+                    resolvedAccent
+                }
+            }
+
+            EcoDotTheme(
+                themeMode = themeMode,
+                dominantColor = resolvedDominant,
+                accentColor = resolvedAccent
+            ) {
                 val navController = rememberNavController()
                 val currentTrack by viewModel.currentTrack.collectAsState()
                 val isPlaying by viewModel.isPlaying.collectAsState()
                 val hasTrackLoaded by viewModel.hasTrackLoaded.collectAsState()
                 val isCurrentTrackLiked by viewModel.isCurrentTrackLiked.collectAsState()
 
-                // Smoothly animate ambient haze color as song changes
+                // Smoothly animate ambient haze color as song or theme changes
                 val animatedAmbient by animateColorAsState(
-                    targetValue = dominantColor.copy(alpha = 0.13f),
+                    targetValue = resolvedDominant.copy(alpha = 0.13f),
                     animationSpec = tween(durationMillis = 1400, easing = FastOutSlowInEasing),
                     label = "ambient_haze"
                 )
@@ -110,9 +145,8 @@ class MainActivity : ComponentActivity() {
                 val appBackdrop = rememberLayerBackdrop()
 
                 // Hardware back button handling
-                BackHandler(enabled = isNowPlayingVisible || isEqualizerVisible || isVideoPlayerVisible) {
+                BackHandler(enabled = isNowPlayingVisible || isEqualizerVisible) {
                     when {
-                        isVideoPlayerVisible -> isVideoPlayerVisible = false
                         isEqualizerVisible -> isEqualizerVisible = false
                         isNowPlayingVisible -> isNowPlayingVisible = false
                     }
@@ -144,13 +178,14 @@ class MainActivity : ComponentActivity() {
 
                 CompositionLocalProvider(
                     LocalHazeState provides appHazeState,
-                    com.example.ecodot.ui.components.LocalBackdrop provides appBackdrop,
+                    com.example.ecodot.ui.components.LocalLiquidGlassEnabled provides liquidGlassEnabled,
+                    com.example.ecodot.ui.components.LocalBackdrop provides if (liquidGlassEnabled) appBackdrop else null,
                     com.example.ecodot.ui.components.LocalTiltState provides deviceTilt
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color(0xFF000000))
+                            .background(MaterialTheme.colorScheme.background)
                     ) {
                         Box(
                             modifier = Modifier
@@ -236,10 +271,11 @@ class MainActivity : ComponentActivity() {
                                     HomeScreen(
                                         viewModel = viewModel,
                                         navController = navController,
+                                        onSettingsClick = { navController.navigate("settings") },
                                         onEqualizerClick = { isEqualizerVisible = true },
                                         onWatchVideo = {
                                             viewModel.setVideoMode(true)
-                                            isVideoPlayerVisible = true
+                                            isNowPlayingVisible = true
                                         },
                                         modifier = Modifier.fillMaxSize()
                                     )
@@ -258,8 +294,19 @@ class MainActivity : ComponentActivity() {
                                         modifier = Modifier.fillMaxSize(),
                                         onWatchVideo = {
                                             viewModel.setVideoMode(true)
-                                            isVideoPlayerVisible = true
+                                            isNowPlayingVisible = true
                                         }
+                                    )
+                                }
+                                composable("browse") {
+                                    com.example.ecodot.ui.screens.BrowseScreen(
+                                        viewModel = viewModel,
+                                        navController = navController,
+                                        onWatchVideo = {
+                                            viewModel.setVideoMode(true)
+                                            isNowPlayingVisible = true
+                                        },
+                                        modifier = Modifier.fillMaxSize()
                                     )
                                 }
                                 composable(
@@ -292,12 +339,20 @@ class MainActivity : ComponentActivity() {
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 }
+                                composable("settings") {
+                                    com.example.ecodot.ui.screens.SettingsScreen(
+                                        viewModel = viewModel,
+                                        onBack = { navController.popBackStack() },
+                                        onEqualizerClick = { isEqualizerVisible = true },
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
                             }
                         } // end Box (Page Content)
                     } // end Box (layerBackdrop & hazeSource)
 
                         // ── Floating Controls Layer (No black container — true floating over content) ──
-                        val showBottomBar = currentDestination in listOf("home", "library", "search", "artist/{artistId}", "album/{albumId}")
+                        val showBottomBar = currentDestination in listOf("home", "library", "search", "browse", "artist/{artistId}", "album/{albumId}")
                         AnimatedVisibility(
                             visible = showBottomBar && !isNowPlayingVisible,
                             enter = fadeIn(animationSpec = tween(200)),
@@ -382,14 +437,14 @@ class MainActivity : ComponentActivity() {
                         navController = navController,
                         onBackClick = { isNowPlayingVisible = false },
                         onEqualizerClick = { isEqualizerVisible = true },
-                        onWatchVideoClick = { isVideoPlayerVisible = true },
-                        isFullScreenVisible = isVideoPlayerVisible
+                        onWatchVideoClick = { },
+                        isFullScreenVisible = false
                     )
                 }
 
-                // ── Video Player Overlay ──────────────────────────
+                // ── Video Player Overlay (Disabled: unified player handles all video songs) ──
                 AnimatedVisibility(
-                    visible = isVideoPlayerVisible,
+                    visible = false,
                     enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
                     exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
                     modifier = Modifier.fillMaxSize()
@@ -468,6 +523,22 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                     }
+                }
+
+                // In-App Update Reminder & Dialog
+                val updateStatus by viewModel.updateStatus.collectAsState()
+                if (updateStatus is UpdateStatus.Available ||
+                    updateStatus is UpdateStatus.Downloading ||
+                    updateStatus is UpdateStatus.ReadyToInstall ||
+                    (updateStatus is UpdateStatus.Error && (updateStatus as UpdateStatus.Error).message.isNotEmpty())
+                ) {
+                    UpdateDialog(
+                        status = updateStatus,
+                        currentVersion = viewModel.appUpdateManager.currentVersionName,
+                        onDownloadClick = { info -> viewModel.downloadUpdate(info) },
+                        onInstallClick = { file -> viewModel.installUpdate(file) },
+                        onDismiss = { viewModel.dismissUpdate() }
+                    )
                 }
 
             } // end Root Box

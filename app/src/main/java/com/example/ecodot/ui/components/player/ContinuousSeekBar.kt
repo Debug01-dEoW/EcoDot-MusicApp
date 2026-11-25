@@ -1,12 +1,20 @@
 package com.example.ecodot.ui.components.player
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -39,13 +47,79 @@ import com.example.ecodot.ui.theme.poppinsFamily
 import kotlin.math.roundToInt
 
 @Composable
+fun rememberCrossfadeVisuals(isCrossfading: Boolean): Pair<Color, Float> {
+    val transition = if (isCrossfading) rememberInfiniteTransition(label = "crossfadeEffects") else null
+    val rainbowHue by transition?.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rainbowHue"
+    ) ?: remember { mutableFloatStateOf(0f) }
+    val shimmerSweep by transition?.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "crossfadeShimmer"
+    ) ?: remember { mutableFloatStateOf(0f) }
+    val activeColor by animateColorAsState(
+        targetValue = if (isCrossfading) Color.hsv(rainbowHue, 0.9f, 1f) else Color.White,
+        animationSpec = tween(250),
+        label = "crossfadeActiveColor"
+    )
+    return activeColor to shimmerSweep
+}
+
+@Composable
+fun CrossfadingShimmerLabel(
+    isCrossfading: Boolean,
+    shimmerSweep: Float,
+    fontSize: androidx.compose.ui.unit.TextUnit = 11.5.sp,
+    modifier: Modifier = Modifier
+) {
+    val alpha by animateFloatAsState(
+        targetValue = if (isCrossfading) 1f else 0f,
+        animationSpec = tween(250),
+        label = "crossfadeLabelAlpha"
+    )
+    if (alpha > 0.01f) {
+        val span = 140f
+        val head = shimmerSweep * (span * 3f) - span
+        Text(
+            text = "Crossfading",
+            fontSize = fontSize,
+            fontFamily = poppinsFamily,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            style = androidx.compose.ui.text.TextStyle(
+                brush = Brush.horizontalGradient(
+                    0f to Color.White.copy(alpha = 0.45f),
+                    0.5f to Color.White,
+                    1f to Color.White.copy(alpha = 0.45f),
+                    startX = head,
+                    endX = head + span,
+                    tileMode = TileMode.Clamp
+                )
+            ),
+            modifier = modifier.alpha(alpha)
+        )
+    }
+}
+
+@Composable
 fun ContinuousSeekBar(
     position: Long,
     duration: Long,
     accentColor: Color,
     onSeek: (Long) -> Unit,
     formatDuration: (Long) -> String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isCrossfading: Boolean = false
 ) {
     var isDragging by remember { mutableStateOf(false) }
     var dragProgress by remember { mutableFloatStateOf(0f) }
@@ -63,15 +137,20 @@ fun ContinuousSeekBar(
         label = "scrubber_height"
     )
 
-    // Thumb scale (0f -> 1f)
+    // Thumb scale (0.85f at rest -> 1.25f when dragging for pristine visibility)
     val thumbScale by animateFloatAsState(
-        targetValue = if (isDragging) 1f else 0.4f,
+        targetValue = if (isDragging) 1.25f else 0.85f,
         animationSpec = spring(dampingRatio = 0.7f, stiffness = 450f),
         label = "thumb_scale"
     )
 
-    val activeColor = Color.White
-    val inactiveTrackColor = Color.White.copy(alpha = 0.22f)
+    val (activeColor, shimmerSweep) = rememberCrossfadeVisuals(isCrossfading)
+    val secondaryActiveColor = if (isCrossfading) {
+        activeColor.copy(alpha = 0.78f)
+    } else {
+        activeColor.copy(alpha = 0.85f)
+    }
+    val inactiveTrackColor = Color.White.copy(alpha = 0.25f)
 
     var lastHapticStep by remember { mutableIntStateOf(0) }
 
@@ -175,13 +254,13 @@ fun ContinuousSeekBar(
                     cornerRadius = cornerRadius
                 )
 
-                // 2. Active Track Fill with subtle gradient
+                // 2. Active Track Fill with smooth rainbow sweep during crossfade
                 val activeWidth = (displayProgress * width).coerceIn(0f, width)
                 if (activeWidth > 0f) {
                     drawRoundRect(
                         brush = Brush.horizontalGradient(
                             colors = listOf(
-                                activeColor.copy(alpha = 0.85f),
+                                secondaryActiveColor,
                                 activeColor
                             ),
                             startX = 0f,
@@ -219,28 +298,37 @@ fun ContinuousSeekBar(
 
         Spacer(modifier = Modifier.height(2.dp))
 
-        // Time Elapsed / Remaining Row
-        Row(
+        // Time Elapsed / Crossfading Badge / Remaining Row
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 2.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            contentAlignment = Alignment.Center
         ) {
-            val displayPos = if (isDragging) (dragProgress * duration).toLong() else position
-            Text(
-                text = formatDuration(displayPos.coerceAtLeast(0L)),
-                fontSize = 11.5.sp,
-                color = Color.White.copy(alpha = 0.62f),
-                fontFamily = poppinsFamily,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                text = formatDuration(duration.coerceAtLeast(0L)),
-                fontSize = 11.5.sp,
-                color = Color.White.copy(alpha = 0.62f),
-                fontFamily = poppinsFamily,
-                fontWeight = FontWeight.Medium
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val displayPos = if (isDragging) (dragProgress * duration).toLong() else position
+                Text(
+                    text = formatDuration(displayPos.coerceAtLeast(0L)),
+                    fontSize = 11.5.sp,
+                    color = Color.White.copy(alpha = 0.62f),
+                    fontFamily = poppinsFamily,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = formatDuration(duration.coerceAtLeast(0L)),
+                    fontSize = 11.5.sp,
+                    color = Color.White.copy(alpha = 0.62f),
+                    fontFamily = poppinsFamily,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            CrossfadingShimmerLabel(
+                isCrossfading = isCrossfading,
+                shimmerSweep = shimmerSweep
             )
         }
     }

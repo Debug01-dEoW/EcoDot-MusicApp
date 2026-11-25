@@ -41,15 +41,31 @@ interface TrackDao {
         tracks.forEach { track ->
             val existing = getTrackById(track.id)
             if (existing != null) {
-                val path = if (!existing.isYouTube) existing.path else track.path
+                val genericAlbums = setOf("Cached", "Cache", "Up Next", "Unknown", "")
+                val incomingIsGeneric = track.album in genericAlbums
+                val existingIsYtVideo = existing.path.startsWith("ytvideo://", ignoreCase = true)
+                val incomingIsYtVideo = track.path.startsWith("ytvideo://", ignoreCase = true)
+
+                val path = when {
+                    !existing.isYouTube -> existing.path
+                    // Never allow generic background inserts ("Cached", "Up Next", "Unknown") to wipe out a persisted video path
+                    existingIsYtVideo && !incomingIsYtVideo && incomingIsGeneric -> existing.path
+                    else -> track.path
+                }
+                val album = when {
+                    existingIsYtVideo && path.startsWith("ytvideo://", ignoreCase = true) && incomingIsGeneric ->
+                        existing.album.takeIf { it !in genericAlbums } ?: "YouTube Video"
+                    existing.album !in genericAlbums && incomingIsGeneric -> existing.album
+                    else -> track.album
+                }
                 val isYouTube = if (!existing.isYouTube) false else track.isYouTube
                 updateTrackMetadata(
                     id = track.id,
-                    title = track.title,
-                    artist = track.artist,
-                    album = track.album,
+                    title = track.title.ifBlank { existing.title },
+                    artist = track.artist.takeIf { it.isNotBlank() && it != "Unknown" && it != "Unknown Artist" } ?: existing.artist,
+                    album = album,
                     albumArtUri = track.albumArtUri ?: existing.albumArtUri,
-                    isExplicit = track.isExplicit,
+                    isExplicit = track.isExplicit || existing.isExplicit,
                     artistId = track.artistId ?: existing.artistId,
                     albumId = track.albumId ?: existing.albumId,
                     duration = if (track.duration > 0L) track.duration else existing.duration,
@@ -76,4 +92,33 @@ interface TrackDao {
 
     @Query("UPDATE tracks SET canvasUrl = :canvasUrl WHERE id = :trackId")
     suspend fun updateCanvasUrl(trackId: String, canvasUrl: String?)
+
+    /**
+     * Fix stale DB entries: audio-only YouTube tracks (square googleusercontent album art)
+     * that were incorrectly saved with album = "YouTube Video" or view/like strings due to old parser bugs.
+     */
+    @Query("""
+        UPDATE tracks SET album = 'Unknown', path = 'https://www.youtube.com/watch?v=' || id
+        WHERE isYouTube = 1
+        AND (albumArtUri LIKE '%googleusercontent.com%' OR (albumArtUri NOT LIKE '%i.ytimg.com%' AND (path LIKE 'yt://%' OR path LIKE 'https://%')))
+        AND (album IN ('YouTube Video', 'Video', 'Music Video', 'Video Chart') OR LOWER(album) LIKE '%view%' OR LOWER(album) LIKE '%like%')
+    """)
+    suspend fun fixMisclassifiedAudioTracks()
+
+    /**
+     * Fix stale DB entries: YouTube Video tracks (16:9 i.ytimg.com thumbnails) that were
+     * previously stored with 'Up Next', 'Music Video', 'Video Chart', 'Cached', or view/like strings
+     * as their album and 'https://'/'yt://' instead of 'ytvideo://'.
+     */
+    @Query("""
+        UPDATE tracks SET album = 'YouTube Video', path = 'ytvideo://' || id
+        WHERE isYouTube = 1
+        AND albumArtUri LIKE '%i.ytimg.com/vi/%'
+        AND (
+            album IN ('Up Next', 'Music Video', 'Video Chart', 'Video', 'Cached', 'Cache', 'Unknown', '')
+            OR LOWER(album) LIKE '%views%'
+            OR LOWER(album) LIKE '%likes%'
+        )
+    """)
+    suspend fun fixMisclassifiedVideoTracks()
 }

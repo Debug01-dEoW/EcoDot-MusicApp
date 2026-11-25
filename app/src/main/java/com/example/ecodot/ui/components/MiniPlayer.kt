@@ -108,19 +108,11 @@ fun MiniPlayer(
             shadow = { Shadow(radius = 8.dp, color = Color.Black.copy(alpha = 0.22f)) },
             innerShadow = { InnerShadow(radius = 6.dp, alpha = 0.25f, color = Color.White) },
             effects = {
-                vibrancy()
+                blur(2.dp.toPx())
                 colorControls(
                     brightness = 0.04f,
                     contrast = 1.05f,
-                    saturation = 1.35f
-                )
-                // Minimal 1.5dp optical blur: eliminates cloudy blur haze while keeping pristine transparent glass
-                blur(1.5.dp.toPx())
-                lens(
-                    refractionHeight = 10.dp.toPx(),
-                    refractionAmount = 20.dp.toPx(),
-                    depthEffect = true,
-                    chromaticAberration = true
+                    saturation = 1.25f
                 )
             },
             onDrawSurface = {

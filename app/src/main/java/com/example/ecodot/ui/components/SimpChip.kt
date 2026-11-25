@@ -11,12 +11,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,23 +22,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ecodot.ui.theme.EcoDotRed
+import com.kyant.backdrop.Backdrop
 
 /**
- * Liquid Glass Filter Capsule (SimpMusic Style).
- * Uses tactile spring squashing on touch, specular glass rim, and smooth selection transition.
+ * SimpMusic-style Liquid Glass Filter Capsule.
+ *
+ * Selected chips stay an opaque high-contrast lavender pill (without reflowing icons) and show
+ * an optional animated sweep loading ring (`homeLoadingRing`) while results load. Unselected chips
+ * render live Liquid Glass over sibling [backdrop] when supplied.
  */
 @Composable
 fun SimpChip(
     isAnimated: Boolean = false,
     isSelected: Boolean = false,
     text: String,
+    backdrop: Backdrop? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -50,50 +48,38 @@ fun SimpChip(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else 1.0f,
-        animationSpec = spring(dampingRatio = 0.7f, stiffness = 600f),
+        targetValue = if (isPressed) 0.94f else 1.0f,
+        animationSpec = spring(dampingRatio = 0.72f, stiffness = 560f),
         label = "chip_scale"
     )
 
-    val chipShape = RoundedCornerShape(20.dp)
+    val chipShape = CircleShape
 
     val bgColor by animateColorAsState(
-        targetValue = if (isSelected) Color.White else Color(0x18FFFFFF),
+        targetValue = if (isSelected) Color(0xFFF0E3FF) else Color(0x1EFFFFFF),
         animationSpec = tween(180),
         label = "chip_bg"
     )
     val textColor by animateColorAsState(
-        targetValue = if (isSelected) Color(0xFF0F1016) else Color.White.copy(alpha = 0.78f),
+        targetValue = if (isSelected) Color(0xFF1A102B) else Color.White.copy(alpha = 0.90f),
         animationSpec = tween(180),
         label = "chip_text"
     )
-    val borderColor by animateColorAsState(
-        targetValue = if (isSelected) Color.Transparent else Color.White.copy(alpha = 0.16f),
-        animationSpec = tween(180),
-        label = "chip_border"
-    )
 
-    val rimBrush = if (isSelected) {
-        Brush.linearGradient(
-            colors = listOf(
-                Color.White,
-                Color.White.copy(alpha = 0.8f)
-            )
+    val glassSurfaceModifier = if (!isSelected && backdrop != null) {
+        Modifier.homeLiquidGlass(
+            backdrop = backdrop,
+            shape = chipShape,
+            surfaceTint = Color(0xFF1A1C28),
+            surfaceAlpha = 0.44f,
+            specularAlpha = 0.78f,
+            frostSheenAlpha = 0.16f,
+            blurDp = 10.dp,
+            pressedScaleTarget = 0.94f,
+            isPressed = isPressed
         )
     } else {
-        Brush.linearGradient(
-            colors = listOf(
-                Color.White.copy(alpha = 0.35f),
-                Color.White.copy(alpha = 0.08f),
-                Color.Black.copy(alpha = 0.20f)
-            ),
-            start = Offset(0f, 0f),
-            end = Offset(100f, 100f)
-        )
-    }
-
-    Box(
-        modifier = modifier
+        Modifier
             .scale(scale)
             .then(
                 if (isSelected) {
@@ -101,7 +87,7 @@ fun SimpChip(
                         elevation = 6.dp,
                         shape = chipShape,
                         clip = false,
-                        ambientColor = Color.Black.copy(alpha = 0.35f),
+                        ambientColor = Color(0xFFF0E3FF).copy(alpha = 0.28f),
                         spotColor = Color.Black.copy(alpha = 0.45f)
                     )
                 } else Modifier
@@ -110,9 +96,15 @@ fun SimpChip(
             .background(bgColor, chipShape)
             .border(
                 width = 0.85.dp,
-                brush = rimBrush,
+                color = if (isSelected) Color.White.copy(alpha = 0.80f) else Color.White.copy(alpha = 0.22f),
                 shape = chipShape
             )
+    }
+
+    Box(
+        modifier = modifier
+            .homeLoadingRing(enabled = isAnimated && isSelected, shape = chipShape)
+            .then(glassSurfaceModifier)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -122,14 +114,6 @@ fun SimpChip(
         contentAlignment = Alignment.Center
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (isSelected) {
-                Box(
-                    modifier = Modifier
-                        .size(5.dp)
-                        .background(EcoDotRed, CircleShape)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-            }
             Text(
                 text = text,
                 color = textColor,

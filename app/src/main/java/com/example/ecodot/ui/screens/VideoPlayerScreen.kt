@@ -56,6 +56,8 @@ import com.example.ecodot.ui.theme.EcoDotRed
 import com.example.ecodot.ui.theme.SimpIcons
 import com.example.ecodot.ui.theme.Pause
 import com.example.ecodot.ui.theme.PlayArrow
+import com.example.ecodot.ui.theme.Replay5
+import com.example.ecodot.ui.theme.Forward5
 import com.example.ecodot.ui.viewmodel.MusicViewModel
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.drawBackdrop
@@ -252,14 +254,14 @@ fun VideoPlayerScreen(
                         onDoubleTap = { offset ->
                             val width = size.width
                             if (offset.x < width * 0.35f) {
-                                // Double-tap left side: Rewind 10s
-                                val newPos = (position - 10000L).coerceAtLeast(0L)
+                                // Double-tap left side: Rewind 5s
+                                val newPos = (position - 5000L).coerceAtLeast(0L)
                                 viewModel.seekTo(newPos)
                                 doubleTapFeedback = "left"
                                 doubleTapCount++
                             } else if (offset.x > width * 0.65f) {
-                                // Double-tap right side: Forward 10s
-                                val newPos = (position + 10000L).coerceAtMost(duration)
+                                // Double-tap right side: Forward 5s
+                                val newPos = (position + 5000L).coerceAtMost(duration)
                                 viewModel.seekTo(newPos)
                                 doubleTapFeedback = "right"
                                 doubleTapCount++
@@ -293,13 +295,13 @@ fun VideoPlayerScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
-                        imageVector = Icons.Rounded.Replay10,
-                        contentDescription = "Rewind 10s",
+                        imageVector = SimpIcons.Replay5,
+                        contentDescription = "Rewind 5s",
                         tint = Color.White,
                         modifier = Modifier.size(36.dp)
                     )
                     Text(
-                        text = "-10s",
+                        text = "-5s",
                         color = Color.White,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
@@ -325,13 +327,13 @@ fun VideoPlayerScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
-                        imageVector = Icons.Rounded.Forward10,
-                        contentDescription = "Forward 10s",
+                        imageVector = SimpIcons.Forward5,
+                        contentDescription = "Forward 5s",
                         tint = Color.White,
                         modifier = Modifier.size(36.dp)
                     )
                     Text(
-                        text = "+10s",
+                        text = "+5s",
                         color = Color.White,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
@@ -611,11 +613,11 @@ fun VideoPlayerScreen(
                         )
                     }
 
-                    // Rewind 10s
-                    VideoGlassButton(size = 50, onClick = { viewModel.seekTo((position - 10000).coerceAtLeast(0)) }) {
+                    // Rewind 5s
+                    VideoGlassButton(size = 48, onClick = { viewModel.seekTo((position - 5000).coerceAtLeast(0)) }) {
                         Icon(
-                            imageVector = Icons.Rounded.Replay10,
-                            contentDescription = "Rewind 10s",
+                            imageVector = SimpIcons.Replay5,
+                            contentDescription = "Rewind 5s",
                             tint = Color.White,
                             modifier = Modifier.size(28.dp)
                         )
@@ -655,11 +657,11 @@ fun VideoPlayerScreen(
                         }
                     }
 
-                    // Forward 10s
-                    VideoGlassButton(size = 50, onClick = { viewModel.seekTo((position + 10000).coerceAtMost(duration)) }) {
+                    // Forward 5s
+                    VideoGlassButton(size = 48, onClick = { viewModel.seekTo((position + 5000).coerceAtMost(duration)) }) {
                         Icon(
-                            imageVector = Icons.Rounded.Forward10,
-                            contentDescription = "Forward 10s",
+                            imageVector = SimpIcons.Forward5,
+                            contentDescription = "Forward 5s",
                             tint = Color.White,
                             modifier = Modifier.size(28.dp)
                         )

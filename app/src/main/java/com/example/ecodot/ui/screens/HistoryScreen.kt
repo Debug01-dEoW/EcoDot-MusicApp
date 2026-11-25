@@ -265,13 +265,16 @@ fun HistoryTrackItem(
         )
     }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .animatedClickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+    SwipeToQueueBox(
+        onAddToQueue = { viewModel.addToQueue(track) }
     ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .animatedClickable(onClick = onClick)
+                .padding(horizontal = 24.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
         AsyncImage(
             model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
                 .data(track.albumArtUri)
@@ -374,5 +377,6 @@ fun HistoryTrackItem(
                 leadingIcon = { Icon(Icons.Rounded.FavoriteBorder, "Like", tint = EcoDotRed) }
             )
         }
+    }
     }
 }

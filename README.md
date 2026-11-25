@@ -1,157 +1,144 @@
 <div align="center">
 
-# 🎵 EcoDot
-### The Vibrant Hybrid Android Music Player with Liquid Glass Optics
+# 🎵 EcoDot 1.26v
 
-[![Android](https://img.shields.io/badge/Platform-Android%208.0%2B-brightgreen?logo=android)](https://developer.android.com)
-[![Kotlin](https://img.shields.io/badge/Language-Kotlin%202.x-blueviolet?logo=kotlin)](https://kotlinlang.org)
-[![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
-[![AGSL](https://img.shields.io/badge/Shaders-AGSL%20RuntimeShader-ff6f00?logo=opengl)](https://developer.android.com/guide/topics/graphics/agsl)
-[![Media3](https://img.shields.io/badge/Audio-AndroidX%20Media3%20/%20ExoPlayer-red)](https://developer.android.com/media/media3)
-[![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.2--liquid--glass-orange)](releases/EcoDot-v1.2-liquid-glass.apk)
+**A vibrant hybrid Android music & video player with realistic Liquid Glass optics, SimpMusic UI architecture, multi-style Now Playing experiences, and ad-free YouTube Music streaming.**
 
-<br/>
+**Made by [Debug01-dEoW aka Deep](https://github.com/Debug01-dEoW)**
 
-**[📥 Download Latest APK (v1.2 Liquid Glass)](releases/EcoDot-v1.2-liquid-glass.apk)**
+[![Release](https://img.shields.io/badge/Version-EcoDot%201.26v-10B981?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases)
+[![Made By](https://img.shields.io/badge/Made%20By-Debug01--dEoW%20aka%20Deep-6366F1?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Debug01-dEoW)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.2.10-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
+[![License](https://img.shields.io/badge/License-MIT-F59E0B?style=for-the-badge)](LICENSE)
 
-<br/>
-
-> **EcoDot** is a modern, high-performance hybrid music player bridging your **local audio library** and the entire **YouTube Music catalog** — wrapped in an ultra-realistic, physics-driven **Liquid Glass** design system inspired by Apple VisionOS and SimpMusic.
+[**Download APK (`EcoDot 1.26v.apk`)**](releases/EcoDot%201.26v.apk) · [**GitHub Releases**](https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases) · [**Developer Profile**](https://github.com/Debug01-dEoW)
 
 </div>
 
 ---
 
-## 🌟 Highlights & What's New in v1.2
+## ✨ What's New in EcoDot `1.26v`
 
-### 💧 Realistic Liquid Glass Optics (AGSL RuntimeShader)
-- **Optical Lens Refraction**: Curved edge refraction shaders distorting background elements with authentic glass depth.
-- **Chromatic Aberration & Dispersion**: Real-time prismatic color splitting along refractive boundaries.
-- **Vibrancy & Saturation Boost**: Prevents washed-out hazy fog; background colors shine through crystal-clear.
+EcoDot `1.26v` is a major visual and playback evolution pairing **Apple-inspired Liquid Glass optics** with **SimpMusic's architecture**, **real-time audio engineering telemetry**, and **continuous 1080p music video playback**.
 
-### 🧭 Gyroscope-Reactive Specular Rim
-- Reads device orientation vectors via `Sensor.TYPE_ROTATION_VECTOR` (with accelerometer fallback).
-- Silky smooth low-pass filtering (`0.15f`) ensures 60–120fps motion with zero jitter.
-- The directional highlight angle and specular border gradient physically shift across the MiniPlayer and navigation bar rims as you tilt the phone in your hand.
+### 🎨 Four Signature Now Playing Styles
+Switch seamlessly from the Player Style sheet or your User Profile (`Profile → Player Style`):
 
-### 🧭 SimpMusic Unified Collapsible Navigation & MiniPlayer
-- **Unified Single-Row Architecture (Media Active)**: When music is playing, the navigation bar collapses into a compact 54dp circular glass tab button on the left with the MiniPlayer taking the remaining width. Eliminates bulky vertical stacks and keeps your screen open for content browsing.
-- **Expanded Liquid Glass Capsule (Idle / Expanded)**: Features an elongated capsule holding Home and Library with an organic sliding frosted glass blob indicator, paired with a standalone 56dp circular glass Search FAB.
-- **Fluid Morphing Transitions**: Transitioning between states animates with spring-damped physics and liquid squash & stretch volume preservation.
-- **Authentic SimpMusic Explicit Vector Badge**: Embedded vector SimpIcons.Explicit icon for pristine high-DPI rendering, matching SimpMusic pixel-for-pixel.
-- **Fixed Marquee & Typography**: Added 2000ms delay and 40dp spacing to prevent duplicate text looping artifacts on short titles.
+| Style | Highlights |
+| :--- | :--- |
+| **Apple Music** | `6x6` dynamic artwork mesh backdrop + frosted Haze overlay, bare white header/controls, inline synced lyric teaser, double-arrow transport, interactive system volume bar, real-time **`kbps · kHz`** audio telemetry, SimpMusic 3-pill dock, device model label (`Build.MODEL`), and dedicated **Queue** (`Endless queue`) & **Lyrics** tabs |
+| **Vinyl Turntable** | 33⅓ RPM spinning tonearm & vinyl platter artwork (`VinylArtworkView`), analog groove lighting, speed-reactive play/pause rotation, and full queue controls |
+| **Spotify** | High-contrast obsidian surface cards, bold typography, inline lyrics card preview, and tactile playback bar |
+| **EcoDot Classic** | Frosted Liquid Glass centerpiece, waveform/continuous seekbar (`ContinuousSeekBar`), fullscreen & lockscreen synced lyrics, and video/audio toggle |
 
-### 🖼️ 3D Card Depth Parallax on Scroll
-- Carousel cards calculate their position relative to the viewport center during horizontal scrolling.
-- Cards angle inward (`rotationY = delta * -5.5f`, `cameraDistance = 14f * density`).
-- Album artwork inside the card shifts in reverse (`translationX = delta * 7.dp`) with an 8% bleed margin, giving tangible stereoscopic depth.
+### 🎬 Seamless Responsive Video Mode (`1080p`)
+- **Continuous Queue Transitions**: Skipping Next/Previous or picking tracks from the Queue while in Video Mode preserves active video playback seamlessly without pausing or dropping back to audio-only mode.
+- **Responsive Dual Surface**: Hardware-accelerated `TextureView` (`ResponsivePlayerVideoSurface`) and full-screen landscape/portrait gesture player (`FullscreenVideoPlayer`, `VideoPlayerScreen`) with live SRT/LRC subtitle overlay.
 
-### 🎙️ Fullscreen Lyrics with Dynamic Waveform Seekbar
-- Real-time vertical audio wave bars with glow cursor.
-- Interactive audio scrubbing directly on the waveform.
-- Synchronized time-stamped lyrics auto-scrolling with the music.
+### 🔊 Audio Engine, AutoMix & Real-Time Telemetry
+- **Live Stream Telemetry**: `YouTubeStreamResolver` and `EcoDotSessionService` expose live negotiated bitrate (`kbps`) and sample rate (`kHz`) directly in the Now Playing HUD (e.g., `140 kbps · 48 kHz`).
+- **High Quality Streams**: Supports **`High AAC` (up to `256 kbps` M4A/AAC)** and **High Opus** extraction via NewPipe Extractor (`v0.26.5`).
+- **AutoMix & DJ Crossfade**: Equal-power dual-deck Media3 ExoPlayer crossfade engine with custom PCM **`CrossfadeFilterAudioProcessor`** delivering low-pass / high-pass filter sweeps and beat-aware `Auto` fade scaling.
+- **SponsorBlock Integration**: Automatic segment skipping for intros, outros, music off-topic sections, and sponsorship reads (`SponsorBlockService`).
+- **Built-in Equalizer & Cache**: Parametric EQ presets (`EqualizerScreen`), smart track caching with configurable MB storage limit (`CacheManager`), and offline download management (`CachedSongsScreen`).
 
-### 🎵 100% Real Music & Artist Catalog
-- Completely eliminated placeholder stock photos.
-- **Quick Picks 4-Row Grid**: Instant access to real verified hits (*Die With A Smile*, *Starboy*, *The Hills*, *Chaleya*, *Sunflower*, *Tum Hi Ho*, etc.).
-- **Dynamic YouTube Shelves**: Real Hindi Hits, Global Charts, Top 100 Live Performances, and trending music videos.
-- **Mood Capsules**: Instant ambient background changes (Twilight Dusk, Electric Crimson, Golden Bokeh) with curated songs for *Relax*, *Workout*, *Focus*, and *Chill*.
+### 🧭 SimpMusic Home, Search, Browse & Profile
+- **Liquid Glass Home & Refresh**: Authentic top glass chips (`All`, `Moods`, `+`, Settings gear), pull-to-refresh YouTube Music recommendations, region/country chart switching (`RealHomeData`), crisp high-DPI cover art loading (filtering low-res blur artifacts), and deep-scroll **`BrowseScreen`** opened from `"More"` section headers.
+- **Categorized Search & Acoustic Recognition**: SimpMusic-style Search (`SearchScreen`, `SearchComponents`) with persistent history, category filters (`Songs`, `Videos`, `Albums`, `Artists`, `Playlists`), and a built-in **Shazam-style audio fingerprint recognizer** (`ShazamSignature`, `SongRecognizer`, `SongRecognitionBottomSheet`).
+- **Personalized User Profile**: Persistent local custom avatar picker, chunked genre preference chips, `2x2` gradient listening statistics grid, Top Tracks, Recently Played carousel, and one-tap **Player Style** switcher (`ProfileScreen`).
+- **SimpMusic Settings & In-App Updater**: Full categorized Settings (`SettingsScreen`), visual multi-category storage bar, theme accent color picker, and dual-source in-app updater (`AppUpdateManager` + `UpdateDialog`).
 
 ---
 
-## 📱 Features Overview
+## 🏗️ Architecture
 
-| Feature | Description |
-|---|---|
-| **YouTube Music Engine** | Stream any track, album, or playlist from YouTube Music without account login. |
-| **NewPipeExtractor Resolver** | High-bitrate audio streaming with client cipher decryption (bypasses n-sig throttling). |
-| **SponsorBlock Integration** | Automatically skips intros, outros, and non-music video sponsor segments. |
-| **Smart Offline Cache** | Cache played tracks automatically or download manually for offline listening. |
-| **Local Music Player** | Scans device storage, reads ID3 tags, and organizes albums, artists, and playlists. |
-| **Now Playing & MiniPlayer** | Seamless expandable player, gesture-based pull-to-dismiss, and compact liquid glass pill. |
-| **5-Band Equalizer** | Bass Boost, Virtualizer effect sliders, and customized audio presets. |
-| **Ringtone Clipper** | Built-in waveform audio cutter for creating custom ringtones. |
-
----
-
-## 🛠️ Architecture & Tech Stack
+EcoDot follows **Clean Architecture + MVVM** with **Koin** dependency injection, **Room** persistence, **Media3** background media session management, and **Jetpack Compose + Haze** rendering:
 
 ```mermaid
-flowchart TD
-    UI[Jetpack Compose UI\nHomeScreen, NowPlaying, Search, Library] --> VM[ViewModels\nHomeViewModel, MusicViewModel, SearchViewModel]
-    VM --> UC[Domain Use Cases\nGetHomeFeed, SearchMusic, GetLyrics, GetSponsorSegments]
-    UC --> Repo[MusicRepository\nIMusicRepository]
-    Repo --> Local[Room Database\nEcoDotDatabase & CacheManager]
-    Repo --> Remote[Remote Services\nYouTubeApiService, NewPipeDownloader, SponsorBlock]
-    Repo --> Player[Playback Engine\nEcoDotSessionService + AndroidX Media3 / ExoPlayer]
+graph TB
+    UI["Jetpack Compose UI · Liquid Glass & Haze<br/>(Home, Search, Browse, NowPlaying Styles, Profile, Settings)"] --> VM["ViewModels (Koin)<br/>MusicViewModel · HomeViewModel · SearchViewModel · AlbumViewModel · ArtistViewModel"]
+    VM --> UC["Domain Use Cases<br/>GetHomeFeed · SearchMusic · GetLyrics · GetSponsorSegments"]
+    UC --> REPO["MusicRepository (IMusicRepository)"]
+    REPO --> REMOTE["Remote Sources<br/>YouTubeParser · YouTubeStreamResolver · LyricsRepository · SponsorBlockService"]
+    REPO --> LOCAL["Room & DataStore<br/>EcoDotDatabase · UserPreferencesManager"]
+    VM --> SVC["EcoDotSessionService (Media3)<br/>Dual-Deck AutoMix · CrossfadeFilterAudioProcessor · Telemetry · CacheManager"]
+    UI --> REC["Acoustic Recognition<br/>SongRecognizer · ShazamSignature"]
 ```
-
-- **UI & Design**: Jetpack Compose, Material Design 3, Compose Navigation, Kyant Backdrop (AGSL Shaders), Chris Banes Haze.
-- **Language**: Kotlin 2.x (100% Coroutines, StateFlow, SharedFlow).
-- **Audio Engine**: AndroidX Media3 ExoPlayer, MediaSessionService, AudioEffectManager.
-- **Data & Storage**: Android Room Database, DataStore Preferences, OkHttp3, Retrofit.
-- **Image Pipeline**: Coil 2.x with crossfade transitions and memory caching.
 
 ---
 
-## 📂 Project Structure
+## 📁 Project Structure
 
 ```text
 EcoDot-MusicApp/
-├── app/
-│   ├── src/main/java/com/example/ecodot/
-│   │   ├── data/
-│   │   │   ├── local/          # Room entities, DAOs, Database
-│   │   │   ├── remote/         # InnerTube API, NewPipeDownloader, SponsorBlock
-│   │   │   └── repository/     # MusicRepository implementation
-│   │   ├── di/                 # Dependency injection modules
-│   │   ├── domain/             # Models and business logic use cases
-│   │   ├── playback/           # Media3 playback service & audio effects
-│   │   ├── ui/
-│   │   │   ├── components/     # LiquidGlass, SimpBottomNavigationBar, MiniPlayer, GlassTilt
-│   │   │   ├── screens/        # HomeScreen, NowPlayingScreen, SearchScreen, LibraryScreen
-│   │   │   ├── theme/          # Typography, Color, SimpIcons
-│   │   │   └── viewmodel/      # HomeViewModel, MusicViewModel, SearchViewModel
-│   │   └── MainActivity.kt     # App entry point & global composition providers
-│   └── src/main/java/com/kyant/ # Kyant Backdrop AGSL Shader Runtime
-└── releases/                   # Published standalone APK releases
+├── releases/
+│   ├── EcoDot 1.26v.apk                 # Latest EcoDot 1.26v build
+│   ├── EcoDot-v1.2-liquid-glass.apk     # Previous v1.2 build
+│   └── EcoDot-v1.0-beta.apk             # Initial beta release
+├── version.json                         # Remote update manifest read by AppUpdateManager
+├── gradle/libs.versions.toml            # Version catalog (AGP 9.2.1, Kotlin 2.2.10, Media3 1.5.1)
+└── app/src/main/
+    ├── assets/version.json              # Offline fallback update manifest
+    ├── res/layout/responsive_player_video_view.xml
+    └── java/com/example/ecodot/
+        ├── EcoDotApplication.kt & MainActivity.kt
+        ├── data/
+        │   ├── local/{dao,database,entities,prefs}/
+        │   ├── remote/                  # YouTubeParser, StreamResolver, RealHomeData, Lyrics, SponsorBlock
+        │   └── repository/MusicRepository.kt
+        ├── di/                          # App, Database, Network, Repository, UseCase, ViewModel modules
+        ├── domain/{model,repository,usecase}/
+        ├── playback/                    # EcoDotSessionService, AudioEffectManager, CrossfadeFilterAudioProcessor, CacheManager
+        ├── recognition/                 # ShazamSignature, SongRecognizer
+        ├── ui/
+        │   ├── components/              # LiquidGlass, GlassTilt, SimpBottomNavigationBar, MiniPlayer, HomeComponents, SearchComponents, UpdateDialog, etc.
+        │   ├── components/player/       # AppleMusicStyleContent, VinylStyleContent, SpotifyStyleContent, ResponsivePlayerVideoSurface, PlayerStyleUtils, FullScreenLyricsView, etc.
+        │   ├── screens/                 # HomeScreen, SearchScreen, BrowseScreen, NowPlayingScreen, VideoPlayerScreen, ProfileScreen, SettingsScreen, LibraryScreen, etc.
+        │   ├── theme/                   # Color, SimpIcons, Theme, Type
+        │   └── viewmodel/               # MusicViewModel, HomeViewModel, SearchViewModel, AlbumViewModel, ArtistViewModel
+        └── util/                        # AppUpdateManager, AppUpdateModel, NetworkMonitor, PermissionHandler, PlaylistCustomization
 ```
 
 ---
 
-## 🚀 Building & Running
+## 📥 Installation & Build
 
-### Prerequisites
-- **Android Studio Meerkat** (2024.3+) or newer
-- **JDK 17** or **JDK 21**
-- Physical Android device running **Android 8.0+ (API 26+)** recommended for AGSL RuntimeShader support
+### Install the APK
+1. Download [**`EcoDot 1.26v.apk`**](releases/EcoDot%201.26v.apk) (or visit [**Releases**](https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases)).
+2. Enable **"Install from unknown sources"** on your Android device (**Android 7.0 / API 24+** required, targets API 37).
+3. Open the APK and enjoy!
 
-### Clone & Build
+### Build from Source
 ```bash
-# Clone the repository
 git clone https://github.com/Debug01-dEoW/EcoDot-MusicApp.git
-
-# Navigate to project folder
 cd EcoDot-MusicApp
 
-# Build debug APK
-./gradlew assembleDebug
+# Run unit test suite
+./gradlew testDebugUnitTest
 
-# Install on connected device via ADB
-./gradlew installDebug
+# Build EcoDot 1.26v APK
+./gradlew assembleDebug
 ```
+
+---
+
+## 👨‍💻 Author & Credits
+
+<div align="center">
+
+### **Made by Debug01-dEoW aka Deep**
+
+[![GitHub Profile](https://img.shields.io/badge/GitHub-Debug01--dEoW-181717?style=for-the-badge&logo=github)](https://github.com/Debug01-dEoW)
+[![Repository](https://img.shields.io/badge/Repo-EcoDot--MusicApp-0EA5E9?style=for-the-badge&logo=git&logoColor=white)](https://github.com/Debug01-dEoW/EcoDot-MusicApp)
+[![Releases](https://img.shields.io/badge/Releases-Download%20APKs-10B981?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases)
+
+UI/UX inspiration from **SimpMusic**, **Apple Music**, and **Spotify**, built with **Jetpack Compose**, **Media3 ExoPlayer**, **Haze Liquid Glass**, and **NewPipe Extractor**.
+
+</div>
 
 ---
 
 ## 📄 License
 
-Distributed under the **MIT License**. See `LICENSE` for more information.
-
-<div align="center">
-
-Crafted with ❤️ using **Jetpack Compose** & **Kotlin**
-
-**EcoDot** — *Music Without Boundaries*
-
-</div>
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.

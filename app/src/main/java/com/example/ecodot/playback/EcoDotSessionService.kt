@@ -48,8 +48,22 @@ class EcoDotSessionService : MediaSessionService() {
 
     private var activePlayerIndex = 0
     private val players = arrayOfNulls<ExoPlayer>(2)
+    private val filterProcessors = arrayOfNulls<CrossfadeFilterAudioProcessor>(2)
     private var crossfadeMonitorJob: Job? = null
+    private var crossfadeJob: Job? = null
+    private var stagingJob: Job? = null
+    private var stagedDeckIndex: Int? = null
+    private var stagedTargetMediaId: String? = null
+    private var activeCrossfadeIncomingId: String? = null
+    @Volatile
     private var isCrossfading = false
+
+    private val musicAudioAttributes: AudioAttributes by lazy {
+        AudioAttributes.Builder()
+            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+            .setUsage(C.USAGE_MEDIA)
+            .build()
+    }
 
     // ── SponsorBlock State ──
     private var sponsorBlockJob: Job? = null
@@ -83,11 +97,27 @@ class EcoDotSessionService : MediaSessionService() {
         const val ACTION_SET_EQ_BAND     = "SET_EQ_BAND"
         const val ACTION_SET_VIRTUALIZER = "SET_VIRTUALIZER"
         const val ACTION_SET_EQ_ENABLED  = "SET_EQ_ENABLED"
+        const val ACTION_SET_SKIP_SILENCE = "SET_SKIP_SILENCE"
+        const val ACTION_SET_NORMALIZE_VOLUME = "SET_NORMALIZE_VOLUME"
+        const val ACTION_REFRESH_SPONSOR_SEGMENTS = "REFRESH_SPONSOR_SEGMENTS"
+        const val ACTION_CLEAR_URL_CACHE = "CLEAR_URL_CACHE"
         const val ACTION_UPDATE_QUEUE    = "UPDATE_QUEUE"
         const val ACTION_UPDATE_INDEX    = "UPDATE_INDEX"
         const val ACTION_SET_SLEEP_TIMER = "SET_SLEEP_TIMER"
         const val ACTION_CANCEL_SLEEP_TIMER = "CANCEL_SLEEP_TIMER"
+        const val EXTRA_IS_CROSSFADING = "is_crossfading"
+        const val EXTRA_CROSSFADE_DURATION_MS = "crossfade_duration_ms"
+        const val EXTRA_STREAM_BITRATE_BPS = "stream_bitrate_bps"
+        const val EXTRA_STREAM_SAMPLE_RATE_HZ = "stream_sample_rate_hz"
+        const val EXTRA_STREAM_MIME_TYPE = "stream_mime_type"
+        const val EXTRA_STREAM_CODECS = "stream_codecs"
     }
+
+    @Volatile private var lastCrossfadeDurationMs: Long = 0L
+    @Volatile private var lastStreamBitrateBps: Int = 0
+    @Volatile private var lastStreamSampleRateHz: Int = 0
+    @Volatile private var lastStreamMimeType: String? = null
+    @Volatile private var lastStreamCodecs: String? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -118,22 +148,24 @@ class EcoDotSessionService : MediaSessionService() {
                         }
                         
                         // Check in-memory URL cache first (avoids blocking network call)
-                        val cacheKey = "${videoId}_${isVideo}"
+                        val activeQuality = prefsManager.audioQuality
+                        val cacheKey = "${videoId}_${isVideo}_${activeQuality.name}"
+                        val diskCacheKey = diskCacheKeyFor(videoId, isVideo, activeQuality)
                         val cached = urlCache[cacheKey]
                         if (cached != null && System.currentTimeMillis() - cached.timestamp < URL_CACHE_TTL_MS) {
                             prefsManager.addCachedTrackId(videoId)
                             return dataSpec.buildUpon()
                                 .setUri(android.net.Uri.parse(cached.url))
-                                .setKey(videoId)
+                                .setKey(diskCacheKey)
                                 .build()
                         }
-                        
+
                         // Cache miss — resolve with timeout to prevent indefinite thread blocking
                         val streamUrl = runBlocking(Dispatchers.IO) {
                             withTimeoutOrNull(8000L) {
                                 repository.getYouTubeStreamUrl(
                                     videoId = videoId,
-                                    quality = prefsManager.audioQuality,
+                                    quality = activeQuality,
                                     videoQuality = prefsManager.videoQuality,
                                     isVideo = isVideo
                                 )
@@ -144,7 +176,7 @@ class EcoDotSessionService : MediaSessionService() {
                             prefsManager.addCachedTrackId(videoId)
                             return dataSpec.buildUpon()
                                 .setUri(android.net.Uri.parse(streamUrl))
-                                .setKey(videoId)
+                                .setKey(diskCacheKey)
                                 .build()
                         }
                     }
@@ -164,10 +196,22 @@ class EcoDotSessionService : MediaSessionService() {
             .setDataSourceFactory(cacheDataSourceFactory)
 
         val sharedSessionId = C.generateAudioSessionIdV21(this)
-        players[0] = buildPlayer(mediaSourceFactory, sharedSessionId)
-        players[1] = buildPlayer(mediaSourceFactory, sharedSessionId)
+        val fp0 = CrossfadeFilterAudioProcessor()
+        val fp1 = CrossfadeFilterAudioProcessor()
+        filterProcessors[0] = fp0
+        filterProcessors[1] = fp1
+        players[0] = buildPlayer(mediaSourceFactory, sharedSessionId, fp0, handleAudioFocus = true)
+        players[1] = buildPlayer(mediaSourceFactory, sharedSessionId, fp1, handleAudioFocus = false)
 
-        effectManager = AudioEffectManager(this, players[0]!!.audioSessionId)
+        effectManager = AudioEffectManager(this, players[0]!!.audioSessionId).apply {
+            setEnabled(prefsManager.equalizerEnabled)
+            setNormalizeVolume(prefsManager.normalizeVolume)
+            setVirtualizerStrength(prefsManager.virtualizerStrength.toShort())
+            val savedPreset = com.example.ecodot.domain.model.DEFAULT_EQ_PRESETS.find { it.name == prefsManager.selectedEqPreset }
+            savedPreset?.bands?.forEachIndexed { idx, level ->
+                setBandLevel(idx.toShort(), level.toShort())
+            }
+        }
 
         mediaSession = MediaSession.Builder(this, players[0]!!)
             .setCallback(CommandCallback())
@@ -184,7 +228,12 @@ class EcoDotSessionService : MediaSessionService() {
     }
 
     @OptIn(UnstableApi::class)
-    private fun buildPlayer(mediaSourceFactory: MediaSourceFactory, sessionId: Int): ExoPlayer {
+    private fun buildPlayer(
+        mediaSourceFactory: MediaSourceFactory,
+        sessionId: Int,
+        filterProcessor: CrossfadeFilterAudioProcessor,
+        handleAudioFocus: Boolean
+    ): ExoPlayer {
         val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
             .setBufferDurationsMs(
                 30_000, // Increased min buffer to 30s to withstand CPU spikes
@@ -194,20 +243,40 @@ class EcoDotSessionService : MediaSessionService() {
             )
             .build()
 
+        val renderersFactory = object : androidx.media3.exoplayer.DefaultRenderersFactory(this) {
+            override fun buildAudioSink(
+                context: android.content.Context,
+                enableFloatOutput: Boolean,
+                enableAudioTrackPlaybackParams: Boolean
+            ): androidx.media3.exoplayer.audio.AudioSink {
+                return androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context)
+                    .setEnableFloatOutput(enableFloatOutput)
+                    .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                    .setAudioProcessors(arrayOf(filterProcessor))
+                    .build()
+            }
+        }
+
+        val trackSelector = androidx.media3.exoplayer.trackselection.DefaultTrackSelector(this).apply {
+            setParameters(
+                buildUponParameters()
+                    .setMaxVideoSize(3840, 2160) // Up to 4K / 1080p HD
+                    .setMaxVideoBitrate(Int.MAX_VALUE)
+                    .setForceHighestSupportedBitrate(true) // Always lock into 1080p full resolution video track
+            )
+        }
+
         return ExoPlayer.Builder(this)
+            .setRenderersFactory(renderersFactory)
+            .setTrackSelector(trackSelector)
             .setMediaSourceFactory(mediaSourceFactory)
             .setLoadControl(loadControl)
             .setWakeMode(C.WAKE_MODE_NETWORK) // Prevent CPU/WiFi sleep in background
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                    .setUsage(C.USAGE_MEDIA)
-                    .build(),
-                true
-            )
+            .setAudioAttributes(musicAudioAttributes, handleAudioFocus)
             .setHandleAudioBecomingNoisy(true)
             .build().apply {
                 setAudioSessionId(sessionId)
+                skipSilenceEnabled = prefsManager.skipSilent
                 addListener(object : Player.Listener {
                     override fun onAudioSessionIdChanged(audioSessionId: Int) {
                         if (players[activePlayerIndex] == null || players[activePlayerIndex] == this@apply) {
@@ -216,79 +285,14 @@ class EcoDotSessionService : MediaSessionService() {
                     }
                     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                         if (players[activePlayerIndex] == this@apply) {
-                            val trackId = mediaItem?.mediaId
-                            if (trackId != null) {
-                                prefsManager.addCachedTrackId(trackId)
-                                serviceScope.launch(Dispatchers.IO) {
-                                    try {
-                                        val title = mediaItem.mediaMetadata.title?.toString() ?: "Unknown Title"
-                                        val artist = mediaItem.mediaMetadata.artist?.toString() ?: "Unknown Artist"
-                                        val artUri = mediaItem.mediaMetadata.artworkUri?.toString()
-                                        val db = EcoDotDatabase.getInstance(this@EcoDotSessionService)
-                                        if (db.trackDao().getTrackById(trackId) == null) {
-                                            db.trackDao().insertTracks(listOf(
-                                                Track(
-                                                    id = trackId,
-                                                    title = title,
-                                                    artist = artist,
-                                                    album = "Cached",
-                                                    duration = 0L,
-                                                    path = "yt://$trackId",
-                                                    albumArtUri = artUri,
-                                                    isYouTube = true
-                                                )
-                                            ))
-                                        }
-                                    } catch (e: Exception) {
-                                        // ignore
-                                    }
-                                }
-                            }
-                            if (trackId != currentPlayingTrackId) {
-                                currentPlayingTrackId = trackId
-                                isCrossfading = false // Reset lock on transition
-                                updateNotification()
-
-                                // Load and inject artwork bytes for full-bleed notification
-                                mediaItem?.let { loadArtworkBytesAndInject(it) }
-
-                                // Load lyrics and reset state for notification updater
-                                if (mediaItem != null) {
-                                    val title = mediaItem.mediaMetadata.title?.toString() ?: ""
-                                    val artist = mediaItem.mediaMetadata.artist?.toString() ?: ""
-                                    originalArtistName = artist
-                                    originalTitle = title
-                                    loadLyricsForUpdater(
-                                        trackId = mediaItem.mediaId,
-                                        title = title,
-                                        artist = artist,
-                                        duration = duration
-                                    )
-                                    loadSponsorSegments(mediaItem.mediaId)
-                                }
-
-                                // Prefetch the next track in queue to avoid runBlocking network delays during transition
-                                val nextIndex = currentMediaItemIndex + 1
-                                if (nextIndex < mediaItemCount) {
-                                    val nextItem = getMediaItemAt(nextIndex)
-                                    preFetchStreamUrl(nextItem.mediaId)
-                                }
-
-                                // Check and handle sleep timer end of track transition
-                                if (isSleepTimerAtEndOfTrack) {
-                                    pause()
-                                    isSleepTimerAtEndOfTrack = false
-                                    val prefs = getSharedPreferences("sleep_timer_prefs", android.content.Context.MODE_PRIVATE)
-                                    prefs.edit().clear().apply()
-                                    Log.d(TAG, "Sleep Timer: Paused playback at the end of track.")
-                                }
-                            }
+                            onTrackActivated(this@apply, mediaItem)
                         }
                     }
                     override fun onIsPlayingChanged(isPlaying: Boolean) {
                         if (players[activePlayerIndex] == this@apply) {
                             if (isPlaying) {
                                 startLyricsNotificationUpdater()
+                                publishAudioTelemetryFor(this@apply)
                             } else {
                                 lyricsUpdaterJob?.cancel()
                                 lyricsUpdaterJob = null
@@ -298,10 +302,21 @@ class EcoDotSessionService : MediaSessionService() {
                     override fun onPlaybackStateChanged(state: Int) {
                         if (players[activePlayerIndex] == this@apply) {
                             updateNotification()
+                            if (state == Player.STATE_READY) {
+                                publishAudioTelemetryFor(this@apply)
+                            }
+                        }
+                    }
+                    override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+                        if (players[activePlayerIndex] == this@apply) {
+                            publishAudioTelemetryFor(this@apply)
                         }
                     }
                     override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                         Log.e(TAG, "Player error: ${error.message}")
+                        if (stagedDeckIndex != null && players[stagedDeckIndex!!] == this@apply) {
+                            clearStagedCrossfade()
+                        }
                     }
                     override fun onShuffleModeEnabledChanged(enabled: Boolean) = updateNotification()
                     override fun onRepeatModeChanged(mode: Int) = updateNotification()
@@ -309,21 +324,107 @@ class EcoDotSessionService : MediaSessionService() {
             }
     }
 
-    private fun preFetchStreamUrl(videoId: String) {
-        val cacheKey = "${videoId}_false"
+    private fun onTrackActivated(player: ExoPlayer, mediaItem: MediaItem?) {
+        val trackId = mediaItem?.mediaId ?: return
+        val isVideoItem = mediaItem.localConfiguration?.uri?.scheme == "ytvideo"
+        prefsManager.addCachedTrackId(trackId)
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                val title = mediaItem.mediaMetadata.title?.toString() ?: "Unknown Title"
+                val artist = mediaItem.mediaMetadata.artist?.toString() ?: "Unknown Artist"
+                val artUri = mediaItem.mediaMetadata.artworkUri?.toString()
+                val db = EcoDotDatabase.getInstance(this@EcoDotSessionService)
+                if (db.trackDao().getTrackById(trackId) == null) {
+                    db.trackDao().insertTracks(
+                        listOf(
+                            Track(
+                                id = trackId,
+                                title = title,
+                                artist = artist,
+                                album = if (isVideoItem) "YouTube Video" else "Cached",
+                                duration = 0L,
+                                path = if (isVideoItem) "ytvideo://$trackId" else "yt://$trackId",
+                                albumArtUri = artUri,
+                                isYouTube = true
+                            )
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                // ignore
+            }
+        }
+        if (trackId != currentPlayingTrackId) {
+            currentPlayingTrackId = trackId
+            // If user manually switched tracks mid-crossfade, abort the blend cleanly
+            if (isCrossfading && trackId != activeCrossfadeIncomingId) {
+                abortCrossfade(keepActivePlayer = true)
+            } else if (!isCrossfading && stagedTargetMediaId != trackId) {
+                clearStagedCrossfade()
+            }
+            updateNotification()
+
+            // Load and inject artwork bytes for full-bleed notification
+            loadArtworkBytesAndInject(mediaItem)
+
+            // Load lyrics and reset state for notification updater
+            val title = mediaItem.mediaMetadata.title?.toString() ?: ""
+            val artist = mediaItem.mediaMetadata.artist?.toString() ?: ""
+            originalArtistName = artist
+            originalTitle = title
+            loadLyricsForUpdater(
+                trackId = mediaItem.mediaId,
+                title = title,
+                artist = artist,
+                duration = player.duration
+            )
+            loadSponsorSegments(mediaItem.mediaId)
+
+            // Prefetch the next track in queue to avoid runBlocking network delays during transition
+            val nextIndex = player.nextMediaItemIndex
+            if (nextIndex != C.INDEX_UNSET && nextIndex in 0 until player.mediaItemCount) {
+                val nextItem = player.getMediaItemAt(nextIndex)
+                val nextIsVideo = nextItem.localConfiguration?.uri?.scheme == "ytvideo"
+                preFetchStreamUrl(nextItem.mediaId, nextIsVideo)
+            }
+
+            // Check and handle sleep timer end of track transition
+            if (isSleepTimerAtEndOfTrack) {
+                player.pause()
+                isSleepTimerAtEndOfTrack = false
+                val prefs = getSharedPreferences("sleep_timer_prefs", android.content.Context.MODE_PRIVATE)
+                prefs.edit().clear().apply()
+                Log.d(TAG, "Sleep Timer: Paused playback at the end of track.")
+            }
+        }
+    }
+
+    private fun diskCacheKeyFor(
+        videoId: String,
+        isVideo: Boolean,
+        quality: com.example.ecodot.data.local.prefs.AudioQuality
+    ): String = when {
+        isVideo -> "ytvideo_$videoId"
+        quality == com.example.ecodot.data.local.prefs.AudioQuality.HIGH -> "yt_$videoId"
+        else -> "yt_${videoId}_${quality.name.lowercase()}"
+    }
+
+    private fun preFetchStreamUrl(videoId: String, isVideo: Boolean = false) {
+        val activeQuality = prefsManager.audioQuality
+        val cacheKey = "${videoId}_${isVideo}_${activeQuality.name}"
         if (urlCache.containsKey(cacheKey)) return // Already cached
 
         serviceScope.launch(Dispatchers.IO) {
             try {
                 val streamUrl = repository.getYouTubeStreamUrl(
                     videoId = videoId,
-                    quality = prefsManager.audioQuality,
+                    quality = activeQuality,
                     videoQuality = prefsManager.videoQuality,
-                    isVideo = false
+                    isVideo = isVideo
                 )
                 if (streamUrl != null) {
                     urlCache[cacheKey] = CachedUrl(streamUrl, System.currentTimeMillis())
-                    Log.d(TAG, "Pre-fetched stream URL for next track: $videoId")
+                    Log.d(TAG, "Pre-fetched stream URL for next track: $videoId (isVideo=$isVideo, q=$activeQuality)")
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to pre-fetch stream URL for: $videoId", e)
@@ -334,18 +435,21 @@ class EcoDotSessionService : MediaSessionService() {
     private var lastPreCachedTrackId: String? = null
 
     @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-    private fun preCacheTrack(videoId: String) {
-        if (lastPreCachedTrackId == videoId) return
-        lastPreCachedTrackId = videoId
+    private fun preCacheTrack(videoId: String, isVideo: Boolean = false) {
+        if (isVideo) return // Video streams use adaptive HLS/MPD segments rather than single audio byte pre-cache
+        val activeQuality = prefsManager.audioQuality
+        val preCacheToken = "${videoId}_${activeQuality.name}"
+        if (lastPreCachedTrackId == preCacheToken) return
+        lastPreCachedTrackId = preCacheToken
 
         serviceScope.launch(Dispatchers.IO) {
             try {
-                val cacheKey = "${videoId}_false"
+                val cacheKey = "${videoId}_false_${activeQuality.name}"
                 var streamUrl = urlCache[cacheKey]?.url
                 if (streamUrl == null) {
                     streamUrl = repository.getYouTubeStreamUrl(
                         videoId = videoId,
-                        quality = prefsManager.audioQuality,
+                        quality = activeQuality,
                         videoQuality = prefsManager.videoQuality,
                         isVideo = false
                     )
@@ -355,7 +459,7 @@ class EcoDotSessionService : MediaSessionService() {
                 }
 
                 if (streamUrl != null) {
-                    Log.d(TAG, "Pre-caching bytes for next track: $videoId")
+                    Log.d(TAG, "Pre-caching bytes for next track: $videoId ($activeQuality)")
                     val cache = CacheManager.getCache(this@EcoDotSessionService)
                     val upstream = androidx.media3.datasource.DefaultHttpDataSource.Factory()
                         .setAllowCrossProtocolRedirects(true)
@@ -369,7 +473,7 @@ class EcoDotSessionService : MediaSessionService() {
                     
                     val dataSpec = androidx.media3.datasource.DataSpec.Builder()
                         .setUri(android.net.Uri.parse(streamUrl))
-                        .setKey("yt_$videoId")
+                        .setKey(diskCacheKeyFor(videoId, isVideo = false, quality = activeQuality))
                         .setLength(1024 * 1024 * 3 / 2) // Cache first 1.5 MB
                         .build()
 
@@ -388,21 +492,184 @@ class EcoDotSessionService : MediaSessionService() {
         }
     }
 
+    private fun assignAudioFocusTo(targetIndex: Int) {
+        players[targetIndex]?.setAudioAttributes(musicAudioAttributes, true)
+        players[1 - targetIndex]?.setAudioAttributes(musicAudioAttributes, false)
+    }
+
+    private fun publishCrossfadeState(active: Boolean, durationMs: Long = 0L) {
+        isCrossfading = active
+        lastCrossfadeDurationMs = durationMs
+        if (!active) {
+            activeCrossfadeIncomingId = null
+        }
+        emitSessionExtras()
+    }
+
+    @OptIn(UnstableApi::class)
+    private fun publishAudioTelemetryFor(player: ExoPlayer) {
+        val mediaId = player.currentMediaItem?.mediaId
+        val selectedTrackFormat = player.currentTracks.groups
+            .firstOrNull { it.type == C.TRACK_TYPE_AUDIO && it.isSelected }
+            ?.let { group ->
+                (0 until group.length)
+                    .firstOrNull { group.isTrackSelected(it) }
+                    ?.let { group.getTrackFormat(it) }
+            }
+        val decoderAudioFormat = player.audioFormat
+        val resolverMeta = mediaId?.let {
+            com.example.ecodot.data.remote.YouTubeStreamResolver.resolvedAudioTelemetry[it]
+        }
+
+        val sampleRate = decoderAudioFormat?.sampleRate?.takeIf { it > 0 }
+            ?: selectedTrackFormat?.sampleRate?.takeIf { it > 0 }
+            ?: resolverMeta?.sampleRateHz
+            ?: 0
+
+        var bitrate = selectedTrackFormat?.bitrate?.takeIf { it > 0 }
+            ?: selectedTrackFormat?.averageBitrate?.takeIf { it > 0 }
+            ?: decoderAudioFormat?.bitrate?.takeIf { it > 0 }
+            ?: resolverMeta?.bitrateBps
+            ?: 0
+
+        if (bitrate <= 0 && mediaId != null && player.duration > 0) {
+            val uriStr = player.currentMediaItem?.localConfiguration?.uri?.toString().orEmpty()
+            val localPath = when {
+                uriStr.startsWith("file://") -> android.net.Uri.parse(uriStr).path
+                uriStr.startsWith("/") -> uriStr
+                else -> File(getExternalFilesDir(Environment.DIRECTORY_MUSIC), "$mediaId.m4a")
+                    .takeIf { it.exists() }?.absolutePath
+            }
+            if (localPath != null) {
+                val f = File(localPath)
+                if (f.exists() && f.length() > 0L) {
+                    bitrate = ((f.length() * 8L * 1000L) / player.duration).toInt()
+                }
+            }
+        }
+
+        lastStreamBitrateBps = bitrate
+        lastStreamSampleRateHz = sampleRate
+        lastStreamMimeType = selectedTrackFormat?.sampleMimeType ?: decoderAudioFormat?.sampleMimeType
+        lastStreamCodecs = selectedTrackFormat?.codecs ?: decoderAudioFormat?.codecs ?: resolverMeta?.codec
+        emitSessionExtras()
+    }
+
+    private fun emitSessionExtras() {
+        val extras = Bundle().apply {
+            putBoolean(EXTRA_IS_CROSSFADING, isCrossfading)
+            putLong(EXTRA_CROSSFADE_DURATION_MS, lastCrossfadeDurationMs)
+            putInt(EXTRA_STREAM_BITRATE_BPS, lastStreamBitrateBps)
+            putInt(EXTRA_STREAM_SAMPLE_RATE_HZ, lastStreamSampleRateHz)
+            putString(EXTRA_STREAM_MIME_TYPE, lastStreamMimeType)
+            putString(EXTRA_STREAM_CODECS, lastStreamCodecs)
+        }
+        mediaSession?.setSessionExtras(extras)
+    }
+
+    private fun getNextCrossfadeIndex(player: ExoPlayer): Int? {
+        if (player.repeatMode == Player.REPEAT_MODE_ONE) return null
+        val next = player.nextMediaItemIndex
+        return if (next != C.INDEX_UNSET && next in 0 until player.mediaItemCount) next else null
+    }
+
+    private fun shouldSkipCrossfade(activePlayer: ExoPlayer, nextIndex: Int, durationMs: Long): Boolean {
+        if (durationMs < 15_000L) return true
+        val currentItem = activePlayer.currentMediaItem ?: return true
+        val nextItem = activePlayer.getMediaItemAt(nextIndex)
+        if (currentItem.localConfiguration?.uri?.scheme == "ytvideo" ||
+            nextItem.localConfiguration?.uri?.scheme == "ytvideo"
+        ) {
+            return true
+        }
+        if (prefsManager.crossfadeSkipAlbum) {
+            val currentAlbum = currentItem.mediaMetadata.albumTitle?.toString()?.trim().orEmpty()
+            val nextAlbum = nextItem.mediaMetadata.albumTitle?.toString()?.trim().orEmpty()
+            val isPlaceholder = currentAlbum.equals("YouTube", true) ||
+                currentAlbum.equals("YouTube Music", true) ||
+                currentAlbum.equals("YouTube Video", true) ||
+                currentAlbum.equals("Cached", true) ||
+                currentAlbum.equals("Unknown Album", true) ||
+                currentAlbum.equals("Unknown", true)
+            if (currentAlbum.isNotEmpty() && !isPlaceholder && currentAlbum.equals(nextAlbum, ignoreCase = true)) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun resolveEffectiveCrossfadeMs(trackDurationMs: Long): Long {
+        if (!prefsManager.crossfadeEnabled) return 0L
+        val configuredSec = prefsManager.crossfadeDuration
+        if (configuredSec > 0) {
+            return (configuredSec * 1000L).coerceAtMost((trackDurationMs * 0.40).toLong().coerceAtLeast(1500L))
+        }
+        // AutoMix ("Auto"): musically scale fade by song length & outgoing RMS tail
+        val outgoingRms = filterProcessors[activePlayerIndex]?.smoothedRms ?: 0.5f
+        val baseAutoMs = when {
+            trackDurationMs >= 210_000L -> 8_000L
+            trackDurationMs >= 120_000L -> 6_000L
+            trackDurationMs >= 60_000L -> 4_000L
+            else -> 2_500L
+        }
+        val outroBonusMs = if (outgoingRms < 0.08f) 1_500L else 0L
+        return (baseAutoMs + outroBonusMs).coerceIn(2_000L, (trackDurationMs * 0.30).toLong().coerceAtLeast(2_000L))
+    }
+
+    private fun clearStagedCrossfade() {
+        stagingJob?.cancel()
+        stagingJob = null
+        stagedDeckIndex?.let { idx ->
+            if (idx != activePlayerIndex && !isCrossfading) {
+                players[idx]?.apply {
+                    playWhenReady = false
+                    stop()
+                    clearMediaItems()
+                    volume = 1f
+                }
+                filterProcessors[idx]?.resetFilter()
+            }
+        }
+        stagedDeckIndex = null
+        stagedTargetMediaId = null
+    }
+
+    private fun abortCrossfade(keepActivePlayer: Boolean = true) {
+        crossfadeJob?.cancel()
+        crossfadeJob = null
+        val activeIdx = activePlayerIndex
+        val otherIdx = 1 - activeIdx
+        players[activeIdx]?.volume = 1f
+        filterProcessors[activeIdx]?.resetFilter()
+        if (keepActivePlayer) {
+            players[otherIdx]?.apply {
+                playWhenReady = false
+                stop()
+                clearMediaItems()
+                volume = 1f
+            }
+            filterProcessors[otherIdx]?.resetFilter()
+            assignAudioFocusTo(activeIdx)
+        }
+        publishCrossfadeState(false)
+    }
+
     private fun startCrossfadeMonitor() {
         crossfadeMonitorJob?.cancel()
         crossfadeMonitorJob = serviceScope.launch {
             while (isActive) {
-                delay(300)
+                delay(120)
 
                 val activePlayer = players[activePlayerIndex] ?: continue
                 if (activePlayer.playWhenReady && activePlayer.playbackState == Player.STATE_READY) {
                     val duration = activePlayer.duration
                     val currentPos = activePlayer.currentPosition
-                    if (duration != C.TIME_UNSET && currentPos != C.TIME_UNSET) {
+                    if (duration != C.TIME_UNSET && currentPos != C.TIME_UNSET && duration > 0L) {
                         // 0. SponsorBlock auto-skip
-                        if (prefsManager.sponsorBlockEnabled && currentSponsorSegments.isNotEmpty()) {
+                        val enabledCategories = prefsManager.sponsorBlockCategories
+                        if (prefsManager.sponsorBlockEnabled && enabledCategories.isNotEmpty() && currentSponsorSegments.isNotEmpty()) {
                             val segment = currentSponsorSegments.firstOrNull { seg ->
-                                currentPos in seg.start until seg.end
+                                seg.category in enabledCategories && currentPos in seg.start until seg.end
                             }
                             if (segment != null) {
                                 if (lastSkippedSegmentStart != segment.start) {
@@ -410,30 +677,46 @@ class EcoDotSessionService : MediaSessionService() {
                                     Log.i(TAG, "SponsorBlock: auto-skipping [${segment.category}] from ${segment.start}ms to ${segment.end}ms")
                                     activePlayer.seekTo(segment.end + 50L)
                                 }
-                            } else {
-                                if (lastSkippedSegmentStart != null) {
-                                    val inAny = currentSponsorSegments.any { currentPos in it.start until it.end }
-                                    if (!inAny) lastSkippedSegmentStart = null
-                                }
+                            } else if (lastSkippedSegmentStart != null) {
+                                val inAny = currentSponsorSegments.any { it.category in enabledCategories && currentPos in it.start until it.end }
+                                if (!inAny) lastSkippedSegmentStart = null
                             }
                         }
 
                         val remaining = duration - currentPos
+                        val nextIndex = getNextCrossfadeIndex(activePlayer)
 
-                        // 1. Trigger pre-caching 15 seconds before the track ends
-                        if (remaining in 1000L..16000L) {
-                            val nextWindowIndex = activePlayer.currentMediaItemIndex + 1
-                            if (nextWindowIndex < activePlayer.mediaItemCount) {
-                                val nextItem = activePlayer.getMediaItemAt(nextWindowIndex)
-                                preCacheTrack(nextItem.mediaId)
-                            }
+                        // 1. Trigger pre-caching 16 seconds before the track ends
+                        if (remaining in 1000L..16_000L && nextIndex != null) {
+                            val nextItem = activePlayer.getMediaItemAt(nextIndex)
+                            val nextIsVideo = nextItem.localConfiguration?.uri?.scheme == "ytvideo"
+                            preCacheTrack(nextItem.mediaId, nextIsVideo)
                         }
 
-                        // 2. Trigger crossfade if enabled and not already crossfading
-                        if (prefsManager.crossfadeEnabled && !isCrossfading) {
-                            val crossfadeMs = prefsManager.crossfadeDuration * 1000L
-                            if (remaining > 0 && remaining <= crossfadeMs && currentPos > duration / 2 && currentPos > 5000L && activePlayer.hasNextMediaItem()) {
-                                triggerCrossfade(activePlayer, crossfadeMs)
+                        // 2. SimpMusic-style Pre-Staging + Equal-Power / DJ Crossfade
+                        if (!prefsManager.crossfadeEnabled) {
+                            if (stagedDeckIndex != null) clearStagedCrossfade()
+                            if (isCrossfading) abortCrossfade(keepActivePlayer = true)
+                        } else if (!isCrossfading && nextIndex != null) {
+                            val crossfadeMs = resolveEffectiveCrossfadeMs(duration)
+                            val skip = shouldSkipCrossfade(activePlayer, nextIndex, duration)
+                            val targetItem = activePlayer.getMediaItemAt(nextIndex)
+
+                            if (skip) {
+                                if (stagedDeckIndex != null) clearStagedCrossfade()
+                            } else {
+                                val stagingThresholdMs = crossfadeMs + 8_000L
+                                if (remaining > stagingThresholdMs + 4_000L && stagedDeckIndex != null) {
+                                    // User scrubbed backward before staging window
+                                    clearStagedCrossfade()
+                                } else if (remaining in 1000L..stagingThresholdMs && stagedTargetMediaId != targetItem.mediaId && currentPos > 2000L) {
+                                    stageNextDeckForCrossfade(activePlayer, nextIndex, targetItem.mediaId)
+                                }
+
+                                if (remaining in 150L..crossfadeMs && currentPos > duration / 2 && currentPos > 4000L) {
+                                    val clampedDuration = remaining.coerceIn(800L, crossfadeMs)
+                                    triggerCrossfade(activePlayer, nextIndex, clampedDuration)
+                                }
                             }
                         }
                     }
@@ -442,77 +725,205 @@ class EcoDotSessionService : MediaSessionService() {
         }
     }
 
-    private fun triggerCrossfade(oldPlayer: ExoPlayer, durationMs: Long) {
-        isCrossfading = true
-        val nextIndex = (activePlayerIndex + 1) % 2
-        val newPlayer = players[nextIndex] ?: return
+    private fun stageNextDeckForCrossfade(oldPlayer: ExoPlayer, nextIndex: Int, targetMediaId: String) {
+        val nextDeck = 1 - activePlayerIndex
+        val standbyPlayer = players[nextDeck] ?: return
+        clearStagedCrossfade()
+        stagedDeckIndex = nextDeck
+        stagedTargetMediaId = targetMediaId
 
-        val nextWindowIndex = oldPlayer.currentMediaItemIndex + 1
-        val items = mutableListOf<MediaItem>()
-        for (i in nextWindowIndex until oldPlayer.mediaItemCount) {
-            items.add(oldPlayer.getMediaItemAt(i))
-        }
-
-        if (items.isEmpty()) {
-            isCrossfading = false
+        val fullQueue = List(oldPlayer.mediaItemCount) { idx -> oldPlayer.getMediaItemAt(idx) }
+        if (nextIndex !in fullQueue.indices) {
+            clearStagedCrossfade()
             return
         }
 
-        newPlayer.setMediaItems(items)
-        newPlayer.prepare()
-        newPlayer.volume = 0f
+        stagingJob = serviceScope.launch {
+            try {
+                // Ensure stream URL is resolved off the main player thread before prepare()
+                val targetItem = fullQueue[nextIndex]
+                val activeQuality = prefsManager.audioQuality
+                val cacheKey = "${targetItem.mediaId}_false_${activeQuality.name}"
+                if (!urlCache.containsKey(cacheKey)) {
+                    withContext(Dispatchers.IO) {
+                        val url = repository.getYouTubeStreamUrl(
+                            videoId = targetItem.mediaId,
+                            quality = activeQuality,
+                            videoQuality = prefsManager.videoQuality,
+                            isVideo = false
+                        )
+                        if (url != null) {
+                            urlCache[cacheKey] = CachedUrl(url, System.currentTimeMillis())
+                        }
+                    }
+                }
+                if (stagedTargetMediaId != targetMediaId || isCrossfading) return@launch
 
-        serviceScope.launch {
-            // Buffer wait
-            val startTime = System.currentTimeMillis()
+                standbyPlayer.apply {
+                    setAudioAttributes(musicAudioAttributes, false)
+                    repeatMode = oldPlayer.repeatMode
+                    shuffleModeEnabled = false
+                    playbackParameters = oldPlayer.playbackParameters
+                    volume = 0f
+                    playWhenReady = false
+                    setMediaItems(fullQueue, nextIndex, 0L)
+                    prepare()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Crossfade pre-stage failed for $targetMediaId", e)
+            }
+        }
+    }
+
+    @OptIn(UnstableApi::class)
+    private fun triggerCrossfade(oldPlayer: ExoPlayer, nextIndex: Int, durationMs: Long) {
+        isCrossfading = true
+        val oldIndex = activePlayerIndex
+        val nextIndexDeck = 1 - oldIndex
+        val newPlayer = players[nextIndexDeck] ?: run {
+            publishCrossfadeState(false)
+            return
+        }
+
+        val fullQueue = List(oldPlayer.mediaItemCount) { i -> oldPlayer.getMediaItemAt(i) }
+        if (nextIndex !in fullQueue.indices) {
+            publishCrossfadeState(false)
+            return
+        }
+        val incomingItem = fullQueue[nextIndex]
+        activeCrossfadeIncomingId = incomingItem.mediaId
+
+        // Prepare if not already staged for this exact track
+        val alreadyStagedForTrack = stagedDeckIndex == nextIndexDeck && stagedTargetMediaId == incomingItem.mediaId
+        stagingJob?.cancel()
+        stagingJob = null
+        stagedDeckIndex = null
+        stagedTargetMediaId = null
+
+        if (!alreadyStagedForTrack || newPlayer.currentMediaItem?.mediaId != incomingItem.mediaId) {
+            newPlayer.apply {
+                setAudioAttributes(musicAudioAttributes, false)
+                repeatMode = oldPlayer.repeatMode
+                shuffleModeEnabled = false
+                playbackParameters = oldPlayer.playbackParameters
+                volume = 0f
+                playWhenReady = false
+                setMediaItems(fullQueue, nextIndex, 0L)
+                prepare()
+            }
+        }
+
+        val djMode = prefsManager.crossfadeDjMode
+        val outProcessor = filterProcessors[oldIndex]
+        val inProcessor = filterProcessors[nextIndexDeck]
+
+        crossfadeJob?.cancel()
+        crossfadeJob = serviceScope.launch {
+            val waitStart = android.os.SystemClock.elapsedRealtime()
             while (newPlayer.playbackState != Player.STATE_READY) {
-                delay(50)
-                if (System.currentTimeMillis() - startTime > 8000) {
-                    isCrossfading = false
+                if (oldPlayer.playbackState == Player.STATE_ENDED || !oldPlayer.playWhenReady) {
+                    abortCrossfade(keepActivePlayer = true)
                     return@launch
                 }
+                if (android.os.SystemClock.elapsedRealtime() - waitStart > 6000L) {
+                    abortCrossfade(keepActivePlayer = true)
+                    return@launch
+                }
+                delay(35)
             }
 
-            if (oldPlayer.playbackState == Player.STATE_ENDED || !oldPlayer.playWhenReady) {
-                isCrossfading = false
+            if (oldPlayer.playbackState == Player.STATE_ENDED || !oldPlayer.playWhenReady || !prefsManager.crossfadeEnabled) {
+                abortCrossfade(keepActivePlayer = true)
                 return@launch
             }
 
-            newPlayer.playWhenReady = true
-            
-            val safeFrom = nextWindowIndex.coerceAtMost(oldPlayer.mediaItemCount)
-            if (safeFrom < oldPlayer.mediaItemCount) {
-                oldPlayer.removeMediaItems(safeFrom, oldPlayer.mediaItemCount)
-            }
-            
-            mediaSession?.player = newPlayer
-            activePlayerIndex = nextIndex
-            updateNotification()
-            effectManager?.updateAudioSessionId(newPlayer.audioSessionId)
+            // Use exact remaining tail if pre-buffering ate part of the window
+            val liveRemaining = (oldPlayer.duration - oldPlayer.currentPosition).takeIf {
+                oldPlayer.duration != C.TIME_UNSET && oldPlayer.currentPosition != C.TIME_UNSET && it > 350L
+            } ?: durationMs
+            val actualFadeMs = liveRemaining.coerceIn(600L, durationMs)
 
-            val steps = 50
-            val stepDelay = durationMs / steps
-            for (i in 1..steps) {
-                if (!isActive) break
-                
-                // Sync pause states
+            // CRITICAL: Release AudioFocus handling on outgoing player BEFORE incoming plays
+            // so Android AudioManager doesn't send AUDIOFOCUS_LOSS to oldPlayer and silence it!
+            activePlayerIndex = nextIndexDeck
+            assignAudioFocusTo(nextIndexDeck)
+            newPlayer.volume = 0f
+            if (djMode) {
+                outProcessor?.setFilter(CrossfadeFilterAudioProcessor.FilterMode.LOW_PASS, 18_000f)
+                inProcessor?.setFilter(CrossfadeFilterAudioProcessor.FilterMode.HIGH_PASS, 750f)
+            } else {
+                outProcessor?.resetFilter()
+                inProcessor?.resetFilter()
+            }
+
+            newPlayer.playWhenReady = true
+            mediaSession?.player = newPlayer
+            effectManager?.updateAudioSessionId(newPlayer.audioSessionId)
+            publishCrossfadeState(true, actualFadeMs)
+            onTrackActivated(newPlayer, incomingItem)
+            startLyricsNotificationUpdater()
+            updateNotification()
+
+            var elapsedFadeMs = 0L
+            var lastTickMs = android.os.SystemClock.elapsedRealtime()
+
+            while (isActive && elapsedFadeMs < actualFadeMs) {
+                val nowMs = android.os.SystemClock.elapsedRealtime()
+                val deltaMs = (nowMs - lastTickMs).coerceIn(0L, 120L)
+                lastTickMs = nowMs
+
+                // Pause/resume outgoing deck in lockstep with incoming player
                 if (!newPlayer.playWhenReady && oldPlayer.playWhenReady) {
                     oldPlayer.pause()
                 } else if (newPlayer.playWhenReady && !oldPlayer.playWhenReady) {
                     oldPlayer.play()
                 }
 
-                val progress = i.toFloat() / steps
-                newPlayer.volume = progress
-                oldPlayer.volume = 1f - progress
-                delay(stepDelay)
+                if (newPlayer.playWhenReady) {
+                    elapsedFadeMs += deltaMs
+                    val progress = (elapsedFadeMs.toFloat() / actualFadeMs.toFloat()).coerceIn(0f, 1f)
+                    val angle = progress * (kotlin.math.PI / 2.0)
+
+                    // Equal-power fade prevents -6dB mid-fade energy dip
+                    val oldGain = kotlin.math.cos(angle).toFloat().coerceIn(0f, 1f)
+                    val newGain = kotlin.math.sin(angle).toFloat().coerceIn(0f, 1f)
+
+                    if (oldPlayer.playbackState != Player.STATE_ENDED) {
+                        oldPlayer.volume = oldGain
+                    }
+                    newPlayer.volume = newGain
+
+                    if (djMode) {
+                        val lpCutoff = (18_000.0 * Math.pow(280.0 / 18_000.0, progress.toDouble())).toFloat()
+                        outProcessor?.setFilter(CrossfadeFilterAudioProcessor.FilterMode.LOW_PASS, lpCutoff)
+
+                        val hpProgress = (progress / 0.80f).coerceIn(0f, 1f)
+                        if (hpProgress < 0.99f) {
+                            val hpCutoff = (750.0 * Math.pow(24.0 / 750.0, hpProgress.toDouble())).toFloat()
+                            inProcessor?.setFilter(CrossfadeFilterAudioProcessor.FilterMode.HIGH_PASS, hpCutoff)
+                        } else {
+                            inProcessor?.setFilter(CrossfadeFilterAudioProcessor.FilterMode.NONE, 20f)
+                        }
+                    }
+                }
+                delay(30)
             }
-            
+
+            newPlayer.volume = 1f
+            inProcessor?.resetFilter()
+            outProcessor?.resetFilter()
+            // Preserve any endless-queue items appended to oldPlayer after staging began
+            if (oldPlayer.mediaItemCount > newPlayer.mediaItemCount) {
+                val tailItems = List(oldPlayer.mediaItemCount - newPlayer.mediaItemCount) { idx ->
+                    oldPlayer.getMediaItemAt(newPlayer.mediaItemCount + idx)
+                }
+                newPlayer.addMediaItems(tailItems)
+            }
             oldPlayer.playWhenReady = false
             oldPlayer.stop()
             oldPlayer.clearMediaItems()
             oldPlayer.volume = 1f
-            isCrossfading = false
+            publishCrossfadeState(false)
         }
     }
 
@@ -524,6 +935,9 @@ class EcoDotSessionService : MediaSessionService() {
         } catch (e: Exception) {
             // Ignore
         }
+        crossfadeJob?.cancel()
+        stagingJob?.cancel()
+        filterProcessors.forEach { it?.resetFilter() }
         serviceJob.cancel()
         players.forEach { it?.run { release() } }
         mediaSession?.release()
@@ -592,6 +1006,10 @@ class EcoDotSessionService : MediaSessionService() {
                 .add(SessionCommand(ACTION_SET_EQ_BAND,     Bundle.EMPTY))
                 .add(SessionCommand(ACTION_SET_VIRTUALIZER, Bundle.EMPTY))
                 .add(SessionCommand(ACTION_SET_EQ_ENABLED,  Bundle.EMPTY))
+                .add(SessionCommand(ACTION_SET_SKIP_SILENCE, Bundle.EMPTY))
+                .add(SessionCommand(ACTION_SET_NORMALIZE_VOLUME, Bundle.EMPTY))
+                .add(SessionCommand(ACTION_REFRESH_SPONSOR_SEGMENTS, Bundle.EMPTY))
+                .add(SessionCommand(ACTION_CLEAR_URL_CACHE, Bundle.EMPTY))
                 .add(SessionCommand(ACTION_UPDATE_QUEUE,    Bundle.EMPTY))
                 .add(SessionCommand(ACTION_UPDATE_INDEX,    Bundle.EMPTY))
                 .add(SessionCommand(ACTION_SET_SLEEP_TIMER, Bundle.EMPTY))
@@ -642,6 +1060,19 @@ class EcoDotSessionService : MediaSessionService() {
                 ACTION_SET_VIRTUALIZER -> effectManager?.setVirtualizerStrength(
                     args.getInt("strength").toShort())
                 ACTION_SET_EQ_ENABLED  -> effectManager?.setEnabled(args.getBoolean("enabled"))
+                ACTION_SET_SKIP_SILENCE -> {
+                    val enabled = args.getBoolean("enabled", false)
+                    players.forEach { it?.skipSilenceEnabled = enabled }
+                }
+                ACTION_SET_NORMALIZE_VOLUME -> effectManager?.setNormalizeVolume(args.getBoolean("enabled", false))
+                ACTION_REFRESH_SPONSOR_SEGMENTS -> {
+                    currentPlayingTrackId?.let { loadSponsorSegments(it) }
+                }
+                ACTION_CLEAR_URL_CACHE -> {
+                    urlCache.clear()
+                    lastPreCachedTrackId = null
+                    clearStagedCrossfade()
+                }
                 ACTION_UPDATE_QUEUE, ACTION_UPDATE_INDEX -> { /* no-op */ }
                 ACTION_SET_SLEEP_TIMER -> {
                     val minutes = args.getInt("minutes", 0)
@@ -904,6 +1335,10 @@ class EcoDotSessionService : MediaSessionService() {
     }
 
     private fun updateNotificationLyrics(player: Player, mediaItem: MediaItem, lyricText: String) {
+        // Calling replaceMediaItem during ytvideo:// HLS/DASH playback disrupts active video decoding.
+        if (mediaItem.localConfiguration?.uri?.scheme.equals("ytvideo", ignoreCase = true)) {
+            return
+        }
         val displayArtist = if (lyricText.isNotEmpty()) {
             "$originalArtistName • $lyricText"
         } else {
@@ -936,7 +1371,9 @@ class EcoDotSessionService : MediaSessionService() {
 
         sponsorBlockJob = serviceScope.launch(Dispatchers.IO) {
             try {
-                val segments = getSponsorSegmentsUseCase(videoId)
+                val categories = prefsManager.sponsorBlockCategories
+                if (!prefsManager.sponsorBlockEnabled || categories.isEmpty()) return@launch
+                val segments = getSponsorSegmentsUseCase(videoId, categories)
                 currentSponsorSegments = segments.sortedBy { it.start }
                 if (segments.isNotEmpty()) {
                     Log.d(TAG, "Loaded ${segments.size} SponsorBlock segments for $videoId: ${segments.map { "${it.category}(${it.start}..${it.end})" }}")

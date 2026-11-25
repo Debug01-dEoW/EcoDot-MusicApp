@@ -1,15 +1,16 @@
 package com.example.ecodot.data.remote
 
+import com.example.ecodot.data.local.prefs.SponsorBlockCategory
 import com.example.ecodot.domain.model.SponsorSegment
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 import okhttp3.OkHttpClient
+import org.json.JSONArray
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
-import java.util.concurrent.TimeUnit
 
 @JsonClass(generateAdapter = true)
 data class SponsorBlockResponseItem(
@@ -21,7 +22,7 @@ interface SponsorBlockApi {
     @GET("api/skipSegments")
     suspend fun getSkipSegments(
         @Query("videoID") videoId: String,
-        @Query("categories") categories: String = "[\"sponsor\",\"intro\",\"outro\",\"music_off_topic\",\"preview\"]"
+        @Query("categories") categories: String = "[\"sponsor\",\"intro\",\"outro\",\"music_offtopic\",\"preview\"]"
     ): Response<List<SponsorBlockResponseItem>>
 }
 
@@ -36,9 +37,14 @@ class SponsorBlockService(private val client: OkHttpClient) {
             .create(SponsorBlockApi::class.java)
     }
 
-    suspend fun getSegments(videoId: String): List<SponsorSegment> {
+    suspend fun getSegments(
+        videoId: String,
+        categories: Set<String> = SponsorBlockCategory.defaultKeys
+    ): List<SponsorSegment> {
+        if (categories.isEmpty()) return emptyList()
+        val categoriesJson = JSONArray(categories.toList()).toString()
         return try {
-            val response = api.getSkipSegments(videoId)
+            val response = api.getSkipSegments(videoId, categoriesJson)
             if (response.isSuccessful) {
                 response.body()?.mapNotNull { item ->
                     val start = (item.segment.getOrNull(0) ?: return@mapNotNull null) * 1000f

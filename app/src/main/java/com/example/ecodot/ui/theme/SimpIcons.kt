@@ -1193,3 +1193,755 @@ val SimpIcons.Explicit: ImageVector
         return _Explicit!!
     }
 private var _Explicit: ImageVector? = null
+
+// ── ArrowOutward ─────────────────────────────────────────────────────────────
+val SimpIcons.ArrowOutward: ImageVector
+    get() {
+        if (_ArrowOutward != null) return _ArrowOutward!!
+        _ArrowOutward = ImageVector.Builder(
+            name = "ArrowOutward",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(
+                fill = SolidColor(Color.White),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero
+            ) {
+                moveTo(16f, 8.4f)
+                lineTo(7.1f, 17.3f)
+                quadTo(6.83f, 17.58f, 6.4f, 17.58f)
+                reflectiveQuadTo(5.7f, 17.3f)
+                quadTo(5.43f, 17.02f, 5.43f, 16.6f)
+                reflectiveQuadTo(5.7f, 15.9f)
+                lineTo(14.6f, 7f)
+                horizontalLineTo(7f)
+                quadTo(6.58f, 7f, 6.29f, 6.71f)
+                quadTo(6f, 6.43f, 6f, 6f)
+                reflectiveQuadTo(6.29f, 5.29f)
+                reflectiveQuadTo(7f, 5f)
+                horizontalLineTo(17f)
+                quadToRelative(0.43f, 0f, 0.71f, 0.29f)
+                reflectiveQuadTo(18f, 6f)
+                verticalLineTo(16f)
+                quadToRelative(0f, 0.43f, -0.29f, 0.71f)
+                reflectiveQuadTo(17f, 17f)
+                reflectiveQuadTo(16.29f, 16.71f)
+                quadTo(16f, 16.43f, 16f, 16f)
+                verticalLineTo(8.4f)
+                close()
+            }
+        }.build()
+        return _ArrowOutward!!
+    }
+private var _ArrowOutward: ImageVector? = null
+
+// ── Replay5 ──────────────────────────────────────────────────────────────────
+val SimpIcons.Replay5: ImageVector
+    get() {
+        if (_Replay5 != null) return _Replay5!!
+        _Replay5 = ImageVector.Builder(
+            name = "Replay5",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(
+                fill = SolidColor(Color.White),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero
+            ) {
+                moveTo(13f, 16f)
+                horizontalLineTo(10.25f)
+                quadTo(9.93f, 16f, 9.71f, 15.79f)
+                reflectiveQuadTo(9.5f, 15.25f)
+                reflectiveQuadTo(9.71f, 14.71f)
+                reflectiveQuadTo(10.25f, 14.5f)
+                horizontalLineTo(12.5f)
+                verticalLineToRelative(-1f)
+                horizontalLineTo(10.25f)
+                quadToRelative(-0.32f, 0f, -0.54f, -0.21f)
+                reflectiveQuadTo(9.5f, 12.75f)
+                verticalLineToRelative(-2f)
+                quadToRelative(0f, -0.33f, 0.21f, -0.54f)
+                reflectiveQuadTo(10.25f, 10f)
+                horizontalLineToRelative(3f)
+                quadToRelative(0.33f, 0f, 0.54f, 0.21f)
+                quadTo(14f, 10.43f, 14f, 10.75f)
+                reflectiveQuadToRelative(-0.21f, 0.54f)
+                reflectiveQuadTo(13.25f, 11.5f)
+                horizontalLineTo(11f)
+                verticalLineToRelative(1f)
+                horizontalLineToRelative(2.25f)
+                quadToRelative(0.33f, 0f, 0.54f, 0.21f)
+                quadTo(14f, 12.93f, 14f, 13.25f)
+                verticalLineTo(15f)
+                quadToRelative(0f, 0.42f, -0.29f, 0.71f)
+                reflectiveQuadTo(13f, 16f)
+                close()
+                moveTo(8.49f, 21.29f)
+                quadTo(6.85f, 20.58f, 5.64f, 19.36f)
+                reflectiveQuadTo(3.71f, 16.51f)
+                reflectiveQuadTo(3f, 13f)
+                quadTo(3f, 12.58f, 3.29f, 12.29f)
+                reflectiveQuadTo(4f, 12f)
+                reflectiveQuadToRelative(0.71f, 0.29f)
+                reflectiveQuadTo(5f, 13f)
+                quadToRelative(0f, 2.92f, 2.04f, 4.96f)
+                reflectiveQuadTo(12f, 20f)
+                reflectiveQuadToRelative(4.96f, -2.04f)
+                quadTo(19f, 15.93f, 19f, 13f)
+                quadTo(19f, 10.07f, 16.96f, 8.04f)
+                reflectiveQuadTo(12f, 6f)
+                horizontalLineTo(11.85f)
+                lineTo(12.7f, 6.85f)
+                quadToRelative(0.3f, 0.3f, 0.29f, 0.7f)
+                reflectiveQuadTo(12.7f, 8.25f)
+                quadToRelative(-0.3f, 0.3f, -0.71f, 0.31f)
+                quadTo(11.58f, 8.57f, 11.28f, 8.27f)
+                lineTo(8.7f, 5.7f)
+                quadTo(8.4f, 5.4f, 8.4f, 5f)
+                reflectiveQuadTo(8.7f, 4.3f)
+                lineTo(11.28f, 1.72f)
+                quadToRelative(0.3f, -0.3f, 0.71f, -0.29f)
+                reflectiveQuadTo(12.7f, 1.75f)
+                quadToRelative(0.28f, 0.3f, 0.29f, 0.7f)
+                reflectiveQuadTo(12.7f, 3.15f)
+                lineTo(11.85f, 4f)
+                horizontalLineTo(12f)
+                quadToRelative(1.88f, 0f, 3.51f, 0.71f)
+                quadToRelative(1.64f, 0.71f, 2.85f, 1.93f)
+                reflectiveQuadToRelative(1.93f, 2.85f)
+                reflectiveQuadTo(21f, 13f)
+                reflectiveQuadToRelative(-0.71f, 3.51f)
+                reflectiveQuadToRelative(-1.93f, 2.85f)
+                reflectiveQuadToRelative(-2.85f, 1.93f)
+                reflectiveQuadTo(12f, 22f)
+                reflectiveQuadTo(8.49f, 21.29f)
+                close()
+            }
+        }.build()
+        return _Replay5!!
+    }
+private var _Replay5: ImageVector? = null
+
+// ── Forward5 ─────────────────────────────────────────────────────────────────
+val SimpIcons.Forward5: ImageVector
+    get() {
+        if (_Forward5 != null) return _Forward5!!
+        _Forward5 = ImageVector.Builder(
+            name = "Forward5",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(
+                fill = SolidColor(Color.White),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero
+            ) {
+                moveTo(8.49f, 21.29f)
+                quadTo(6.85f, 20.58f, 5.64f, 19.36f)
+                reflectiveQuadTo(3.71f, 16.51f)
+                reflectiveQuadTo(3f, 13f)
+                reflectiveQuadTo(3.71f, 9.49f)
+                reflectiveQuadTo(5.64f, 6.64f)
+                reflectiveQuadTo(8.49f, 4.71f)
+                reflectiveQuadTo(12f, 4f)
+                horizontalLineToRelative(0.15f)
+                lineTo(11.3f, 3.15f)
+                quadTo(11f, 2.85f, 11.01f, 2.45f)
+                reflectiveQuadTo(11.3f, 1.75f)
+                quadToRelative(0.3f, -0.3f, 0.71f, -0.31f)
+                quadToRelative(0.41f, -0.01f, 0.71f, 0.29f)
+                lineTo(15.3f, 4.3f)
+                quadTo(15.6f, 4.6f, 15.6f, 5f)
+                reflectiveQuadTo(15.3f, 5.7f)
+                lineTo(12.73f, 8.27f)
+                quadToRelative(-0.3f, 0.3f, -0.71f, 0.29f)
+                reflectiveQuadTo(11.3f, 8.25f)
+                quadTo(11.03f, 7.95f, 11.01f, 7.55f)
+                reflectiveQuadTo(11.3f, 6.85f)
+                lineTo(12.15f, 6f)
+                horizontalLineTo(12f)
+                quadTo(9.08f, 6f, 7.04f, 8.04f)
+                reflectiveQuadTo(5f, 13f)
+                reflectiveQuadToRelative(2.04f, 4.96f)
+                reflectiveQuadTo(12f, 20f)
+                reflectiveQuadToRelative(4.96f, -2.04f)
+                quadTo(19f, 15.93f, 19f, 13f)
+                quadToRelative(0f, -0.43f, 0.29f, -0.71f)
+                reflectiveQuadTo(20f, 12f)
+                quadToRelative(0.43f, 0f, 0.71f, 0.29f)
+                reflectiveQuadTo(21f, 13f)
+                quadToRelative(0f, 1.88f, -0.71f, 3.51f)
+                reflectiveQuadToRelative(-1.93f, 2.85f)
+                reflectiveQuadToRelative(-2.85f, 1.93f)
+                reflectiveQuadTo(12f, 22f)
+                reflectiveQuadTo(8.49f, 21.29f)
+                close()
+                moveTo(13f, 16f)
+                horizontalLineTo(10.25f)
+                quadTo(9.93f, 16f, 9.71f, 15.79f)
+                reflectiveQuadTo(9.5f, 15.25f)
+                reflectiveQuadTo(9.71f, 14.71f)
+                reflectiveQuadTo(10.25f, 14.5f)
+                horizontalLineTo(12.5f)
+                verticalLineToRelative(-1f)
+                horizontalLineTo(10.25f)
+                quadToRelative(-0.32f, 0f, -0.54f, -0.21f)
+                reflectiveQuadTo(9.5f, 12.75f)
+                verticalLineToRelative(-2f)
+                quadToRelative(0f, -0.33f, 0.21f, -0.54f)
+                reflectiveQuadTo(10.25f, 10f)
+                horizontalLineToRelative(3f)
+                quadToRelative(0.33f, 0f, 0.54f, 0.21f)
+                quadTo(14f, 10.43f, 14f, 10.75f)
+                reflectiveQuadToRelative(-0.21f, 0.54f)
+                reflectiveQuadTo(13.25f, 11.5f)
+                horizontalLineTo(11f)
+                verticalLineToRelative(1f)
+                horizontalLineToRelative(2.25f)
+                quadToRelative(0.33f, 0f, 0.54f, 0.21f)
+                quadTo(14f, 12.93f, 14f, 13.25f)
+                verticalLineTo(15f)
+                quadToRelative(0f, 0.42f, -0.29f, 0.71f)
+                reflectiveQuadTo(13f, 16f)
+                close()
+            }
+        }.build()
+        return _Forward5!!
+    }
+private var _Forward5: ImageVector? = null
+
+// ── Fullscreen ───────────────────────────────────────────────────────────────
+val SimpIcons.Fullscreen: ImageVector
+    get() {
+        if (_Fullscreen != null) return _Fullscreen!!
+        _Fullscreen = ImageVector.Builder(
+            name = "Fullscreen",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(
+                fill = SolidColor(Color.White),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero
+            ) {
+                moveTo(5f, 19f)
+                horizontalLineTo(7f)
+                quadToRelative(0.43f, 0f, 0.71f, 0.29f)
+                reflectiveQuadTo(8f, 20f)
+                reflectiveQuadTo(7.71f, 20.71f)
+                reflectiveQuadTo(7f, 21f)
+                horizontalLineTo(4f)
+                quadTo(3.58f, 21f, 3.29f, 20.71f)
+                quadTo(3f, 20.43f, 3f, 20f)
+                verticalLineTo(17f)
+                quadTo(3f, 16.58f, 3.29f, 16.29f)
+                reflectiveQuadTo(4f, 16f)
+                reflectiveQuadToRelative(0.71f, 0.29f)
+                reflectiveQuadTo(5f, 17f)
+                verticalLineToRelative(2f)
+                close()
+                moveToRelative(14f, 0f)
+                verticalLineTo(17f)
+                quadToRelative(0f, -0.43f, 0.29f, -0.71f)
+                reflectiveQuadTo(20f, 16f)
+                quadToRelative(0.43f, 0f, 0.71f, 0.29f)
+                reflectiveQuadTo(21f, 17f)
+                verticalLineToRelative(3f)
+                quadToRelative(0f, 0.43f, -0.29f, 0.71f)
+                reflectiveQuadTo(20f, 21f)
+                horizontalLineTo(17f)
+                quadToRelative(-0.43f, 0f, -0.71f, -0.29f)
+                quadTo(16f, 20.43f, 16f, 20f)
+                reflectiveQuadToRelative(0.29f, -0.71f)
+                reflectiveQuadTo(17f, 19f)
+                horizontalLineToRelative(2f)
+                close()
+                moveTo(5f, 5f)
+                verticalLineTo(7f)
+                quadTo(5f, 7.43f, 4.71f, 7.71f)
+                reflectiveQuadTo(4f, 8f)
+                reflectiveQuadTo(3.29f, 7.71f)
+                quadTo(3f, 7.43f, 3f, 7f)
+                verticalLineTo(4f)
+                quadTo(3f, 3.57f, 3.29f, 3.29f)
+                reflectiveQuadTo(4f, 3f)
+                horizontalLineTo(7f)
+                quadTo(7.43f, 3f, 7.71f, 3.29f)
+                reflectiveQuadTo(8f, 4f)
+                quadTo(8f, 4.42f, 7.71f, 4.71f)
+                reflectiveQuadTo(7f, 5f)
+                horizontalLineTo(5f)
+                close()
+                moveTo(19f, 5f)
+                horizontalLineTo(17f)
+                quadTo(16.58f, 5f, 16.29f, 4.71f)
+                reflectiveQuadTo(16f, 4f)
+                quadTo(16f, 3.57f, 16.29f, 3.29f)
+                reflectiveQuadTo(17f, 3f)
+                horizontalLineToRelative(3f)
+                quadToRelative(0.43f, 0f, 0.71f, 0.29f)
+                reflectiveQuadTo(21f, 4f)
+                verticalLineTo(7f)
+                quadToRelative(0f, 0.43f, -0.29f, 0.71f)
+                reflectiveQuadTo(20f, 8f)
+                reflectiveQuadTo(19.29f, 7.71f)
+                quadTo(19f, 7.43f, 19f, 7f)
+                verticalLineTo(5f)
+                close()
+            }
+        }.build()
+        return _Fullscreen!!
+    }
+private var _Fullscreen: ImageVector? = null
+
+// ── FullscreenExit ───────────────────────────────────────────────────────────
+val SimpIcons.FullscreenExit: ImageVector
+    get() {
+        if (_FullscreenExit != null) return _FullscreenExit!!
+        _FullscreenExit = ImageVector.Builder(
+            name = "FullscreenExit",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(
+                fill = SolidColor(Color.White),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero
+            ) {
+                moveTo(6f, 18f)
+                horizontalLineTo(4f)
+                quadTo(3.58f, 18f, 3.29f, 17.71f)
+                quadTo(3f, 17.43f, 3f, 17f)
+                reflectiveQuadTo(3.29f, 16.29f)
+                reflectiveQuadTo(4f, 16f)
+                horizontalLineTo(7f)
+                quadToRelative(0.43f, 0f, 0.71f, 0.29f)
+                reflectiveQuadTo(8f, 17f)
+                verticalLineToRelative(3f)
+                quadToRelative(0f, 0.43f, -0.29f, 0.71f)
+                reflectiveQuadTo(7f, 21f)
+                quadTo(6.58f, 21f, 6.29f, 20.71f)
+                quadTo(6f, 20.43f, 6f, 20f)
+                verticalLineTo(18f)
+                close()
+                moveToRelative(12f, 0f)
+                verticalLineToRelative(2f)
+                quadToRelative(0f, 0.43f, -0.29f, 0.71f)
+                reflectiveQuadTo(17f, 21f)
+                reflectiveQuadTo(16.29f, 20.71f)
+                quadTo(16f, 20.43f, 16f, 20f)
+                verticalLineTo(17f)
+                quadToRelative(0f, -0.43f, 0.29f, -0.71f)
+                reflectiveQuadTo(17f, 16f)
+                horizontalLineToRelative(3f)
+                quadToRelative(0.43f, 0f, 0.71f, 0.29f)
+                reflectiveQuadTo(21f, 17f)
+                reflectiveQuadToRelative(-0.29f, 0.71f)
+                reflectiveQuadTo(20f, 18f)
+                horizontalLineTo(18f)
+                close()
+                moveTo(6f, 6f)
+                verticalLineTo(4f)
+                quadTo(6f, 3.57f, 6.29f, 3.29f)
+                reflectiveQuadTo(7f, 3f)
+                reflectiveQuadTo(7.71f, 3.29f)
+                reflectiveQuadTo(8f, 4f)
+                verticalLineTo(7f)
+                quadTo(8f, 7.43f, 7.71f, 7.71f)
+                reflectiveQuadTo(7f, 8f)
+                horizontalLineTo(4f)
+                quadTo(3.58f, 8f, 3.29f, 7.71f)
+                quadTo(3f, 7.43f, 3f, 7f)
+                reflectiveQuadTo(3.29f, 6.29f)
+                reflectiveQuadTo(4f, 6f)
+                horizontalLineTo(6f)
+                close()
+                moveTo(18f, 6f)
+                horizontalLineToRelative(2f)
+                quadToRelative(0.43f, 0f, 0.71f, 0.29f)
+                reflectiveQuadTo(21f, 7f)
+                reflectiveQuadTo(20.71f, 7.71f)
+                reflectiveQuadTo(20f, 8f)
+                horizontalLineTo(17f)
+                quadTo(16.58f, 8f, 16.29f, 7.71f)
+                quadTo(16f, 7.43f, 16f, 7f)
+                verticalLineTo(4f)
+                quadTo(16f, 3.57f, 16.29f, 3.29f)
+                reflectiveQuadTo(17f, 3f)
+                reflectiveQuadToRelative(0.71f, 0.29f)
+                reflectiveQuadTo(18f, 4f)
+                verticalLineTo(6f)
+                close()
+            }
+        }.build()
+        return _FullscreenExit!!
+    }
+private var _FullscreenExit: ImageVector? = null
+
+// ── Subtitles ────────────────────────────────────────────────────────────────
+val SimpIcons.Subtitles: ImageVector
+    get() {
+        if (_Subtitles != null) return _Subtitles!!
+        _Subtitles = ImageVector.Builder(
+            name = "Subtitles",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(
+                fill = SolidColor(Color.White),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero
+            ) {
+                moveTo(4f, 20f)
+                quadTo(3.18f, 20f, 2.59f, 19.41f)
+                reflectiveQuadTo(2f, 18f)
+                verticalLineTo(6f)
+                quadTo(2f, 5.18f, 2.59f, 4.59f)
+                reflectiveQuadTo(4f, 4f)
+                horizontalLineTo(20f)
+                quadToRelative(0.83f, 0f, 1.41f, 0.59f)
+                quadTo(22f, 5.18f, 22f, 6f)
+                verticalLineTo(18f)
+                quadToRelative(0f, 0.82f, -0.59f, 1.41f)
+                reflectiveQuadTo(20f, 20f)
+                horizontalLineTo(4f)
+                close()
+                moveTo(7f, 16f)
+                horizontalLineToRelative(6f)
+                quadToRelative(0.43f, 0f, 0.71f, -0.29f)
+                reflectiveQuadTo(14f, 15f)
+                reflectiveQuadTo(13.71f, 14.29f)
+                reflectiveQuadTo(13f, 14f)
+                horizontalLineTo(7f)
+                quadTo(6.58f, 14f, 6.29f, 14.29f)
+                reflectiveQuadTo(6f, 15f)
+                reflectiveQuadToRelative(0.29f, 0.71f)
+                reflectiveQuadTo(7f, 16f)
+                close()
+                moveToRelative(4f, -4f)
+                horizontalLineToRelative(6f)
+                quadToRelative(0.43f, 0f, 0.71f, -0.29f)
+                quadTo(18f, 11.43f, 18f, 11f)
+                reflectiveQuadTo(17.71f, 10.29f)
+                reflectiveQuadTo(17f, 10f)
+                horizontalLineTo(11f)
+                quadToRelative(-0.42f, 0f, -0.71f, 0.29f)
+                reflectiveQuadTo(10f, 11f)
+                reflectiveQuadToRelative(0.29f, 0.71f)
+                reflectiveQuadTo(11f, 12f)
+                close()
+                moveTo(7.71f, 11.71f)
+                quadTo(8f, 11.43f, 8f, 11f)
+                reflectiveQuadTo(7.71f, 10.29f)
+                reflectiveQuadTo(7f, 10f)
+                quadTo(6.58f, 10f, 6.29f, 10.29f)
+                reflectiveQuadTo(6f, 11f)
+                reflectiveQuadToRelative(0.29f, 0.71f)
+                reflectiveQuadTo(7f, 12f)
+                reflectiveQuadTo(7.71f, 11.71f)
+                close()
+                moveToRelative(10f, 4f)
+                quadTo(18f, 15.43f, 18f, 15f)
+                reflectiveQuadTo(17.71f, 14.29f)
+                reflectiveQuadTo(17f, 14f)
+                reflectiveQuadToRelative(-0.71f, 0.29f)
+                reflectiveQuadTo(16f, 15f)
+                reflectiveQuadToRelative(0.29f, 0.71f)
+                reflectiveQuadTo(17f, 16f)
+                reflectiveQuadToRelative(0.71f, -0.29f)
+                close()
+            }
+        }.build()
+        return _Subtitles!!
+    }
+private var _Subtitles: ImageVector? = null
+
+// ── SubtitlesOff ─────────────────────────────────────────────────────────────
+val SimpIcons.SubtitlesOff: ImageVector
+    get() {
+        if (_SubtitlesOff != null) return _SubtitlesOff!!
+        _SubtitlesOff = ImageVector.Builder(
+            name = "SubtitlesOff",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(
+                fill = SolidColor(Color.White),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero
+            ) {
+                moveTo(7.71f, 11.71f)
+                quadTo(8f, 11.43f, 8f, 11f)
+                reflectiveQuadTo(7.71f, 10.29f)
+                reflectiveQuadTo(7f, 10f)
+                quadTo(6.58f, 10f, 6.29f, 10.29f)
+                reflectiveQuadTo(6f, 11f)
+                reflectiveQuadToRelative(0.29f, 0.71f)
+                reflectiveQuadTo(7f, 12f)
+                reflectiveQuadTo(7.71f, 11.71f)
+                close()
+                moveTo(22f, 6f)
+                verticalLineTo(16.73f)
+                quadToRelative(0f, 0.67f, -0.61f, 0.94f)
+                reflectiveQuadTo(20.3f, 17.45f)
+                lineTo(14.85f, 12f)
+                horizontalLineTo(17f)
+                quadToRelative(0.43f, 0f, 0.71f, -0.29f)
+                quadTo(18f, 11.43f, 18f, 11f)
+                reflectiveQuadTo(17.71f, 10.29f)
+                reflectiveQuadTo(17f, 10f)
+                horizontalLineTo(12.85f)
+                lineTo(8.55f, 5.7f)
+                quadTo(8.08f, 5.22f, 8.34f, 4.61f)
+                reflectiveQuadTo(9.28f, 4f)
+                horizontalLineTo(20f)
+                quadToRelative(0.83f, 0f, 1.41f, 0.59f)
+                quadTo(22f, 5.18f, 22f, 6f)
+                close()
+                moveTo(4f, 20f)
+                quadTo(3.18f, 20f, 2.59f, 19.41f)
+                reflectiveQuadTo(2f, 18f)
+                verticalLineTo(6f)
+                quadTo(2f, 5.18f, 2.59f, 4.59f)
+                reflectiveQuadTo(4f, 4f)
+                lineToRelative(8f, 8f)
+                horizontalLineTo(9.2f)
+                lineTo(1.35f, 4.15f)
+                quadTo(1.08f, 3.88f, 1.08f, 3.45f)
+                reflectiveQuadTo(1.35f, 2.75f)
+                quadTo(1.63f, 2.47f, 2.05f, 2.47f)
+                reflectiveQuadToRelative(0.7f, 0.28f)
+                lineToRelative(18.5f, 18.5f)
+                quadToRelative(0.28f, 0.27f, 0.29f, 0.69f)
+                reflectiveQuadToRelative(-0.29f, 0.71f)
+                quadToRelative(-0.27f, 0.28f, -0.7f, 0.28f)
+                reflectiveQuadToRelative(-0.7f, -0.28f)
+                lineTo(17.15f, 20f)
+                horizontalLineTo(4f)
+                close()
+                moveToRelative(7.15f, -6f)
+                horizontalLineTo(7f)
+                quadTo(6.58f, 14f, 6.29f, 14.29f)
+                reflectiveQuadTo(6f, 15f)
+                reflectiveQuadToRelative(0.29f, 0.71f)
+                reflectiveQuadTo(7f, 16f)
+                horizontalLineToRelative(6.15f)
+                lineToRelative(-2f, -2f)
+                close()
+            }
+        }.build()
+        return _SubtitlesOff!!
+    }
+private var _SubtitlesOff: ImageVector? = null
+
+// ── Headphones ───────────────────────────────────────────────────────────────
+val SimpIcons.Headphones: ImageVector
+    get() {
+        if (_Headphones != null) return _Headphones!!
+        _Headphones = ImageVector.Builder(
+            name = "Headphones",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(
+                fill = SolidColor(Color.White),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero
+            ) {
+                moveTo(7f, 21f)
+                horizontalLineTo(5f)
+                quadTo(4.18f, 21f, 3.59f, 20.41f)
+                reflectiveQuadTo(3f, 19f)
+                verticalLineTo(12f)
+                quadTo(3f, 10.13f, 3.71f, 8.49f)
+                reflectiveQuadTo(5.64f, 5.64f)
+                quadTo(6.85f, 4.42f, 8.49f, 3.71f)
+                reflectiveQuadTo(12f, 3f)
+                reflectiveQuadToRelative(3.51f, 0.71f)
+                reflectiveQuadToRelative(2.85f, 1.93f)
+                reflectiveQuadToRelative(1.93f, 2.85f)
+                reflectiveQuadTo(21f, 12f)
+                verticalLineToRelative(7f)
+                quadToRelative(0f, 0.82f, -0.59f, 1.41f)
+                reflectiveQuadTo(19f, 21f)
+                horizontalLineTo(17f)
+                quadToRelative(-0.82f, 0f, -1.41f, -0.59f)
+                reflectiveQuadTo(15f, 19f)
+                verticalLineTo(15f)
+                quadToRelative(0f, -0.83f, 0.59f, -1.41f)
+                reflectiveQuadTo(17f, 13f)
+                horizontalLineToRelative(2f)
+                verticalLineTo(12f)
+                quadTo(19f, 9.07f, 16.96f, 7.04f)
+                reflectiveQuadTo(12f, 5f)
+                quadTo(9.08f, 5f, 7.04f, 7.04f)
+                reflectiveQuadTo(5f, 12f)
+                verticalLineToRelative(1f)
+                horizontalLineTo(7f)
+                quadToRelative(0.83f, 0f, 1.41f, 0.59f)
+                quadTo(9f, 14.18f, 9f, 15f)
+                verticalLineToRelative(4f)
+                quadToRelative(0f, 0.82f, -0.59f, 1.41f)
+                quadTo(7.83f, 21f, 7f, 21f)
+                close()
+            }
+        }.build()
+        return _Headphones!!
+    }
+private var _Headphones: ImageVector? = null
+
+// ── CommentOutline ──────────────────────────────────────────────────────────
+val SimpIcons.CommentOutline: ImageVector
+    get() {
+        if (_CommentOutline != null) return _CommentOutline!!
+        _CommentOutline = ImageVector.Builder(
+            name = "CommentOutline",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(
+                fill = SolidColor(Color.White),
+                fillAlpha = 1f,
+                stroke = null,
+                strokeAlpha = 1f,
+                strokeLineWidth = 1f,
+                strokeLineCap = StrokeCap.Butt,
+                strokeLineJoin = StrokeJoin.Bevel,
+                strokeLineMiter = 1f,
+                pathFillType = PathFillType.NonZero
+            ) {
+                moveTo(7f, 14f)
+                horizontalLineTo(17f)
+                quadToRelative(0.43f, 0f, 0.71f, -0.29f)
+                quadTo(18f, 13.43f, 18f, 13f)
+                reflectiveQuadTo(17.71f, 12.29f)
+                reflectiveQuadTo(17f, 12f)
+                horizontalLineTo(7f)
+                quadTo(6.58f, 12f, 6.29f, 12.29f)
+                reflectiveQuadTo(6f, 13f)
+                reflectiveQuadToRelative(0.29f, 0.71f)
+                reflectiveQuadTo(7f, 14f)
+                close()
+                moveTo(7f, 11f)
+                horizontalLineTo(17f)
+                quadToRelative(0.43f, 0f, 0.71f, -0.29f)
+                quadTo(18f, 10.43f, 18f, 10f)
+                quadTo(18f, 9.57f, 17.71f, 9.29f)
+                reflectiveQuadTo(17f, 9f)
+                horizontalLineTo(7f)
+                quadTo(6.58f, 9f, 6.29f, 9.29f)
+                reflectiveQuadTo(6f, 10f)
+                reflectiveQuadToRelative(0.29f, 0.71f)
+                reflectiveQuadTo(7f, 11f)
+                close()
+                moveTo(7f, 8f)
+                horizontalLineTo(17f)
+                quadToRelative(0.43f, 0f, 0.71f, -0.29f)
+                quadTo(18f, 7.43f, 18f, 7f)
+                reflectiveQuadTo(17.71f, 6.29f)
+                reflectiveQuadTo(17f, 6f)
+                horizontalLineTo(7f)
+                quadTo(6.58f, 6f, 6.29f, 6.29f)
+                reflectiveQuadTo(6f, 7f)
+                reflectiveQuadTo(6.29f, 7.71f)
+                reflectiveQuadTo(7f, 8f)
+                close()
+                moveTo(4f, 18f)
+                quadTo(3.18f, 18f, 2.59f, 17.41f)
+                reflectiveQuadTo(2f, 16f)
+                verticalLineTo(4f)
+                quadTo(2f, 3.17f, 2.59f, 2.59f)
+                reflectiveQuadTo(4f, 2f)
+                horizontalLineTo(20f)
+                quadToRelative(0.83f, 0f, 1.41f, 0.59f)
+                reflectiveQuadTo(22f, 4f)
+                verticalLineTo(19.58f)
+                quadToRelative(0f, 0.68f, -0.61f, 0.94f)
+                reflectiveQuadTo(20.3f, 20.3f)
+                lineTo(18f, 18f)
+                horizontalLineTo(4f)
+                close()
+                moveTo(18.85f, 16f)
+                lineTo(20f, 17.13f)
+                verticalLineTo(4f)
+                horizontalLineTo(4f)
+                verticalLineTo(16f)
+                horizontalLineTo(18.85f)
+                close()
+                moveTo(4f, 16f)
+                verticalLineTo(4f)
+                verticalLineTo(16f)
+                close()
+            }
+        }.build()
+        return _CommentOutline!!
+    }
+private var _CommentOutline: ImageVector? = null

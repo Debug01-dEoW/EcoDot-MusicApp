@@ -98,6 +98,31 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     
     private val lyricsRepository = com.example.ecodot.data.remote.LyricsRepository()
 
+    // ── App In-App Updater ──
+    val appUpdateManager = com.example.ecodot.util.AppUpdateManager(application)
+    val updateStatus: StateFlow<com.example.ecodot.util.UpdateStatus> = appUpdateManager.status
+
+    fun checkForUpdates(force: Boolean = true) {
+        viewModelScope.launch(Dispatchers.IO) {
+            appUpdateManager.checkForUpdates(force = force)
+            _lastUpdateCheckTime.value = prefsManager.lastUpdateCheckTime
+        }
+    }
+
+    fun downloadUpdate(info: com.example.ecodot.util.AppUpdateInfo) {
+        viewModelScope.launch(Dispatchers.IO) {
+            appUpdateManager.downloadUpdate(info)
+        }
+    }
+
+    fun installUpdate(apkFile: java.io.File): Boolean {
+        return appUpdateManager.installApk(apkFile)
+    }
+
+    fun dismissUpdate() {
+        appUpdateManager.dismissUpdate()
+    }
+
     // ── Sleep Timer State ──
     private val _sleepTimerRemaining = MutableStateFlow<Long?>(null) // in seconds, or 0 for End of Track, or null for none
     val sleepTimerRemaining: StateFlow<Long?> = _sleepTimerRemaining.asStateFlow()
@@ -169,6 +194,10 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun setAudioQuality(quality: com.example.ecodot.data.local.prefs.AudioQuality) {
         prefsManager.audioQuality = quality
         _audioQuality.value = quality
+        sendCustomCommand(
+            EcoDotSessionService.ACTION_CLEAR_URL_CACHE,
+            Bundle.EMPTY
+        )
     }
 
     private val _videoQuality = MutableStateFlow(prefsManager.videoQuality)
@@ -307,11 +336,128 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     
     private val _crossfadeDuration = MutableStateFlow(prefsManager.crossfadeDuration)
     val crossfadeDuration: StateFlow<Int> = _crossfadeDuration.asStateFlow()
-    
+
     fun setCrossfadeDuration(duration: Int) {
         prefsManager.crossfadeDuration = duration
         _crossfadeDuration.value = duration
     }
+
+    private val _crossfadeSkipAlbum = MutableStateFlow(prefsManager.crossfadeSkipAlbum)
+    val crossfadeSkipAlbum: StateFlow<Boolean> = _crossfadeSkipAlbum.asStateFlow()
+
+    fun setCrossfadeSkipAlbum(enabled: Boolean) {
+        prefsManager.crossfadeSkipAlbum = enabled
+        _crossfadeSkipAlbum.value = enabled
+    }
+
+    private val _crossfadeDjMode = MutableStateFlow(prefsManager.crossfadeDjMode)
+    val crossfadeDjMode: StateFlow<Boolean> = _crossfadeDjMode.asStateFlow()
+
+    fun setCrossfadeDjMode(enabled: Boolean) {
+        prefsManager.crossfadeDjMode = enabled
+        _crossfadeDjMode.value = enabled
+    }
+
+    private val _isCrossfading = MutableStateFlow(false)
+    val isCrossfading: StateFlow<Boolean> = _isCrossfading.asStateFlow()
+
+    private val _normalizeVolume = MutableStateFlow(prefsManager.normalizeVolume)
+    val normalizeVolume: StateFlow<Boolean> = _normalizeVolume.asStateFlow()
+
+    fun setNormalizeVolume(enabled: Boolean) {
+        prefsManager.normalizeVolume = enabled
+        _normalizeVolume.value = enabled
+        sendCustomCommand(
+            EcoDotSessionService.ACTION_SET_NORMALIZE_VOLUME,
+            Bundle().apply { putBoolean("enabled", enabled) }
+        )
+    }
+
+    private val _skipSilent = MutableStateFlow(prefsManager.skipSilent)
+    val skipSilent: StateFlow<Boolean> = _skipSilent.asStateFlow()
+
+    fun setSkipSilent(enabled: Boolean) {
+        prefsManager.skipSilent = enabled
+        _skipSilent.value = enabled
+        sendCustomCommand(
+            EcoDotSessionService.ACTION_SET_SKIP_SILENCE,
+            Bundle().apply { putBoolean("enabled", enabled) }
+        )
+    }
+
+    private val _sponsorBlockEnabled = MutableStateFlow(prefsManager.sponsorBlockEnabled)
+    val sponsorBlockEnabled: StateFlow<Boolean> = _sponsorBlockEnabled.asStateFlow()
+
+    fun setSponsorBlockEnabled(enabled: Boolean) {
+        prefsManager.sponsorBlockEnabled = enabled
+        _sponsorBlockEnabled.value = enabled
+        sendCustomCommand(EcoDotSessionService.ACTION_REFRESH_SPONSOR_SEGMENTS, Bundle.EMPTY)
+    }
+
+    private val _sponsorBlockCategories = MutableStateFlow(prefsManager.sponsorBlockCategories)
+    val sponsorBlockCategories: StateFlow<Set<String>> = _sponsorBlockCategories.asStateFlow()
+
+    fun setSponsorBlockCategories(categories: Set<String>) {
+        prefsManager.sponsorBlockCategories = categories
+        _sponsorBlockCategories.value = categories
+        sendCustomCommand(EcoDotSessionService.ACTION_REFRESH_SPONSOR_SEGMENTS, Bundle.EMPTY)
+    }
+
+    private val _themeMode = MutableStateFlow(prefsManager.themeMode)
+    val themeMode: StateFlow<com.example.ecodot.data.local.prefs.ThemeMode> = _themeMode.asStateFlow()
+
+    fun setThemeMode(mode: com.example.ecodot.data.local.prefs.ThemeMode) {
+        prefsManager.themeMode = mode
+        _themeMode.value = mode
+    }
+
+    private val _themeColorSource = MutableStateFlow(prefsManager.themeColorSource)
+    val themeColorSource: StateFlow<com.example.ecodot.data.local.prefs.ThemeColorSource> = _themeColorSource.asStateFlow()
+
+    fun setThemeColorSource(source: com.example.ecodot.data.local.prefs.ThemeColorSource) {
+        prefsManager.themeColorSource = source
+        _themeColorSource.value = source
+    }
+
+    private val _customThemeColorHex = MutableStateFlow(prefsManager.customThemeColorHex)
+    val customThemeColorHex: StateFlow<String> = _customThemeColorHex.asStateFlow()
+
+    fun setCustomThemeColorHex(hex: String) {
+        val cleaned = hex.removePrefix("#").uppercase()
+        val argb = if (cleaned.length == 6) "FF$cleaned" else cleaned.padStart(8, 'F').take(8)
+        prefsManager.customThemeColorHex = argb
+        _customThemeColorHex.value = argb
+    }
+
+    private val _liquidGlassEnabled = MutableStateFlow(prefsManager.liquidGlassEnabled)
+    val liquidGlassEnabled: StateFlow<Boolean> = _liquidGlassEnabled.asStateFlow()
+
+    fun setLiquidGlassEnabled(enabled: Boolean) {
+        prefsManager.liquidGlassEnabled = enabled
+        _liquidGlassEnabled.value = enabled
+    }
+
+    private val _autoCheckUpdates = MutableStateFlow(prefsManager.autoCheckUpdates)
+    val autoCheckUpdates: StateFlow<Boolean> = _autoCheckUpdates.asStateFlow()
+
+    fun setAutoCheckUpdates(enabled: Boolean) {
+        prefsManager.autoCheckUpdates = enabled
+        _autoCheckUpdates.value = enabled
+    }
+
+    private val _lastUpdateCheckTime = MutableStateFlow(prefsManager.lastUpdateCheckTime)
+    val lastUpdateCheckTime: StateFlow<Long> = _lastUpdateCheckTime.asStateFlow()
+
+    private val _cacheLimitMb = MutableStateFlow(prefsManager.cacheLimitMb)
+    val cacheLimitMb: StateFlow<Long> = _cacheLimitMb.asStateFlow()
+
+    fun setCacheLimitMb(limitMb: Long) {
+        prefsManager.cacheLimitMb = limitMb
+        _cacheLimitMb.value = limitMb
+    }
+
+    private val _storageStats = MutableStateFlow(com.example.ecodot.playback.StorageStats())
+    val storageStats: StateFlow<com.example.ecodot.playback.StorageStats> = _storageStats.asStateFlow()
 
     private val _autoCanvasEnabled = MutableStateFlow(prefsManager.autoCanvasEnabled)
     val autoCanvasEnabled: StateFlow<Boolean> = _autoCanvasEnabled.asStateFlow()
@@ -366,7 +512,11 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun updateCacheSize() {
-        _cacheSize.value = com.example.ecodot.playback.CacheManager.getCacheSize(getApplication())
+        viewModelScope.launch(Dispatchers.IO) {
+            val stats = com.example.ecodot.playback.CacheManager.getStorageStats(getApplication())
+            _storageStats.value = stats
+            _cacheSize.value = stats.playerCacheBytes
+        }
     }
 
     fun markTrackAsCached(trackId: String) {
@@ -381,9 +531,36 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun clearCache() {
-        com.example.ecodot.playback.CacheManager.clearCache(getApplication())
-        prefsManager.clearCachedTrackIds()
-        _cacheSize.value = 0L
+        viewModelScope.launch(Dispatchers.IO) {
+            com.example.ecodot.playback.CacheManager.clearCache(getApplication())
+            prefsManager.clearCachedTrackIds()
+            updateCacheSize()
+        }
+    }
+
+    fun clearThumbnailCache() {
+        viewModelScope.launch(Dispatchers.IO) {
+            com.example.ecodot.playback.CacheManager.clearThumbnailCache(getApplication())
+            updateCacheSize()
+        }
+    }
+
+    fun clearDownloadsCache() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val context = getApplication<Application>().applicationContext
+            val downloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
+            downloadsDir?.listFiles()?.forEach { file ->
+                if (file.isFile) file.delete()
+            }
+            val downloadsPlaylist = repository.allPlaylists.firstOrNull()?.find { it.name == "Downloads" }
+            if (downloadsPlaylist != null) {
+                val tracks = repository.getTracksInPlaylist(downloadsPlaylist.id).firstOrNull().orEmpty()
+                tracks.forEach { t ->
+                    repository.removeTrackFromPlaylist(downloadsPlaylist.id, t.id)
+                }
+            }
+            updateCacheSize()
+        }
     }
 
     private val _searchResults = MutableStateFlow<List<Track>>(emptyList())
@@ -443,17 +620,37 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     // Currently active YouTube queue (so we don't mix local and YT tracks randomly)
     private val _youtubeQueue = MutableStateFlow<List<Track>>(emptyList())
+    private val _searchVideos = MutableStateFlow<List<Track>>(emptyList())
+    val searchVideos: StateFlow<List<Track>> = _searchVideos.asStateFlow()
+
     private val _searchAlbums = MutableStateFlow<List<Album>>(emptyList())
     val searchAlbums: StateFlow<List<Album>> = _searchAlbums.asStateFlow()
 
     private val _searchArtists = MutableStateFlow<List<Artist>>(emptyList())
     val searchArtists: StateFlow<List<Artist>> = _searchArtists.asStateFlow()
 
+    private val _searchPlaylists = MutableStateFlow<List<com.example.ecodot.data.remote.HomeMediaItem>>(emptyList())
+    val searchPlaylists: StateFlow<List<com.example.ecodot.data.remote.HomeMediaItem>> = _searchPlaylists.asStateFlow()
+
+    private val _searchFeaturedPlaylists = MutableStateFlow<List<com.example.ecodot.data.remote.HomeMediaItem>>(emptyList())
+    val searchFeaturedPlaylists: StateFlow<List<com.example.ecodot.data.remote.HomeMediaItem>> = _searchFeaturedPlaylists.asStateFlow()
+
+    private val _searchPodcasts = MutableStateFlow<List<com.example.ecodot.data.remote.HomeMediaItem>>(emptyList())
+    val searchPodcasts: StateFlow<List<com.example.ecodot.data.remote.HomeMediaItem>> = _searchPodcasts.asStateFlow()
+
+    private val _moodCategoryArtwork = MutableStateFlow<Map<String, String>>(emptyMap())
+    val moodCategoryArtwork: StateFlow<Map<String, String>> = _moodCategoryArtwork.asStateFlow()
+
+    private val requestedMoodArtwork = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
     val searchHistory: StateFlow<List<RecentSearchItem>> = repository.recentSearches
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _searchSuggestions = MutableStateFlow<List<String>>(emptyList())
     val searchSuggestions: StateFlow<List<String>> = _searchSuggestions.asStateFlow()
+
+    private val _instantSearchItems = MutableStateFlow<List<InstantSearchItem>>(emptyList())
+    val instantSearchItems: StateFlow<List<InstantSearchItem>> = _instantSearchItems.asStateFlow()
 
     private val _videoInfo = MutableStateFlow<VideoInfo?>(null)
     val videoInfo: StateFlow<VideoInfo?> = _videoInfo.asStateFlow()
@@ -508,6 +705,156 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _isVideoMode = MutableStateFlow(false)
     val isVideoMode: StateFlow<Boolean> = _isVideoMode.asStateFlow()
+
+    @Volatile private var stickyVideoMode: Boolean = false
+
+    private val _videoAspectRatio = MutableStateFlow(16f / 9f)
+    val videoAspectRatio: StateFlow<Float> = _videoAspectRatio.asStateFlow()
+
+    private val _activeStreamLabel = MutableStateFlow<String?>(null)
+    val activeStreamLabel: StateFlow<String?> = _activeStreamLabel.asStateFlow()
+
+    @Volatile private var lastTransitionedMediaId: String? = null
+    @Volatile private var pendingExplicitPlayTrackId: String? = null
+
+    private fun isSquareAlbumArtUrl(artUri: String?): Boolean {
+        val url = artUri?.lowercase().orEmpty()
+        return url.contains("googleusercontent.com")
+    }
+
+    private fun isGenericOrVideoPlaceholderAlbum(album: String): Boolean {
+        val a = album.trim().lowercase()
+        return a.isEmpty() ||
+            a == "youtube video" ||
+            a == "video" ||
+            a == "music video" ||
+            a == "video chart" ||
+            a == "up next" ||
+            a == "unknown" ||
+            a == "cached" ||
+            a == "cache" ||
+            a == "youtube music" ||
+            a == "top result" ||
+            a.contains("view") ||
+            Regex("""^[\d.,]+\s*[kmb]?\s*likes?$""").matches(a)
+    }
+
+    fun isTrackVideo(track: Track?): Boolean {
+        if (track == null) return false
+        val path = track.path.lowercase()
+        if (path.startsWith("ytvideo://") || path.contains("ytvideo")) return true
+
+        val album = track.album.trim().lowercase()
+        if (album == "youtube video" ||
+            album == "video" ||
+            album == "music video" ||
+            album == "video chart"
+        ) return true
+
+        val isSquareArt = isSquareAlbumArtUrl(track.albumArtUri)
+        if (track.isYouTube && !isSquareArt) {
+            if (album.contains("view") || Regex("""\b\d[\d.,]*\s*[kmb]?\s*likes?\b""").containsMatchIn(album)) {
+                return true
+            }
+            val art = track.albumArtUri?.lowercase().orEmpty()
+            val isYtImgThumb = art.contains("i.ytimg.com/vi/")
+            val hasPlaceholderAlbum = album.isEmpty() ||
+                album == "up next" ||
+                album == "unknown" ||
+                album == "cached" ||
+                album == "cache" ||
+                album == "youtube music" ||
+                album == "top result"
+            if (isYtImgThumb && hasPlaceholderAlbum) {
+                return true
+            }
+        }
+
+        val title = track.title.lowercase()
+        return title.contains("official music video") ||
+               title.contains("official video") ||
+               title.contains("(music video)") ||
+               title.contains("[music video]") ||
+               title.contains("[mv]") ||
+               title.contains("(mv)") ||
+               title.contains("lyrical video") ||
+               title.contains("lyric video")
+    }
+
+    /**
+     * Resolves an incoming track against any persisted Room DB track and caller video intent.
+     * Ensures explicit video launches upgrade stale DB placeholders and persist `ytvideo://`,
+     * while library/recents/cached/history launches inherit the persisted video status.
+     */
+    private fun resolveTrackForPlayback(
+        incoming: Track,
+        dbTrack: Track?,
+        explicitIsVideo: Boolean
+    ): Pair<Track, Boolean> {
+        val callerExplicitlyVideo = explicitIsVideo ||
+            incoming.path.startsWith("ytvideo://", ignoreCase = true) ||
+            incoming.album.equals("YouTube Video", ignoreCase = true) ||
+            incoming.album.equals("Music Video", ignoreCase = true) ||
+            incoming.album.equals("Video Chart", ignoreCase = true) ||
+            incoming.album.equals("Video", ignoreCase = true)
+
+        val callerIsExplicitSong = !explicitIsVideo &&
+            incoming.isYouTube &&
+            !incoming.path.startsWith("ytvideo://", ignoreCase = true) &&
+            !isGenericOrVideoPlaceholderAlbum(incoming.album) &&
+            isSquareAlbumArtUrl(incoming.albumArtUri)
+
+        val base = when {
+            dbTrack == null -> incoming
+            callerExplicitlyVideo -> {
+                val upgradedAlbum = when {
+                    !isGenericOrVideoPlaceholderAlbum(dbTrack.album) -> dbTrack.album
+                    !isGenericOrVideoPlaceholderAlbum(incoming.album) -> incoming.album
+                    else -> "YouTube Video"
+                }
+                dbTrack.copy(
+                    title = incoming.title.ifBlank { dbTrack.title },
+                    artist = incoming.artist.takeIf { it.isNotBlank() && it != "Unknown" && it != "Unknown Artist" } ?: dbTrack.artist,
+                    album = upgradedAlbum,
+                    path = if (incoming.isYouTube) "ytvideo://${incoming.id}" else dbTrack.path,
+                    albumArtUri = incoming.albumArtUri ?: dbTrack.albumArtUri,
+                    duration = if (dbTrack.duration > 0) dbTrack.duration else incoming.duration,
+                    isExplicit = dbTrack.isExplicit || incoming.isExplicit
+                )
+            }
+            isGenericOrVideoPlaceholderAlbum(dbTrack.album) && !isGenericOrVideoPlaceholderAlbum(incoming.album) -> {
+                dbTrack.copy(
+                    title = incoming.title.ifBlank { dbTrack.title },
+                    artist = incoming.artist.takeIf { it.isNotBlank() && it != "Unknown" && it != "Unknown Artist" } ?: dbTrack.artist,
+                    album = incoming.album,
+                    albumArtUri = incoming.albumArtUri ?: dbTrack.albumArtUri,
+                    path = if (incoming.path.isNotBlank()) incoming.path else dbTrack.path
+                )
+            }
+            else -> dbTrack
+        }
+
+        val shouldBeVideo = when {
+            callerExplicitlyVideo -> true
+            callerIsExplicitSong -> false
+            else -> isTrackVideo(base)
+        }
+
+        val upgradedArt = com.example.ecodot.data.remote.YouTubeParser.getHighResUrl(
+            base.albumArtUri ?: incoming.albumArtUri,
+            isWide = shouldBeVideo
+        )
+        val finalTrack = if (shouldBeVideo && base.isYouTube && !base.path.startsWith("ytvideo://", ignoreCase = true)) {
+            val cleanAlbum = if (isGenericOrVideoPlaceholderAlbum(base.album)) "YouTube Video" else base.album
+            base.copy(path = "ytvideo://${base.id}", album = cleanAlbum, albumArtUri = upgradedArt ?: base.albumArtUri)
+        } else if (upgradedArt != null && upgradedArt != base.albumArtUri) {
+            base.copy(albumArtUri = upgradedArt)
+        } else {
+            base
+        }
+
+        return Pair(finalTrack, shouldBeVideo)
+    }
 
     fun toggleVideoMode() {
         _isVideoMode.value = !_isVideoMode.value
@@ -852,7 +1199,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     val blurIntensity: StateFlow<Float> = _blurIntensity.asStateFlow()
 
 // Equalizer & FX state
-    private val _eqEnabled = MutableStateFlow(false)
+    private val _eqEnabled = MutableStateFlow(prefsManager.equalizerEnabled)
     val eqEnabled: StateFlow<Boolean> = _eqEnabled.asStateFlow()
 
     private val initialEqBands: Map<Int, Int> = run {
@@ -872,7 +1219,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private val _playerStyle = MutableStateFlow(prefsManager.playerStyle)
     val playerStyle: StateFlow<com.example.ecodot.data.local.prefs.PlayerStyle> = _playerStyle.asStateFlow()
 
-    private val _virtualizerStrength = MutableStateFlow(0)
+    private val _virtualizerStrength = MutableStateFlow(prefsManager.virtualizerStrength)
     val virtualizerStrength: StateFlow<Int> = _virtualizerStrength.asStateFlow()
 
 
@@ -920,36 +1267,135 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private val _realMusicVideos = MutableStateFlow<List<com.example.ecodot.data.remote.HomeMediaItem>>(com.example.ecodot.data.remote.RealHomeData.getRealMusicVideos())
     val realMusicVideos: StateFlow<List<com.example.ecodot.data.remote.HomeMediaItem>> = _realMusicVideos.asStateFlow()
 
-    private val _selectedHomeCountry = MutableStateFlow("Canada")
+    private val _selectedHomeCountry = MutableStateFlow(prefsManager.selectedHomeCountry)
     val selectedHomeCountry: StateFlow<String> = _selectedHomeCountry.asStateFlow()
 
-    private val _countryVideoCharts = MutableStateFlow<List<com.example.ecodot.data.remote.HomeMediaItem>>(com.example.ecodot.data.remote.RealHomeData.getRealCountryCharts("Canada"))
+    private val _countryVideoCharts = MutableStateFlow<List<com.example.ecodot.data.remote.HomeMediaItem>>(
+        com.example.ecodot.data.remote.RealHomeData.getRealCountryCharts(prefsManager.selectedHomeCountry)
+    )
     val countryVideoCharts: StateFlow<List<com.example.ecodot.data.remote.HomeMediaItem>> = _countryVideoCharts.asStateFlow()
 
-    private val _topChartArtists = MutableStateFlow<List<Triple<String, String, String>>>(com.example.ecodot.data.remote.RealHomeData.getRealTopArtists("Canada"))
+    private val _topChartArtists = MutableStateFlow<List<Triple<String, String, String>>>(
+        com.example.ecodot.data.remote.RealHomeData.getRealTopArtists(prefsManager.selectedHomeCountry)
+    )
     val topChartArtists: StateFlow<List<Triple<String, String, String>>> = _topChartArtists.asStateFlow()
+
+    private val _topArtistChannelIds = MutableStateFlow<Map<String, String>>(emptyMap())
+    val topArtistChannelIds: StateFlow<Map<String, String>> = _topArtistChannelIds.asStateFlow()
+
+    private val _chartPodcasts = MutableStateFlow<List<com.example.ecodot.data.remote.HomeChartPodcast>>(
+        com.example.ecodot.data.remote.RealHomeData.getRealPodcasts().mapIndexed { idx, (t, h, img) ->
+            com.example.ecodot.data.remote.HomeChartPodcast(
+                rank = "${idx + 1}",
+                title = t,
+                host = h,
+                thumbnailUrl = img,
+                browseId = ""
+            )
+        }
+    )
+    val chartPodcasts: StateFlow<List<com.example.ecodot.data.remote.HomeChartPodcast>> = _chartPodcasts.asStateFlow()
+
+    private val _isChartLoading = MutableStateFlow(false)
+    val isChartLoading: StateFlow<Boolean> = _isChartLoading.asStateFlow()
+
+    private val _homeMoodsData = MutableStateFlow(com.example.ecodot.data.remote.HomeMoodsData())
+    val homeMoodsData: StateFlow<com.example.ecodot.data.remote.HomeMoodsData> = _homeMoodsData.asStateFlow()
+
+    private val _isHomeLoading = MutableStateFlow(true)
+    val isHomeLoading: StateFlow<Boolean> = _isHomeLoading.asStateFlow()
+
+    private val _isHomeRefreshing = MutableStateFlow(false)
+    val isHomeRefreshing: StateFlow<Boolean> = _isHomeRefreshing.asStateFlow()
+
+    private val _isHomePaginating = MutableStateFlow(false)
+    val isHomePaginating: StateFlow<Boolean> = _isHomePaginating.asStateFlow()
+
+    private val _homeContinuation = MutableStateFlow<String?>(null)
+    val homeContinuation: StateFlow<String?> = _homeContinuation.asStateFlow()
+
+    private val _homeBackgroundUrl = MutableStateFlow<String?>(null)
+    val homeBackgroundUrl: StateFlow<String?> = _homeBackgroundUrl.asStateFlow()
+
+    private val _homeHeroColor = MutableStateFlow(Color(0xFFD69A32))
+    val homeHeroColor: StateFlow<Color> = _homeHeroColor.asStateFlow()
+
+    data class BrowseSheetUiState(
+        val isVisible: Boolean = false,
+        val title: String = "",
+        val isLoading: Boolean = false,
+        val sections: List<com.example.ecodot.data.remote.HomeSection> = emptyList(),
+        val moodFilterName: String? = null
+    )
+
+    private val _browseSheetState = MutableStateFlow(BrowseSheetUiState())
+    val browseSheetState: StateFlow<BrowseSheetUiState> = _browseSheetState.asStateFlow()
+
+    data class BrowsePageUiState(
+        val title: String = "",
+        val strapline: String? = null,
+        val isLoading: Boolean = false,
+        val songs: List<Track> = emptyList(),
+        val albums: List<Album> = emptyList(),
+        val playlists: List<com.example.ecodot.data.remote.HomeMediaItem> = emptyList(),
+        val videos: List<com.example.ecodot.data.remote.HomeMediaItem> = emptyList(),
+        val artists: List<Artist> = emptyList(),
+        val moodFilterName: String? = null,
+        val browseId: String? = null,
+        val params: String? = null,
+        val fallbackQuery: String? = null
+    )
+
+    private val _browsePageState = MutableStateFlow(BrowsePageUiState())
+    val browsePageState: StateFlow<BrowsePageUiState> = _browsePageState.asStateFlow()
+
+    private var browsePageJob: Job? = null
+
+    private var currentHomeParams: String? = null
+    private var currentHomeMoodName: String? = null
+    private var homeFeedJob: Job? = null
+    private var homeRefreshCycle: Int = 0
 
     fun loadHomeContentForCountry(country: String) {
         _selectedHomeCountry.value = country
+        prefsManager.selectedHomeCountry = country
         _countryVideoCharts.value = com.example.ecodot.data.remote.RealHomeData.getRealCountryCharts(country)
         _topChartArtists.value = com.example.ecodot.data.remote.RealHomeData.getRealTopArtists(country)
+        _isChartLoading.value = true
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val results = repository.searchYouTubeCategorized("$country Trending Music Videos", "Videos")
-                if (results.songs.isNotEmpty()) {
-                    val mediaItems = results.songs.map { track ->
-                        com.example.ecodot.data.remote.HomeMediaItem(
-                            id = track.id,
-                            title = track.title,
-                            subtitle = "${track.artist} • YouTube Video",
-                            thumbnailUrl = track.albumArtUri ?: "https://i.ytimg.com/vi/${track.id}/hqdefault.jpg",
-                            type = com.example.ecodot.data.remote.MediaType.TRACK
-                        )
+                val liveCharts = repository.getChartsForCountry(country)
+                if (liveCharts.topArtists.isNotEmpty()) {
+                    _topChartArtists.value = liveCharts.topArtists.map { Triple(it.title, it.subscribers.ifBlank { "Top Chart Artist" }, it.thumbnailUrl) }
+                    _topArtistChannelIds.value = liveCharts.topArtists.filter { it.browseId.startsWith("UC") }.associate { it.title to it.browseId }
+                }
+                if (liveCharts.topPodcasts.isNotEmpty()) {
+                    _chartPodcasts.value = liveCharts.topPodcasts
+                }
+                if (liveCharts.videoCharts.isNotEmpty()) {
+                    _countryVideoCharts.value = liveCharts.videoCharts
+                    _realMusicVideos.value = (liveCharts.videoCharts + _realMusicVideos.value).distinctBy { it.id }.take(14)
+                } else {
+                    val results = repository.searchYouTubeCategorized("$country Trending Music Videos", "Videos")
+                    if (results.songs.isNotEmpty()) {
+                        val mediaItems = results.songs.map { track ->
+                            com.example.ecodot.data.remote.HomeMediaItem(
+                                id = track.id,
+                                title = track.title,
+                                subtitle = "${track.artist} • Trending Video",
+                                thumbnailUrl = track.albumArtUri ?: "https://i.ytimg.com/vi/${track.id}/hqdefault.jpg",
+                                type = com.example.ecodot.data.remote.MediaType.TRACK,
+                                aspectRatio = 16f / 9f
+                            )
+                        }
+                        _countryVideoCharts.value = mediaItems.take(10)
+                        _realMusicVideos.value = mediaItems
                     }
-                    _realMusicVideos.value = mediaItems
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error fetching trending videos for $country", e)
+                Log.e(TAG, "Error fetching charts/trending videos for $country", e)
+            } finally {
+                _isChartLoading.value = false
             }
         }
     }
@@ -958,9 +1404,28 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     val historyRecommendations: StateFlow<List<Track>> = _historyRecommendations.asStateFlow()
 
     init {
-        loadHomeContentForCountry("Canada")
+        // Automatically check for updates on startup
+        viewModelScope.launch(Dispatchers.IO) {
+            delay(2500)
+            try {
+                appUpdateManager.checkForUpdates(force = false)
+            } catch (e: Exception) {
+                Log.w(TAG, "Startup update check skipped: ${e.message}")
+            }
+        }
+
+        loadHomeContentForCountry(prefsManager.selectedHomeCountry)
         viewModelScope.launch {
             repository.initDefaultPlaylists()
+        }
+        // One-time startup repair for existing cached/recents/history tracks in Room DB
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                database.trackDao().fixMisclassifiedVideoTracks()
+                database.trackDao().fixMisclassifiedAudioTracks()
+            } catch (e: Exception) {
+                Log.w(TAG, "DB track cleanup skipped: ${e.message}")
+            }
         }
         viewModelScope.launch {
             repository.allTracks.collectLatest {
@@ -1010,11 +1475,27 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         }
         
         val sessionToken = SessionToken(application, ComponentName(application, EcoDotSessionService::class.java))
-        controllerFuture = MediaController.Builder(application, sessionToken).buildAsync()
+        controllerFuture = MediaController.Builder(application, sessionToken)
+            .setListener(object : MediaController.Listener {
+                override fun onExtrasChanged(controller: MediaController, extras: Bundle) {
+                    _isCrossfading.value = extras.getBoolean(
+                        EcoDotSessionService.EXTRA_IS_CROSSFADING,
+                        false
+                    )
+                    applyStreamTelemetryExtras(extras)
+                }
+            })
+            .buildAsync()
         
         controllerFuture?.addListener({
             try {
-                _controller.value = controllerFuture?.get()
+                val mediaController = controllerFuture?.get()
+                _controller.value = mediaController
+                _isCrossfading.value = mediaController?.sessionExtras?.getBoolean(
+                    EcoDotSessionService.EXTRA_IS_CROSSFADING,
+                    false
+                ) ?: false
+                mediaController?.sessionExtras?.let { applyStreamTelemetryExtras(it) }
                 
                 // Initial sync upon connect
                 val json = Gson().toJson(_playbackQueue.value)
@@ -1038,12 +1519,82 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                         val trackId = mediaItem?.mediaId
                         if (trackId != null) {
+                            val isMetadataRefreshOnly =
+                                reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED &&
+                                trackId == lastTransitionedMediaId &&
+                                pendingExplicitPlayTrackId != trackId &&
+                                !_isCrossfading.value
+                            if (isMetadataRefreshOnly) {
+                                return
+                            }
+                            lastTransitionedMediaId = trackId
+                            if (pendingExplicitPlayTrackId == trackId) {
+                                pendingExplicitPlayTrackId = null
+                            }
+
                             markTrackAsCached(trackId)
                             resetCanvasForNewTrack()
+                            _videoAspectRatio.value = 16f / 9f
+                            lastServiceBitrateBps = 0
+                            lastServiceSampleRateHz = 0
+                            _activeStreamLabel.value = null
+                            val shouldContinueVideoPlayback = stickyVideoMode || _controller.value?.playWhenReady == true || _isPlaying.value
                             viewModelScope.launch {
-                                val track = database.trackDao().getTrackById(trackId)
-                                    ?: findTrackInQueue(trackId)
-                                _currentTrack.value = track
+                                val dbOrQueueTrack = withContext(Dispatchers.IO) {
+                                    database.trackDao().getTrackById(trackId)
+                                } ?: findTrackInQueue(trackId)
+                                val currentUri = mediaItem.localConfiguration?.uri?.toString() ?: ""
+                                val uriIsVideo = currentUri.startsWith("ytvideo://", ignoreCase = true)
+                                val keepVideo = stickyVideoMode || uriIsVideo
+                                val (resolvedTrack, shouldBeVideo) = if (dbOrQueueTrack != null) {
+                                    resolveTrackForPlayback(
+                                        incoming = dbOrQueueTrack,
+                                        dbTrack = dbOrQueueTrack,
+                                        explicitIsVideo = keepVideo
+                                    )
+                                } else {
+                                    Pair(null, keepVideo)
+                                }
+
+                                if (resolvedTrack != null) {
+                                    _currentTrack.value = resolvedTrack
+                                    _isVideoMode.value = shouldBeVideo
+
+                                    if (resolvedTrack != dbOrQueueTrack) {
+                                        withContext(Dispatchers.IO) {
+                                            runCatching { repository.saveTrack(resolvedTrack) }
+                                        }
+                                    }
+
+                                    // Ensure controller plays ytvideo:// if in video mode or detected as video
+                                    val ctrl = _controller.value
+                                    if (shouldBeVideo && resolvedTrack.isYouTube && !isDownloaded(trackId) && !uriIsVideo && ctrl != null) {
+                                        val updatedMediaItem = buildMediaItem(resolvedTrack, forceVideo = true)
+                                        val currentIndex = ctrl.currentMediaItemIndex
+                                        if (currentIndex != androidx.media3.common.C.INDEX_UNSET) {
+                                            ctrl.replaceMediaItem(currentIndex, updatedMediaItem)
+                                            ctrl.prepare()
+                                            if (shouldContinueVideoPlayback) {
+                                                ctrl.playWhenReady = true
+                                                ctrl.play()
+                                            }
+                                        }
+                                    } else if (shouldBeVideo && shouldContinueVideoPlayback && ctrl != null) {
+                                        if (ctrl.playbackState == Player.STATE_IDLE) {
+                                            ctrl.prepare()
+                                        }
+                                        ctrl.playWhenReady = true
+                                        ctrl.play()
+                                    }
+                                    if (shouldBeVideo && ctrl != null) {
+                                        val nextIdx = ctrl.nextMediaItemIndex
+                                        if (nextIdx != C.INDEX_UNSET) prepareTrackVideoModeAtIndex(ctrl, nextIdx)
+                                    }
+                                } else {
+                                    _currentTrack.value = null
+                                    _isVideoMode.value = shouldBeVideo
+                                }
+
                                 _hasTrackLoaded.value = true
                                 updateDuration()
                                 
@@ -1052,25 +1603,25 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                                 if (idx >= 0) setIndex(idx)
                                 
                                 // Fetch Lyrics
-                                track?.let { fetchLyrics(it) }
+                                resolvedTrack?.let { fetchLyrics(it) }
 
                                  // Fetch rich video info for info sheet
-                                if (track?.isYouTube == true) {
+                                if (resolvedTrack?.isYouTube == true) {
                                     fetchVideoInfo(trackId)
                                 }
 
                                 // Update colors from palette
-                                track?.albumArtUri?.let { uri ->
+                                resolvedTrack?.albumArtUri?.let { uri ->
                                     updateThemeFromArt(uri)
                                 }
 
                                 // Endless logic: if we are near the end, fetch more
-                                if (_endlessMode.value && track?.isYouTube == true) {
+                                if (_endlessMode.value && resolvedTrack?.isYouTube == true) {
                                     checkAndFetchRelatedTracks(trackId)
                                 }
 
                                 // Automatically log playback on transitions
-                                track?.let { repository.logPlayback(it) }
+                                resolvedTrack?.let { repository.logPlayback(it) }
                             }
                         }
                     }
@@ -1083,6 +1634,10 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                     override fun onRepeatModeChanged(repeatMode: Int) {
                         // Sync VM state when notification button changes repeat mode
                         _repeatMode.value = repeatMode
+                    }
+
+                    override fun onTimelineChanged(timeline: androidx.media3.common.Timeline, reason: Int) {
+                        updateDuration()
                     }
 
                     override fun onPlaybackStateChanged(playbackState: Int) {
@@ -1113,10 +1668,20 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                             // Service now handles auto-skip internally for background stability.
                         }
                     }
+
+                    override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
+                        if (videoSize.width > 0 && videoSize.height > 0) {
+                            val ratio = (videoSize.width.toFloat() * videoSize.pixelWidthHeightRatio) / videoSize.height.toFloat()
+                            _videoAspectRatio.value = ratio.coerceIn(0.45f, 2.4f)
+                        }
+                    }
+
+                    override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+                        updateStreamLabelFromTracks(tracks)
+                    }
                 })
 
-                // No custom-command queue sync needed — ViewModel writes directly
-                // to SharedPlaybackQueue which the service reads from.
+                // Sync initial crossfade state; live transitions also update via MediaController.Listener.onExtrasChanged
                 
                 // --- RESTORE STATE ON APP REOPEN ---
                 // If the service is already playing (app was killed but service is still running),
@@ -1134,26 +1699,36 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                         // Try to resolve track from DB
                         viewModelScope.launch {
                             val trackId = currentItem.mediaId
-                            val track = database.trackDao().getTrackById(trackId)
-                                ?: findTrackInQueue(trackId)
+                            lastTransitionedMediaId = trackId
+                            val uriIsVideo = currentItem.localConfiguration?.uri?.scheme.equals("ytvideo", ignoreCase = true)
+                            val track = withContext(Dispatchers.IO) {
+                                database.trackDao().getTrackById(trackId)
+                            } ?: findTrackInQueue(trackId)
                             if (track != null) {
-                                _currentTrack.value = track
-                                markTrackAsCached(track.id)
-                                track.albumArtUri?.let { updateThemeFromArt(it) }
-                                fetchLyrics(track)
+                                val (resolved, shouldBeVideo) = resolveTrackForPlayback(track, track, uriIsVideo)
+                                _currentTrack.value = resolved
+                                _isVideoMode.value = shouldBeVideo
+                                markTrackAsCached(resolved.id)
+                                resolved.albumArtUri?.let { updateThemeFromArt(it) }
+                                fetchLyrics(resolved)
                             } else {
                                 // Fallback: construct minimal track from MediaMetadata
                                 val meta = currentItem.mediaMetadata
-                                _currentTrack.value = Track(
+                                val fallbackTrack = Track(
                                     id = trackId,
                                     title = meta.title?.toString() ?: "Unknown",
                                     artist = meta.artist?.toString() ?: "Unknown",
-                                    album = meta.albumTitle?.toString() ?: "",
-                                    albumArtUri = meta.artworkUri?.toString(),
+                                    album = if (uriIsVideo) "YouTube Video" else (meta.albumTitle?.toString() ?: ""),
+                                    albumArtUri = com.example.ecodot.data.remote.YouTubeParser.getHighResUrl(
+                                        meta.artworkUri?.toString(),
+                                        isWide = uriIsVideo
+                                    ),
                                     duration = _duration.value,
-                                    path = "",
+                                    path = currentItem.localConfiguration?.uri?.toString() ?: "",
                                     isYouTube = true
                                 )
+                                _currentTrack.value = fallbackTrack
+                                _isVideoMode.value = uriIsVideo || isTrackVideo(fallbackTrack)
                             }
                             if (controller.isPlaying) startPositionUpdater()
                         }
@@ -1177,38 +1752,507 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun fetchHomeContent(params: String? = null) {
-        viewModelScope.launch {
-            val sections = repository.getHomeFeed(params)
-            if (sections.isNotEmpty()) {
-                _homeSections.value = sections
-            }
-            if (params == null) {
-                fetchMoodRecommendations()
+        currentHomeParams = params
+        if (params == null) currentHomeMoodName = null
+        refreshHomeContent(forceFreshSeed = false, isPullToRefresh = false)
+    }
+
+    fun refreshHomeContent(forceFreshSeed: Boolean = true, isPullToRefresh: Boolean = true) {
+        val params = currentHomeParams
+        val mood = currentHomeMoodName
+        val country = _selectedHomeCountry.value
+        homeFeedJob?.cancel()
+        if (isPullToRefresh) {
+            _isHomeRefreshing.value = true
+        }
+        if (_homeSections.value.isEmpty()) {
+            _isHomeLoading.value = true
+        }
+        homeRefreshCycle++
+        val cycle = homeRefreshCycle
+
+        homeFeedJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val page1Deferred = async {
+                    repository.getHomeFeedPage(
+                        params = params,
+                        country = country,
+                        resetVisitorData = forceFreshSeed
+                    )
+                }
+                val moodsDeferred = if (params == null && (_homeMoodsData.value.moodsAndMoments.isEmpty() || forceFreshSeed)) {
+                    async { repository.getMoodsAndGenres() }
+                } else null
+                val newReleasesDeferred = if (params == null) {
+                    async { repository.getNewReleasesSections(country) }
+                } else null
+
+                var page = page1Deferred.await()
+                val collectedSections = page.sections.toMutableList()
+                var continuationToken = page.continuation
+
+                // Auto-fetch 1 continuation page if initial page only returned a few shelves (so Home is rich & layered like SimpMusic)
+                if (!continuationToken.isNullOrBlank() && collectedSections.size < 4) {
+                    val page2 = repository.getHomeFeedPage(
+                        continuation = continuationToken,
+                        country = country
+                    )
+                    val seenTitles = collectedSections.mapTo(mutableSetOf()) { it.title.lowercase() }
+                    for (sec in page2.sections) {
+                        if (seenTitles.add(sec.title.lowercase())) {
+                            collectedSections.add(sec)
+                        }
+                    }
+                    continuationToken = page2.continuation
+                }
+
+                // Append New Releases shelves cleanly in "All" mode (skip duplicate/single-card repeats)
+                if (newReleasesDeferred != null) {
+                    val newRel = newReleasesDeferred.await()
+                    val seenTitles = collectedSections.mapTo(mutableSetOf()) { it.title.lowercase() }
+                    val seenItemIds = collectedSections.flatMap { it.items }.mapTo(mutableSetOf()) { it.id }
+                    for (sec in newRel) {
+                        val hasFreshItems = sec.items.any { it.id !in seenItemIds }
+                        if (hasFreshItems && sec.items.size >= 2 && seenTitles.add(sec.title.lowercase())) {
+                            collectedSections.add(sec)
+                            sec.items.forEach { seenItemIds.add(it.id) }
+                        }
+                    }
+                }
+
+                if (collectedSections.isNotEmpty()) {
+                    _homeSections.value = collectedSections
+                    _homeContinuation.value = continuationToken
+                    page.backgroundUrl?.let { _homeBackgroundUrl.value = it }
+
+                    val heroThumb = collectedSections.firstOrNull { it.items.isNotEmpty() }?.items?.firstOrNull()?.thumbnailUrl
+                    if (!heroThumb.isNullOrBlank()) {
+                        extractHomeHeroColor(heroThumb)
+                    }
+                }
+
+                if (moodsDeferred != null) {
+                    val moods = moodsDeferred.await()
+                    if (moods.moodsAndMoments.isNotEmpty() || moods.genres.isNotEmpty()) {
+                        _homeMoodsData.value = moods
+                    }
+                }
+
+                // Refresh Quick Picks + Music Videos dynamically so pull-to-refresh yields varied fresh music
+                if (params == null) {
+                    refreshQuickPicksFromHomeOrHistory(collectedSections, cycle, forceFreshSeed)
+                    refreshTrendingVideosFromHomeOrCharts(collectedSections, country, cycle, forceFreshSeed)
+                    fetchMoodRecommendations(mood)
+                } else {
+                    fetchMoodRecommendations(mood)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "refreshHomeContent failed", e)
+            } finally {
+                _isHomeLoading.value = false
+                _isHomeRefreshing.value = false
             }
         }
     }
 
-    fun setHomeMood(mood: String?) {
-        viewModelScope.launch {
-            val params = when (mood) {
-                "Relax" -> "ggM8SgQIBxADSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAB"
-                "Sleep" -> "ggM8SgQIBxABSgQIBRADSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAB"
-                "Energize" -> "ggM8SgQIBxABSgQIBRABSgQICRADSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAB"
-                "Sad" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChADSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAB"
-                "Romance" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRADSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAB"
-                "Feel good", "Feel Good" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBADSgQIBBABSgQIDhABSgQIAxABSgQIBhAB"
-                "Workout" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBADSgQIDhABSgQIAxABSgQIBhAB"
-                "Party" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhADSgQIAxABSgQIBhAB"
-                "Commute" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxADSgQIBhAB"
-                "Focus" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAD"
-                else -> null
+    fun loadMoreHomeContent() {
+        val token = _homeContinuation.value
+        if (token.isNullOrBlank() || _isHomePaginating.value || _isHomeRefreshing.value) return
+
+        _isHomePaginating.value = true
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val nextPage = repository.getHomeFeedPage(
+                    continuation = token,
+                    country = _selectedHomeCountry.value
+                )
+                if (nextPage.sections.isNotEmpty()) {
+                    val existing = _homeSections.value
+                    val seenTitles = existing.mapTo(mutableSetOf()) { it.title.lowercase() }
+                    val uniqueNew = nextPage.sections.filter { seenTitles.add(it.title.lowercase()) }
+                    if (uniqueNew.isNotEmpty()) {
+                        _homeSections.value = existing + uniqueNew
+                    }
+                }
+                _homeContinuation.value = nextPage.continuation
+            } catch (e: Exception) {
+                Log.e(TAG, "loadMoreHomeContent failed", e)
+            } finally {
+                _isHomePaginating.value = false
             }
-            val sections = repository.getHomeFeed(params)
-            if (sections.isNotEmpty()) {
-                _homeSections.value = sections
-            }
-            fetchMoodRecommendations(mood)
         }
+    }
+
+    private suspend fun refreshQuickPicksFromHomeOrHistory(
+        sections: List<com.example.ecodot.data.remote.HomeSection>,
+        cycle: Int,
+        forceFresh: Boolean
+    ) {
+        val qpShelf = sections.firstOrNull {
+            it.title.contains("Quick pick", ignoreCase = true) ||
+                it.title.contains("Trending song", ignoreCase = true) ||
+                (it.items.count { item -> item.type == com.example.ecodot.data.remote.MediaType.TRACK } >= 6)
+        }
+        val liveShelfTracks = qpShelf?.items
+            ?.filter { it.type == com.example.ecodot.data.remote.MediaType.TRACK && it.aspectRatio == 1f }
+            ?.map { item ->
+                Track(
+                    id = item.id,
+                    title = item.title,
+                    artist = item.subtitle.ifBlank { "YouTube Music" },
+                    album = "",
+                    albumArtUri = item.thumbnailUrl,
+                    duration = 0,
+                    path = "https://www.youtube.com/watch?v=${item.id}",
+                    isYouTube = true,
+                    artistId = item.artistId,
+                    isExplicit = item.isExplicit
+                )
+            }
+            .orEmpty()
+
+        if (liveShelfTracks.size >= 8 && !forceFresh) {
+            _suggestedTracks.value = liveShelfTracks.take(20)
+            return
+        }
+
+        // Personalized seed rotation on refresh so Quick Picks always delivers varied YouTube Music tracks
+        val recent = runCatching { repository.recentlyPlayed.first() }.getOrDefault(emptyList())
+        val seedTrack = recent.takeIf { it.isNotEmpty() }?.let { list ->
+            list[cycle % list.size]
+        } ?: liveShelfTracks.firstOrNull() ?: _suggestedTracks.value.getOrNull(cycle % _suggestedTracks.value.size.coerceAtLeast(1))
+
+        val relatedTracks = if (seedTrack != null) {
+            runCatching { repository.getYouTubeRelatedTracks(seedTrack.id) }.getOrDefault(emptyList())
+        } else emptyList()
+
+        val refreshQueries = listOf(
+            "Top Global Hits 2026",
+            "Trending Viral Music Songs",
+            "Today's Biggest Hits Pop R&B",
+            "Bollywood & Punjabi Chartbusters"
+        )
+        val extraSearch = if (forceFresh || relatedTracks.size < 8) {
+            runCatching { repository.searchYouTube(refreshQueries[cycle % refreshQueries.size]) }.getOrDefault(emptyList())
+        } else emptyList()
+
+        val merged = (liveShelfTracks + relatedTracks + extraSearch)
+            .distinctBy { it.id }
+            .let { list -> if (forceFresh && list.size > 1) list.shuffled() else list }
+
+        if (merged.isNotEmpty()) {
+            _suggestedTracks.value = merged.take(20)
+        }
+    }
+
+    private suspend fun refreshTrendingVideosFromHomeOrCharts(
+        sections: List<com.example.ecodot.data.remote.HomeSection>,
+        country: String,
+        cycle: Int,
+        forceFresh: Boolean
+    ) {
+        val homeVideos = sections.flatMap { it.items }
+            .filter { it.type == com.example.ecodot.data.remote.MediaType.TRACK && it.aspectRatio > 1.2f }
+        val queries = listOf(
+            "$country Trending Music Videos",
+            "Top Official Music Videos 2026",
+            "New Trending Music Videos"
+        )
+        val fetched = if (forceFresh || homeVideos.size < 4) {
+            runCatching { repository.searchYouTubeCategorized(queries[cycle % queries.size], "Videos") }
+                .getOrNull()?.songs?.map { track ->
+                    com.example.ecodot.data.remote.HomeMediaItem(
+                        id = track.id,
+                        title = track.title,
+                        subtitle = "${track.artist} • Music Video",
+                        thumbnailUrl = track.albumArtUri ?: "https://i.ytimg.com/vi/${track.id}/hqdefault.jpg",
+                        type = com.example.ecodot.data.remote.MediaType.TRACK,
+                        aspectRatio = 16f / 9f,
+                        isExplicit = track.isExplicit
+                    )
+                }.orEmpty()
+        } else emptyList()
+
+        val combined = (homeVideos + fetched + _countryVideoCharts.value)
+            .distinctBy { it.id }
+            .let { list -> if (forceFresh && list.size > 2) list.shuffled() else list }
+
+        if (combined.isNotEmpty()) {
+            _realMusicVideos.value = combined.take(16)
+        }
+    }
+
+    private fun extractHomeHeroColor(imageUrl: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val context = getApplication<Application>()
+                val loader = coil.ImageLoader(context)
+                val req = coil.request.ImageRequest.Builder(context)
+                    .data(imageUrl)
+                    .allowHardware(false)
+                    .build()
+                val res = loader.execute(req)
+                val bitmap = (res.drawable as? BitmapDrawable)?.bitmap ?: return@launch
+                val palette = Palette.from(bitmap).generate()
+                val rgb = palette.getVibrantColor(0).takeIf { it != 0 }
+                    ?: palette.getDarkVibrantColor(0).takeIf { it != 0 }
+                    ?: palette.getMutedColor(0).takeIf { it != 0 }
+                    ?: palette.getDominantColor(0)
+                if (rgb != 0) {
+                    _homeHeroColor.value = Color(rgb)
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun openBrowseCategory(
+        title: String,
+        browseId: String?,
+        params: String?,
+        fallbackQuery: String? = null,
+        moodFilterName: String? = null
+    ) {
+        _browseSheetState.value = BrowseSheetUiState(
+            isVisible = true,
+            title = title,
+            isLoading = true,
+            sections = emptyList(),
+            moodFilterName = moodFilterName
+        )
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val remoteSections = if (!browseId.isNullOrBlank()) {
+                    repository.browseCategorySections(browseId, params)
+                } else emptyList()
+
+                if (remoteSections.isNotEmpty()) {
+                    _browseSheetState.value = _browseSheetState.value.copy(
+                        isLoading = false,
+                        sections = remoteSections
+                    )
+                } else {
+                    val query = fallbackQuery ?: title
+                    val res = repository.searchYouTubeCategorized(query, "All")
+                    val builtSections = mutableListOf<com.example.ecodot.data.remote.HomeSection>()
+                    if (res.songs.isNotEmpty()) {
+                        builtSections.add(
+                            com.example.ecodot.data.remote.HomeSection(
+                                title = "Top Songs",
+                                items = res.songs.map { t ->
+                                    com.example.ecodot.data.remote.HomeMediaItem(
+                                        id = t.id,
+                                        title = t.title,
+                                        subtitle = t.artist,
+                                        thumbnailUrl = t.albumArtUri ?: "https://i.ytimg.com/vi/${t.id}/hqdefault.jpg",
+                                        type = com.example.ecodot.data.remote.MediaType.TRACK,
+                                        isExplicit = t.isExplicit,
+                                        artistId = t.artistId
+                                    )
+                                }
+                            )
+                        )
+                    }
+                    if (res.albums.isNotEmpty()) {
+                        builtSections.add(
+                            com.example.ecodot.data.remote.HomeSection(
+                                title = "Albums",
+                                items = res.albums.mapNotNull { al ->
+                                    val aid = al.id ?: return@mapNotNull null
+                                    com.example.ecodot.data.remote.HomeMediaItem(
+                                        id = aid,
+                                        title = al.title,
+                                        subtitle = al.artist,
+                                        thumbnailUrl = al.artUri ?: "",
+                                        type = com.example.ecodot.data.remote.MediaType.ALBUM
+                                    )
+                                }
+                            )
+                        )
+                    }
+                    if (res.videos.isNotEmpty()) {
+                        builtSections.add(
+                            com.example.ecodot.data.remote.HomeSection(
+                                title = "Videos",
+                                items = res.videos.map { v ->
+                                    com.example.ecodot.data.remote.HomeMediaItem(
+                                        id = v.id,
+                                        title = v.title,
+                                        subtitle = v.artist,
+                                        thumbnailUrl = v.albumArtUri ?: "https://i.ytimg.com/vi/${v.id}/hqdefault.jpg",
+                                        type = com.example.ecodot.data.remote.MediaType.TRACK,
+                                        aspectRatio = 16f / 9f
+                                    )
+                                }
+                            )
+                        )
+                    }
+                    _browseSheetState.value = _browseSheetState.value.copy(
+                        isLoading = false,
+                        sections = builtSections
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "openBrowseCategory failed for $title", e)
+                _browseSheetState.value = _browseSheetState.value.copy(isLoading = false)
+            }
+        }
+    }
+
+    fun dismissBrowseSheet() {
+        _browseSheetState.value = _browseSheetState.value.copy(isVisible = false)
+    }
+
+    fun openBrowsePage(
+        title: String,
+        strapline: String? = null,
+        browseId: String? = null,
+        params: String? = null,
+        initialItems: List<com.example.ecodot.data.remote.HomeMediaItem> = emptyList(),
+        fallbackQuery: String? = null,
+        moodFilterName: String? = null
+    ) {
+        val seedSongs = initialItems
+            .filter { it.type == com.example.ecodot.data.remote.MediaType.TRACK && it.aspectRatio <= 1.2f }
+            .map { item ->
+                Track(
+                    id = item.id,
+                    title = item.title,
+                    artist = item.subtitle.split("•").firstOrNull()?.trim().orEmpty().ifBlank { "YouTube Music" },
+                    album = "",
+                    albumArtUri = item.thumbnailUrl,
+                    duration = 0,
+                    path = "https://www.youtube.com/watch?v=${item.id}",
+                    isYouTube = true,
+                    artistId = item.artistId,
+                    isExplicit = item.isExplicit
+                )
+            }
+        val seedVideos = initialItems.filter {
+            it.type == com.example.ecodot.data.remote.MediaType.TRACK && it.aspectRatio > 1.2f
+        }
+        val seedAlbums = initialItems.filter { it.type == com.example.ecodot.data.remote.MediaType.ALBUM }.map { item ->
+            Album(id = item.id, title = item.title, artist = item.subtitle.ifBlank { "Album" }, artUri = item.thumbnailUrl, tracks = emptyList())
+        }
+        val seedPlaylists = initialItems.filter { it.type == com.example.ecodot.data.remote.MediaType.PLAYLIST }
+        val seedArtists = initialItems.filter { it.type == com.example.ecodot.data.remote.MediaType.ARTIST }.map { item ->
+            Artist(id = item.id, name = item.title, imageUrl = item.thumbnailUrl)
+        }
+
+        _browsePageState.value = BrowsePageUiState(
+            title = title,
+            strapline = strapline,
+            isLoading = true,
+            songs = seedSongs,
+            albums = seedAlbums,
+            playlists = seedPlaylists,
+            videos = seedVideos,
+            artists = seedArtists,
+            moodFilterName = moodFilterName,
+            browseId = browseId,
+            params = params,
+            fallbackQuery = fallbackQuery ?: title
+        )
+
+        browsePageJob?.cancel()
+        browsePageJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val query = fallbackQuery ?: title
+                val remoteDeferred = if (!browseId.isNullOrBlank()) {
+                    async { repository.browseCategorySections(browseId, params) }
+                } else null
+                val searchDeferred = async { repository.searchYouTubeCategorized(query, "All") }
+                val playlistsDeferred = async { repository.searchYouTubePlaylists(query) }
+
+                val remoteItems = remoteDeferred?.await()?.flatMap { it.items }.orEmpty()
+                val searchRes = searchDeferred.await()
+                val fetchedPlaylists = playlistsDeferred.await()
+
+                val remoteSongs = remoteItems
+                    .filter { it.type == com.example.ecodot.data.remote.MediaType.TRACK && it.aspectRatio <= 1.2f }
+                    .map { item ->
+                        Track(
+                            id = item.id,
+                            title = item.title,
+                            artist = item.subtitle.split("•").firstOrNull()?.trim().orEmpty().ifBlank { "YouTube Music" },
+                            album = "",
+                            albumArtUri = item.thumbnailUrl,
+                            duration = 0,
+                            path = "https://www.youtube.com/watch?v=${item.id}",
+                            isYouTube = true,
+                            artistId = item.artistId,
+                            isExplicit = item.isExplicit
+                        )
+                    }
+                val remoteVideos = remoteItems.filter {
+                    it.type == com.example.ecodot.data.remote.MediaType.TRACK && it.aspectRatio > 1.2f
+                }
+                val remoteAlbums = remoteItems
+                    .filter { it.type == com.example.ecodot.data.remote.MediaType.ALBUM }
+                    .map { Album(id = it.id, title = it.title, artist = it.subtitle.ifBlank { "Album" }, artUri = it.thumbnailUrl, tracks = emptyList()) }
+                val remotePlaylists = remoteItems.filter { it.type == com.example.ecodot.data.remote.MediaType.PLAYLIST }
+                val remoteArtists = remoteItems
+                    .filter { it.type == com.example.ecodot.data.remote.MediaType.ARTIST }
+                    .map { Artist(id = it.id, name = it.title, imageUrl = it.thumbnailUrl) }
+
+                val searchVideoItems = searchRes.videos.map { v ->
+                    com.example.ecodot.data.remote.HomeMediaItem(
+                        id = v.id,
+                        title = v.title,
+                        subtitle = v.artist,
+                        thumbnailUrl = v.albumArtUri ?: "https://i.ytimg.com/vi/${v.id}/hqdefault.jpg",
+                        type = com.example.ecodot.data.remote.MediaType.TRACK,
+                        aspectRatio = 16f / 9f,
+                        isExplicit = v.isExplicit,
+                        artistId = v.artistId
+                    )
+                }
+
+                _browsePageState.value = _browsePageState.value.copy(
+                    isLoading = false,
+                    songs = (seedSongs + remoteSongs + searchRes.songs).distinctBy { it.id }.take(25),
+                    albums = (seedAlbums + remoteAlbums + searchRes.albums).distinctBy { it.id ?: it.title }.take(20),
+                    playlists = (seedPlaylists + remotePlaylists + fetchedPlaylists).distinctBy { it.id }.take(20),
+                    videos = (seedVideos + remoteVideos + searchVideoItems).distinctBy { it.id }.take(16),
+                    artists = (seedArtists + remoteArtists + searchRes.artists).distinctBy { it.id.ifBlank { it.name } }.take(14)
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "openBrowsePage failed for $title", e)
+                _browsePageState.value = _browsePageState.value.copy(isLoading = false)
+            }
+        }
+    }
+
+    fun refreshBrowsePage() {
+        val current = _browsePageState.value
+        if (current.title.isBlank()) return
+        openBrowsePage(
+            title = current.title,
+            strapline = current.strapline,
+            browseId = current.browseId,
+            params = current.params,
+            fallbackQuery = current.fallbackQuery,
+            moodFilterName = current.moodFilterName
+        )
+    }
+
+    fun setHomeMood(mood: String?) {
+        currentHomeMoodName = mood
+        val params = when (mood) {
+            "Relax" -> "ggM8SgQIBxADSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAB"
+            "Sleep" -> "ggM8SgQIBxABSgQIBRADSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAB"
+            "Energize" -> "ggM8SgQIBxABSgQIBRABSgQICRADSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAB"
+            "Sad" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChADSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAB"
+            "Romance" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRADSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAB"
+            "Feel good", "Feel Good" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBADSgQIBBABSgQIDhABSgQIAxABSgQIBhAB"
+            "Workout" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBADSgQIDhABSgQIAxABSgQIBhAB"
+            "Party" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhADSgQIAxABSgQIBhAB"
+            "Commute" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxADSgQIBhAB"
+            "Focus" -> "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAD"
+            else -> null
+        }
+        currentHomeParams = params
+        refreshHomeContent(forceFreshSeed = false, isPullToRefresh = false)
     }
 
     fun fetchMoodRecommendations(moodOverride: String? = null) {
@@ -1279,6 +2323,10 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                     _position.value = controller.currentPosition
                     val dur = controller.duration
                     _duration.value = if (dur != C.TIME_UNSET) dur else 0L
+                    _isCrossfading.value = controller.sessionExtras.getBoolean(
+                        EcoDotSessionService.EXTRA_IS_CROSSFADING,
+                        false
+                    )
                 }
                 delay(250) // Reduced from 100ms — still smooth seekbar, 60% less CPU
             }
@@ -1540,14 +2588,106 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private val _searchError = MutableStateFlow<String?>(null)
     val searchError: StateFlow<String?> = _searchError.asStateFlow()
 
-    fun performSearch(query: String, type: String? = null, saveToHistory: Boolean = false) {
+    fun ensureMoodsLoaded() {
+        val current = _homeMoodsData.value
+        if (current.moodsAndMoments.isNotEmpty() || current.genres.isNotEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val loaded = repository.getMoodsAndGenres()
+                if (loaded.moodsAndMoments.isNotEmpty() || loaded.genres.isNotEmpty()) {
+                    _homeMoodsData.value = loaded
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "ensureMoodsLoaded failed", e)
+            }
+        }
+    }
+
+    fun loadMoodCategoryArtwork(item: com.example.ecodot.data.remote.MoodCategoryItem) {
+        if (item.params.isBlank()) return
+        if (!_moodCategoryArtwork.value[item.params].isNullOrBlank()) return
+        if (!requestedMoodArtwork.add(item.params)) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val url = repository.getMoodCategoryArtwork(item.browseId, item.params)
+                if (!url.isNullOrBlank()) {
+                    _moodCategoryArtwork.value = _moodCategoryArtwork.value + (item.params to url)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "loadMoodCategoryArtwork failed for ${item.title}", e)
+            }
+        }
+    }
+
+    fun openChartBrowsePage() {
+        val country = _selectedHomeCountry.value
+        val existingVideos = _countryVideoCharts.value
+        val existingArtists = _topChartArtists.value.map { (title, _, img) ->
+            val chId = _topArtistChannelIds.value[title] ?: ""
+            Artist(id = chId, name = title, imageUrl = img)
+        }
+        val existingPodcasts = _chartPodcasts.value.map { p ->
+            com.example.ecodot.data.remote.HomeMediaItem(
+                id = p.browseId,
+                title = p.title,
+                subtitle = p.host,
+                thumbnailUrl = p.thumbnailUrl,
+                type = com.example.ecodot.data.remote.MediaType.PLAYLIST
+            )
+        }.filter { it.id.isNotBlank() }
+
+        _browsePageState.value = BrowsePageUiState(
+            title = "$country Top Charts",
+            strapline = "SIMPMUSIC & YOUTUBE MUSIC CHARTS",
+            isLoading = true,
+            playlists = existingPodcasts,
+            videos = existingVideos,
+            artists = existingArtists,
+            browseId = "FEmusic_charts",
+            fallbackQuery = "$country Top 100 Songs"
+        )
+
+        browsePageJob?.cancel()
+        browsePageJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val chartsDeferred = async { repository.getChartsForCountry(country) }
+                val songsDeferred = async { repository.searchYouTubeCategorized("$country top charts hits", "All") }
+                val chartData = chartsDeferred.await()
+                val searchRes = songsDeferred.await()
+
+                val chartArtists = chartData.topArtists.map {
+                    Artist(id = it.browseId, name = it.title, imageUrl = it.thumbnailUrl)
+                }
+                _browsePageState.value = _browsePageState.value.copy(
+                    isLoading = false,
+                    songs = searchRes.songs.take(25),
+                    albums = searchRes.albums.take(20),
+                    playlists = (chartData.chartPlaylists + searchRes.playlists).distinctBy { it.id }.take(20),
+                    videos = (chartData.videoCharts + existingVideos).distinctBy { it.id }.take(20),
+                    artists = (chartArtists + existingArtists + searchRes.artists).distinctBy { it.id.ifBlank { it.name } }.take(16)
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "openChartBrowsePage failed", e)
+                _browsePageState.value = _browsePageState.value.copy(isLoading = false)
+            }
+        }
+    }
+
+    fun performSearch(
+        query: String,
+        type: String? = null,
+        saveToHistory: Boolean = false,
+        forceRefresh: Boolean = false
+    ) {
         if (query.isBlank()) {
             clearSearch()
             return
         }
 
-        if (lastSearchQuery == query && lastSearchType == type && 
-            (_searchResults.value.isNotEmpty() || _searchAlbums.value.isNotEmpty() || _searchArtists.value.isNotEmpty() || _isSearching.value)) {
+        if (!forceRefresh && lastSearchQuery == query && lastSearchType == type &&
+            (_searchResults.value.isNotEmpty() || _searchAlbums.value.isNotEmpty() || _searchArtists.value.isNotEmpty() ||
+                _searchPlaylists.value.isNotEmpty() || _searchFeaturedPlaylists.value.isNotEmpty() ||
+                _searchPodcasts.value.isNotEmpty() || _isSearching.value)) {
             // Unchanged query, skip redundant call to avoid hitting YouTube Music rate limits or cancelling active job
             return
         }
@@ -1563,8 +2703,12 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
         _isSearching.value = true
         _searchResults.value = emptyList()
+        _searchVideos.value = emptyList()
         _searchAlbums.value = emptyList()
         _searchArtists.value = emptyList()
+        _searchPlaylists.value = emptyList()
+        _searchFeaturedPlaylists.value = emptyList()
+        _searchPodcasts.value = emptyList()
         _searchError.value = null
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
@@ -1590,8 +2734,12 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                     val combinedSongs = (localMatches + uniqueRemoteSongs).distinctBy { it.id }
 
                     _searchResults.value = combinedSongs
+                    _searchVideos.value = remoteResults.videos
                     _searchAlbums.value = remoteResults.albums
                     _searchArtists.value = remoteResults.artists
+                    _searchPlaylists.value = remoteResults.playlists
+                    _searchFeaturedPlaylists.value = remoteResults.featuredPlaylists
+                    _searchPodcasts.value = remoteResults.podcasts
                 }
             } catch (e: Exception) {
                 if (e !is kotlinx.coroutines.CancellationException) {
@@ -1612,20 +2760,44 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updateSuggestions(query: String) {
-        if (query.length < 2) {
+        val trimmed = query.trim()
+        if (trimmed.length < 2) {
             _searchSuggestions.value = emptyList()
+            _instantSearchItems.value = emptyList()
             return
         }
         suggestionsJob?.cancel()
-        suggestionsJob = viewModelScope.launch {
+        suggestionsJob = viewModelScope.launch(Dispatchers.IO) {
             try {
-                val suggestions = repository.getSearchSuggestions(query)
-                if (coroutineContext[Job] == suggestionsJob) {
-                    _searchSuggestions.value = suggestions
+                val data = repository.getSearchSuggestionsAndInstantMatches(trimmed)
+                _searchSuggestions.value = data.suggestions
+                if (data.instantItems.isNotEmpty()) {
+                    _instantSearchItems.value = data.instantItems
+                } else {
+                    val local = repository.searchTracksLocally("%$trimmed%")
+                    val remote = repository.searchYouTubeInstantMatches(trimmed)
+                    val songs = (local + remote.songs).distinctBy { it.id }.take(5)
+                    val artists = remote.artists.take(2)
+                    val albums = remote.albums.take(2)
+
+                    val items = mutableListOf<InstantSearchItem>()
+                    val matchingArtist = artists.firstOrNull { it.name.startsWith(trimmed, ignoreCase = true) }
+                        ?: artists.firstOrNull()
+                    if (matchingArtist != null) {
+                        items.add(InstantSearchItem.ArtistMatch(matchingArtist.id, matchingArtist.name, matchingArtist.imageUrl))
+                    }
+                    songs.forEach { track ->
+                        items.add(InstantSearchItem.SongMatch(track))
+                    }
+                    if (items.none { it is InstantSearchItem.ArtistMatch } && albums.isNotEmpty()) {
+                        val alb = albums.first()
+                        items.add(InstantSearchItem.AlbumMatch(alb.id, alb.title, alb.artist, alb.artUri))
+                    }
+                    _instantSearchItems.value = items
                 }
             } catch (e: Exception) {
                 if (e !is kotlinx.coroutines.CancellationException) {
-                    Log.e(TAG, "Suggestions fetch failed for query: $query", e)
+                    Log.e(TAG, "Suggestions fetch failed: ${e.message}")
                 }
             }
         }
@@ -1635,8 +2807,14 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         lastSearchQuery = null
         lastSearchType = null
         _searchResults.value = emptyList()
+        _searchVideos.value = emptyList()
         _searchAlbums.value = emptyList()
         _searchArtists.value = emptyList()
+        _searchPlaylists.value = emptyList()
+        _searchFeaturedPlaylists.value = emptyList()
+        _searchPodcasts.value = emptyList()
+        _searchSuggestions.value = emptyList()
+        _instantSearchItems.value = emptyList()
         _isSearching.value = false
     }
 
@@ -1658,39 +2836,65 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun playQueue(tracks: List<Track>, startIndex: Int = 0, isVideo: Boolean = false) {
+    fun playQueue(
+        tracks: List<Track>,
+        startIndex: Int = 0,
+        isVideo: Boolean = false,
+        preservePlaybackSource: Boolean = false
+    ) {
+        if (tracks.isEmpty() || startIndex !in tracks.indices) return
         val controller = _controller.value ?: return
-        
+
         resetCanvasForNewTrack()
-        _isVideoMode.value = isVideo
+        val initial = tracks.getOrNull(startIndex)
+        val initialIsVideo = isVideo || isTrackVideo(initial)
+        stickyVideoMode = initialIsVideo
+        _isVideoMode.value = initialIsVideo
 
         loadTrackJob?.cancel()
         loadTrackJob = viewModelScope.launch {
             _isLoadingTrack.value = true
-            
-            val initialTrack = tracks.getOrNull(startIndex) ?: return@launch
-            val dbTrack = withContext(Dispatchers.IO) { database.trackDao().getTrackById(initialTrack.id) }
-            val track = dbTrack ?: initialTrack
-            
+
+            val resolvedPairs = withContext(Dispatchers.IO) {
+                tracks.mapIndexed { idx, t ->
+                    val dbT = database.trackDao().getTrackById(t.id)
+                    resolveTrackForPlayback(
+                        incoming = t,
+                        dbTrack = dbT,
+                        explicitIsVideo = (idx == startIndex && isVideo)
+                    )
+                }
+            }
+            val mappedTracks = resolvedPairs.map { it.first }
+            val (track, shouldBeVideo) = resolvedPairs[startIndex]
+
             _currentTrack.value = track
+            _isVideoMode.value = shouldBeVideo
             _hasTrackLoaded.value = true
-            
-            _playbackSource.value = when {
-                _isSearching.value -> "Search"
-                _currentTab.value == HomeTab.Home -> "Home"
-                else -> "Library"
+            pendingExplicitPlayTrackId = track.id
+
+            if (!preservePlaybackSource) {
+                _playbackSource.value = when {
+                    _isSearching.value -> "Search"
+                    _currentTab.value == HomeTab.Home -> "Home"
+                    else -> "Library"
+                }
             }
 
-            val mappedTracks = withContext(Dispatchers.IO) {
-                tracks.map { t -> database.trackDao().getTrackById(t.id) ?: t }
-            }
             setQueue(mappedTracks)
             _originalPlaybackQueue.value = mappedTracks
             setIndex(startIndex)
 
             try {
-                val mediaItems = mappedTracks.map { buildMediaItem(it) }
-                
+                // Persist normalized video/metadata track BEFORE MediaController resolves URI
+                withContext(Dispatchers.IO) {
+                    runCatching { repository.saveTrack(track) }
+                }
+
+                val mediaItems = resolvedPairs.map { (t, vid) ->
+                    buildMediaItem(t, forceVideo = vid)
+                }
+
                 controller.setMediaItems(mediaItems, startIndex, C.TIME_UNSET)
                 controller.prepare()
                 controller.play()
@@ -1700,10 +2904,9 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                 }
 
                 try {
-                    repository.saveTrack(track)
                     markTrackAsCached(track.id)
-                } catch(e: Exception) {
-                    Log.e(TAG, "DB error", e)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Cache mark error", e)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Playback error", e)
@@ -1724,26 +2927,32 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun playTrack(track: Track, clearQueue: Boolean = true, isVideo: Boolean = false) {
+        val shouldBeVideo = isVideo || isTrackVideo(track)
         if (clearQueue) {
-            playQueue(listOf(track), 0, isVideo = isVideo)
+            playQueue(listOf(track), 0, isVideo = shouldBeVideo)
             return
         }
         resetCanvasForNewTrack()
-        _isVideoMode.value = isVideo
-        
+        _isVideoMode.value = shouldBeVideo
+
         val controller = _controller.value ?: return
 
         loadTrackJob?.cancel()
         loadTrackJob = viewModelScope.launch {
             _isLoadingTrack.value = true
-            
-            // Set current track immediately for instant UI feedback
+
             val dbTrack = withContext(Dispatchers.IO) { database.trackDao().getTrackById(track.id) }
-            val finalTrack = dbTrack ?: track
+            val (finalTrack, resolvedIsVideo) = resolveTrackForPlayback(
+                incoming = track,
+                dbTrack = dbTrack,
+                explicitIsVideo = isVideo
+            )
             _currentTrack.value = finalTrack
+            _isVideoMode.value = resolvedIsVideo
             _hasTrackLoaded.value = true
+            pendingExplicitPlayTrackId = finalTrack.id
             markTrackAsCached(finalTrack.id)
-            
+
             // Set source based on current state
             _playbackSource.value = when {
                 _isSearching.value -> "Search"
@@ -1754,8 +2963,14 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             setIndex(_playbackQueue.value.indexOfFirst { it.id == finalTrack.id })
 
             try {
-                val mediaItem = buildMediaItem(finalTrack)
-                
+                if (finalTrack.isYouTube) {
+                    withContext(Dispatchers.IO) {
+                        runCatching { repository.saveTrack(finalTrack) }
+                    }
+                }
+
+                val mediaItem = buildMediaItem(finalTrack, forceVideo = resolvedIsVideo)
+
                 // Check if already in controller queue to avoid duplicate loads
                 var foundIdx = -1
                 for (i in 0 until controller.mediaItemCount) {
@@ -1764,24 +2979,25 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                         break
                     }
                 }
-                
+
                 if (foundIdx != -1) {
+                    val existingUri = controller.getMediaItemAt(foundIdx).localConfiguration?.uri?.toString().orEmpty()
+                    val desiredIsVideoUri = resolvedIsVideo && finalTrack.isYouTube && !isDownloaded(finalTrack.id)
+                    if (desiredIsVideoUri != existingUri.startsWith("ytvideo://")) {
+                        controller.replaceMediaItem(foundIdx, mediaItem)
+                    }
                     controller.seekToDefaultPosition(foundIdx)
                 } else {
                     controller.addMediaItem(mediaItem)
                     controller.seekToDefaultPosition(controller.mediaItemCount - 1)
                 }
-                
+
                 controller.prepare()
                 controller.play()
 
                 // Trigger endless if needed
                 if (_endlessMode.value && finalTrack.isYouTube) {
                     checkAndFetchRelatedTracks(finalTrack.id)
-                }
-
-                if (finalTrack.isYouTube) {
-                    try { repository.saveTrack(finalTrack) } catch(e:Exception){ Log.e(TAG, "DB error", e) }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Playback error", e)
@@ -1900,20 +3116,46 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun prepareTrackVideoModeAtIndex(controller: MediaController, targetIndex: Int) {
+        if (!stickyVideoMode && !_isVideoMode.value) return
+        if (targetIndex !in 0 until controller.mediaItemCount) return
+        val targetTrack = _playbackQueue.value.getOrNull(targetIndex) ?: return
+        if (!targetTrack.isYouTube || isDownloaded(targetTrack.id)) return
+        val existingUri = controller.getMediaItemAt(targetIndex).localConfiguration?.uri?.toString().orEmpty()
+        if (!existingUri.startsWith("ytvideo://", ignoreCase = true)) {
+            controller.replaceMediaItem(targetIndex, buildMediaItem(targetTrack, forceVideo = true))
+        }
+    }
+
     /**
-     * Skip to the next track using ExoPlayer natively.
+     * Skip to the next track using ExoPlayer natively while keeping video mode & playback seamless.
      */
     fun skipNext() {
         val controller = _controller.value ?: return
-        if (controller.hasNextMediaItem() || _repeatMode.value == Player.REPEAT_MODE_ALL) {
+        val shouldContinue = stickyVideoMode || _isVideoMode.value || controller.playWhenReady || _isPlaying.value
+        val nextIdx = controller.nextMediaItemIndex
+        if (nextIdx != C.INDEX_UNSET) {
+            prepareTrackVideoModeAtIndex(controller, nextIdx)
+            controller.seekToDefaultPosition(nextIdx)
+            if (shouldContinue) {
+                controller.playWhenReady = true
+                controller.prepare()
+                controller.play()
+            }
+        } else if (controller.hasNextMediaItem() || _repeatMode.value == Player.REPEAT_MODE_ALL) {
             controller.seekToNextMediaItem()
+            if (shouldContinue) {
+                controller.playWhenReady = true
+                controller.prepare()
+                controller.play()
+            }
         } else {
             runOnMain { Toast.makeText(getApplication(), "End of Queue", Toast.LENGTH_SHORT).show() }
         }
     }
 
     /**
-     * Skip to the previous track using ExoPlayer natively.
+     * Skip to the previous track using ExoPlayer natively while keeping video mode & playback seamless.
      */
     fun skipPrevious() {
         val controller = _controller.value ?: return
@@ -1921,59 +3163,122 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             controller.seekTo(0)
             return
         }
-        controller.seekToPreviousMediaItem()
+        val shouldContinue = stickyVideoMode || _isVideoMode.value || controller.playWhenReady || _isPlaying.value
+        val prevIdx = controller.previousMediaItemIndex
+        if (prevIdx != C.INDEX_UNSET) {
+            prepareTrackVideoModeAtIndex(controller, prevIdx)
+            controller.seekToDefaultPosition(prevIdx)
+            if (shouldContinue) {
+                controller.playWhenReady = true
+                controller.prepare()
+                controller.play()
+            }
+        } else {
+            controller.seekToPreviousMediaItem()
+            if (shouldContinue) {
+                controller.playWhenReady = true
+                controller.prepare()
+                controller.play()
+            }
+        }
     }
 
     /**
-     * Skip to a specific track using ExoPlayer natively.
+     * Skip to a specific track using ExoPlayer natively while keeping video mode & playback seamless.
      */
     fun skipToQueueItem(index: Int) {
         val controller = _controller.value ?: return
         if (index >= 0 && index < controller.mediaItemCount) {
+            val shouldContinue = stickyVideoMode || _isVideoMode.value || controller.playWhenReady || _isPlaying.value
+            prepareTrackVideoModeAtIndex(controller, index)
             controller.seekToDefaultPosition(index)
+            if (shouldContinue) {
+                controller.playWhenReady = true
+                controller.prepare()
+                controller.play()
+            }
         }
     }
 
-    /** Build a MediaItem from a track, using yt:// protocol for YouTube tracks */
-    private fun buildMediaItem(track: Track): MediaItem {
+    /** Build a MediaItem from a track, using yt:// or ytvideo:// protocol for YouTube tracks */
+    private fun buildMediaItem(track: Track, forceVideo: Boolean? = null): MediaItem {
         val isLocal = isDownloaded(track.id)
+        val isVid = track.isYouTube && !isLocal && (forceVideo ?: isTrackVideo(track))
         val uri = if (isLocal) {
             val context = getApplication<Application>().applicationContext
             val localFile = File(context.getExternalFilesDir(Environment.DIRECTORY_MUSIC), "${track.id}.m4a")
             localFile.absolutePath
         } else if (track.isYouTube) {
-            if (_isVideoMode.value) "ytvideo://${track.id}" else "yt://${track.id}"
+            if (isVid) "ytvideo://${track.id}" else "yt://${track.id}"
         } else {
             track.path
         }
-        return MediaItem.Builder()
+        val activeQuality = prefsManager.audioQuality
+        val diskKey = when {
+            isVid -> "ytvideo_${track.id}"
+            activeQuality == com.example.ecodot.data.local.prefs.AudioQuality.HIGH -> "yt_${track.id}"
+            else -> "yt_${track.id}_${activeQuality.name.lowercase()}"
+        }
+        val builder = MediaItem.Builder()
             .setMediaId(track.id)
             .setUri(uri.toUri())
-            .setCustomCacheKey("yt_${track.id}")
+            .setCustomCacheKey(diskKey)
             .setMediaMetadata(MediaMetadata.Builder()
                 .setTitle(track.title)
                 .setArtist(track.artist)
+                .setAlbumTitle(track.album)
                 .setArtworkUri(track.albumArtUri?.toUri())
                 .build())
-            .build()
+        if (isVid) {
+            builder.setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8)
+        }
+        return builder.build()
     }
 
     fun setVideoMode(isVideo: Boolean) {
-        if (_isVideoMode.value == isVideo) return
+        stickyVideoMode = isVideo
+        val currentTrackVal = _currentTrack.value
+        if (isVideo && currentTrackVal != null && currentTrackVal.isYouTube && !currentTrackVal.path.startsWith("ytvideo://", ignoreCase = true)) {
+            val upgraded = currentTrackVal.copy(
+                path = "ytvideo://${currentTrackVal.id}",
+                album = if (isGenericOrVideoPlaceholderAlbum(currentTrackVal.album)) "YouTube Video" else currentTrackVal.album
+            )
+            _currentTrack.value = upgraded
+            viewModelScope.launch(Dispatchers.IO) {
+                runCatching { repository.saveTrack(upgraded) }
+            }
+        }
+        val track = _currentTrack.value
+        val controller = _controller.value
+        val stateChanged = _isVideoMode.value != isVideo
         _isVideoMode.value = isVideo
-        val track = _currentTrack.value ?: return
-        val controller = _controller.value ?: return
-        val currentPosition = controller.currentPosition
-        val currentPlayWhenReady = controller.playWhenReady
-        
-        // Only replace media item if it's YouTube, local files are the same
+        if (track == null || controller == null) return
+
+        // Only replace media item if it's YouTube and URI scheme actually differs
         if (track.isYouTube && !isDownloaded(track.id)) {
-            val mediaItem = buildMediaItem(track)
-            val currentIndex = controller.currentMediaItemIndex
-            if (currentIndex != androidx.media3.common.C.INDEX_UNSET) {
-                controller.replaceMediaItem(currentIndex, mediaItem)
-                controller.seekTo(currentIndex, currentPosition)
-                controller.playWhenReady = currentPlayWhenReady
+            val currentUri = controller.currentMediaItem?.localConfiguration?.uri?.toString().orEmpty()
+            val alreadyMatches = if (isVideo) currentUri.startsWith("ytvideo://") else currentUri.startsWith("yt://")
+            if (!alreadyMatches) {
+                val currentPosition = controller.currentPosition
+                val shouldResume = controller.playWhenReady || _isPlaying.value || isVideo
+                val mediaItem = buildMediaItem(track, forceVideo = isVideo)
+                val currentIndex = controller.currentMediaItemIndex
+                if (currentIndex != androidx.media3.common.C.INDEX_UNSET) {
+                    controller.replaceMediaItem(currentIndex, mediaItem)
+                    controller.seekTo(currentIndex, currentPosition)
+                    controller.prepare()
+                    if (shouldResume) {
+                        controller.playWhenReady = true
+                        controller.play()
+                    }
+                }
+            } else if (stateChanged && !controller.isPlaying) {
+                controller.playWhenReady = true
+                controller.play()
+            }
+            if (isVideo) {
+                val nextIdx = controller.nextMediaItemIndex
+                if (nextIdx != C.INDEX_UNSET) prepareTrackVideoModeAtIndex(controller, nextIdx)
             }
         }
     }
@@ -2016,14 +3321,23 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                     
                     if (bitmap != null) {
                         val palette = Palette.from(bitmap).generate()
-                        val dominant = palette.getDominantColor(0xFF191C19.toInt())
-                        val accent = palette.getVibrantColor(
-                            palette.getMutedColor(0xFF79DA9F.toInt())
-                        )
-                        
+                        // SimpMusic palette hierarchy for vibrant concert & ambient breathing lights
+                        val defaultDark = 0xFF191C19.toInt()
+                        val dominantRgb = palette.getDarkVibrantColor(0)
+                            .takeIf { it != 0 }
+                            ?: palette.getVibrantColor(0).takeIf { it != 0 }
+                            ?: palette.getDarkMutedColor(0).takeIf { it != 0 }
+                            ?: palette.getMutedColor(0).takeIf { it != 0 }
+                            ?: palette.getDominantColor(defaultDark)
+
+                        val accentRgb = palette.vibrantSwatch?.rgb
+                            ?: palette.lightVibrantSwatch?.rgb
+                            ?: palette.darkVibrantSwatch?.rgb
+                            ?: palette.getVibrantColor(palette.getMutedColor(0xFF79DA9F.toInt()))
+
                         withContext(Dispatchers.Main) {
-                            _dominantColor.value = Color(dominant)
-                            _accentColor.value = Color(accent)
+                            _dominantColor.value = Color(dominantRgb)
+                            _accentColor.value = Color(accentRgb)
                         }
                     }
                 }
@@ -2038,13 +3352,12 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun toggleCrossfade() {
-        _crossfadeEnabled.value = !_crossfadeEnabled.value
+        setCrossfadeEnabled(!_crossfadeEnabled.value)
     }
 
     private fun fetchSuggestions(seedTrack: Track) {
         viewModelScope.launch {
             try {
-                // Get related tracks for the user's most played song
                 val related = repository.getYouTubeRelatedTracks(seedTrack.id)
                 _suggestedTracks.value = related.take(10)
             } catch (e: Exception) {
@@ -2058,7 +3371,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             _isVideoInfoLoading.value = true
             _videoInfo.value = null
             try {
-                val info = repository.fetchVideoInfo(videoId)
+                val info = repository.fetchVideoInfo(videoId, prefsManager.audioQuality)
                 _videoInfo.value = info
             } catch (e: Exception) {
                 Log.e(TAG, "fetchVideoInfo failed", e)
@@ -2071,7 +3384,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun updateProfile(name: String, genres: String, avatarUrl: String?, isPro: Boolean) {
         viewModelScope.launch {
             val current = userProfile.value ?: UserProfile()
-            val savedAvatarUrl = if (avatarUrl != null && avatarUrl.startsWith("content://")) {
+                        val savedAvatarUrl = if (avatarUrl != null && avatarUrl.startsWith("content://")) {
                 try {
                     val context = getApplication<Application>()
                     val uri = Uri.parse(avatarUrl)
@@ -2079,7 +3392,11 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                     if (inputStream != null) {
                         val bytes = inputStream.readBytes()
                         inputStream.close()
-                        val destFile = File(context.filesDir, "user_avatar.jpg")
+                        // Remove old avatar files so storage stays bounded while Coil gets a fresh cache key
+                        context.filesDir.listFiles { file ->
+                            file.isFile && file.name.startsWith("user_avatar") && file.name.endsWith(".jpg")
+                        }?.forEach { old -> runCatching { old.delete() } }
+                        val destFile = File(context.filesDir, "user_avatar_${System.currentTimeMillis()}.jpg")
                         destFile.writeBytes(bytes)
                         Uri.fromFile(destFile).toString()
                     } else {
@@ -2144,6 +3461,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleEq() {
         val newValue = !_eqEnabled.value
+        prefsManager.equalizerEnabled = newValue
         _eqEnabled.value = newValue
         sendCustomCommand("SET_EQ_ENABLED", Bundle().apply {
             putBoolean("enabled", newValue)
@@ -2151,6 +3469,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setVirtualizerStrength(strength: Int) {
+        prefsManager.virtualizerStrength = strength
         _virtualizerStrength.value = strength
         sendCustomCommand("SET_VIRTUALIZER", Bundle().apply {
             putInt("strength", strength)
@@ -2338,6 +3657,70 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    val likedTrackIds: StateFlow<Set<String>> = repository.getLikedTrackIds()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
+    val likedTracks: StateFlow<List<Track>> = repository.allTracks
+        .combine(likedTrackIds) { all, ids ->
+            all.filter { it.id in ids }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private var lastServiceBitrateBps: Int = 0
+    private var lastServiceSampleRateHz: Int = 0
+
+    private fun applyStreamTelemetryExtras(extras: Bundle) {
+        val bps = extras.getInt(EcoDotSessionService.EXTRA_STREAM_BITRATE_BPS, 0)
+        val hz = extras.getInt(EcoDotSessionService.EXTRA_STREAM_SAMPLE_RATE_HZ, 0)
+        if (bps > 0) lastServiceBitrateBps = bps
+        if (hz > 0) lastServiceSampleRateHz = hz
+        updateStreamLabelFromResolvedValues()
+    }
+
+    private fun updateStreamLabelFromTracks(tracks: androidx.media3.common.Tracks) {
+        val selectedAudioFormat = tracks.groups
+            .firstOrNull { it.type == C.TRACK_TYPE_AUDIO && it.isSelected }
+            ?.let { group ->
+                (0 until group.length)
+                    .firstOrNull { idx -> group.isTrackSelected(idx) }
+                    ?.let { idx -> group.getTrackFormat(idx) }
+            }
+        val track = _currentTrack.value
+        val resolverMeta = track?.id?.let {
+            com.example.ecodot.data.remote.YouTubeStreamResolver.resolvedAudioTelemetry[it]
+        }
+        val bps = selectedAudioFormat?.bitrate?.takeIf { it > 0 }
+            ?: selectedAudioFormat?.averageBitrate?.takeIf { it > 0 }
+            ?: lastServiceBitrateBps.takeIf { it > 0 }
+            ?: resolverMeta?.bitrateBps
+            ?: 0
+        val hz = selectedAudioFormat?.sampleRate?.takeIf { it > 0 }
+            ?: lastServiceSampleRateHz.takeIf { it > 0 }
+            ?: resolverMeta?.sampleRateHz
+            ?: 0
+        if (bps > 0) lastServiceBitrateBps = bps
+        if (hz > 0) lastServiceSampleRateHz = hz
+        _activeStreamLabel.value =
+            com.example.ecodot.ui.components.player.PlayerStyleMath.formatRealTimeAudioDetail(
+                bitrateBps = bps,
+                sampleRateHz = hz
+            )
+    }
+
+    private fun updateStreamLabelFromResolvedValues() {
+        val track = _currentTrack.value
+        val resolverMeta = track?.id?.let {
+            com.example.ecodot.data.remote.YouTubeStreamResolver.resolvedAudioTelemetry[it]
+        }
+        val bps = lastServiceBitrateBps.takeIf { it > 0 } ?: resolverMeta?.bitrateBps ?: 0
+        val hz = lastServiceSampleRateHz.takeIf { it > 0 } ?: resolverMeta?.sampleRateHz ?: 0
+        _activeStreamLabel.value =
+            com.example.ecodot.ui.components.player.PlayerStyleMath.formatRealTimeAudioDetail(
+                bitrateBps = bps,
+                sampleRateHz = hz
+            )
+    }
+
     /**
      * Likes or unlikes the current track.
      * Only writes to DB — isCurrentTrackLiked updates itself reactively.
@@ -2429,22 +3812,12 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun playTracks(tracks: List<Track>, startIndex: Int = 0, isVideo: Boolean = false) {
         if (tracks.isEmpty()) return
-        val controller = _controller.value ?: return
-        
-        _isVideoMode.value = isVideo
-        
-        viewModelScope.launch {
-            // 1. Update internal queue state first
-            setQueue(tracks)
-            _originalPlaybackQueue.value = tracks
-            setIndex(startIndex)
-            
-            // 2. Set all tracks into the ExoPlayer queue
-            val mediaItems = tracks.map { buildMediaItem(it) }
-            controller.setMediaItems(mediaItems, startIndex, androidx.media3.common.C.TIME_UNSET)
-            controller.prepare()
-            controller.play()
-        }
+        playQueue(
+            tracks = tracks,
+            startIndex = startIndex.coerceIn(tracks.indices),
+            isVideo = isVideo,
+            preservePlaybackSource = true
+        )
     }
 
     fun playPlaylist(playlist: com.example.ecodot.data.local.entities.Playlist) {
@@ -2695,4 +4068,12 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 }
+
+sealed interface InstantSearchItem {
+    data class ArtistMatch(val id: String, val name: String, val thumbnailUrl: String?) : InstantSearchItem
+    data class SongMatch(val track: Track) : InstantSearchItem
+    data class AlbumMatch(val id: String?, val title: String, val artist: String, val artUri: String?) : InstantSearchItem
+    data class PlaylistMatch(val id: String, val title: String, val subtitle: String, val thumbnailUrl: String?) : InstantSearchItem
+}
+
 

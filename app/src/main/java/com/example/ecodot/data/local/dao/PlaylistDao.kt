@@ -57,6 +57,13 @@ interface PlaylistDao {
     """)
     fun isTrackLiked(trackId: String): Flow<Boolean>
 
+    @Query("""
+        SELECT pt.trackId FROM playlist_tracks pt
+        INNER JOIN playlists p ON p.id = pt.playlistId
+        WHERE p.name = 'Liked Songs'
+    """)
+    fun getLikedTrackIds(): Flow<List<String>>
+
     @Query("SELECT * FROM playlists WHERE name = :name LIMIT 1")
     suspend fun getPlaylistByName(name: String): Playlist?
 

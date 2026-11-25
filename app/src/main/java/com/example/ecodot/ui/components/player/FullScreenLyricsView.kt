@@ -515,6 +515,7 @@ fun FullScreenLyricsView(
     val shuffleMode by viewModel.shuffleMode.collectAsState()
     val repeatMode by viewModel.repeatMode.collectAsState()
     val isLiked by viewModel.isCurrentTrackLiked.collectAsState()
+    val isCrossfading by viewModel.isCrossfading.collectAsState()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -885,7 +886,9 @@ fun FullScreenLyricsView(
                     }
                     .padding(bottom = 12.dp)
             ) {
-                // SimpMusic Audio Waveform Seekbar (Image 2 exact)
+                // SimpMusic Audio Waveform Seekbar with Rainbow Crossfade Glow
+                val (waveActiveColor, lyricsShimmerSweep) = rememberCrossfadeVisuals(isCrossfading)
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -898,34 +901,45 @@ fun FullScreenLyricsView(
                             showControlButtons = true
                             viewModel.seekTo((fraction * duration).toLong())
                         },
+                        activeColor = waveActiveColor,
                         seed = currentTrack?.id?.hashCode() ?: 42,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
 
-                // Time labels: Left elapsed ("02:03") and Right duration ("04:02") (Image 2 exact)
-                Row(
+                // Time labels: Left elapsed ("02:03"), Center "Crossfading" shimmer, Right duration ("04:02")
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 28.dp, vertical = 2.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = viewModel.formatDuration(currentPosition),
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 12.sp
-                        ),
-                        color = Color.White.copy(alpha = 0.7f)
-                    )
-                    Text(
-                        text = viewModel.formatDuration(duration),
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 12.sp
-                        ),
-                        color = Color.White.copy(alpha = 0.7f)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = viewModel.formatDuration(currentPosition),
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 12.sp
+                            ),
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
+                        Text(
+                            text = viewModel.formatDuration(duration),
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 12.sp
+                            ),
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
+                    }
+                    CrossfadingShimmerLabel(
+                        isCrossfading = isCrossfading,
+                        shimmerSweep = lyricsShimmerSweep,
+                        fontSize = 12.sp
                     )
                 }
 

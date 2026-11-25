@@ -46,8 +46,13 @@ class AlbumViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             
-            // YouTube album browse IDs usually start with MPREb_, OLAK5uy_, VL, or PL
-            val isYouTubeAlbum = albumId.startsWith("MPREb") || albumId.startsWith("OLAK5") || albumId.startsWith("VL") || albumId.startsWith("PL")
+            // YouTube album/playlist/podcast browse IDs start with MPREb_, OLAK5uy_, VL, PL, RD, or MPSP
+            val isYouTubeAlbum = albumId.startsWith("MPREb") ||
+                albumId.startsWith("OLAK5") ||
+                albumId.startsWith("VL") ||
+                albumId.startsWith("PL") ||
+                albumId.startsWith("RD") ||
+                albumId.startsWith("MPSP")
             
             if (isYouTubeAlbum) {
                 var lastError = "Failed to load album details"
@@ -291,6 +296,27 @@ class AlbumViewModel(application: Application) : AndroidViewModel(application) {
                         ?: getBestThumbnail(visualHeader.optJSONObject("foregroundThumbnail"))
                 }
             }
+
+            // Try twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents[0].musicResponsiveHeaderRenderer
+            if (title.isEmpty()) {
+                val twoColSections = headerJson.optJSONObject("contents")
+                    ?.optJSONObject("twoColumnBrowseResultsRenderer")
+                    ?.optJSONArray("tabs")?.optJSONObject(0)
+                    ?.optJSONObject("tabRenderer")?.optJSONObject("content")
+                    ?.optJSONObject("sectionListRenderer")?.optJSONArray("contents")
+                val respHeader = twoColSections?.optJSONObject(0)?.optJSONObject("musicResponsiveHeaderRenderer")
+                if (respHeader != null) {
+                    title = respHeader.optJSONObject("title")?.optJSONArray("runs")
+                        ?.let { runs -> (0 until runs.length()).joinToString("") { runs.optJSONObject(it)?.optString("text") ?: "" } }
+                        .orEmpty()
+                    val straplineSub = respHeader.optJSONObject("straplineTextOne")?.optJSONArray("runs")
+                        ?.let { runs -> (0 until runs.length()).joinToString("") { runs.optJSONObject(it)?.optString("text") ?: "" } }
+                    if (!straplineSub.isNullOrBlank() && artistName == "Various Artists") {
+                        artistName = straplineSub
+                    }
+                    thumbnailUrl = thumbnailUrl ?: getBestThumbnail(respHeader.optJSONObject("thumbnail"))
+                }
+            }
             
             // ── 2. Track Parsing (from tracksJson) ────────────────────────────
             val tracks = mutableListOf<Track>()
@@ -389,9 +415,44 @@ class AlbumViewModel(application: Application) : AndroidViewModel(application) {
         shelfContents?.let { arr ->
             for (i in 0 until arr.length()) {
                 val item = arr.optJSONObject(i) ?: continue
-                val renderer = item.optJSONObject("musicResponsiveListItemRenderer") ?: continue
-                parseTrackFromRawRenderer(renderer, albumArtist, albumArtistId, albumTitle, albumArtUrl)?.let {
-                    if (it.id.isNotEmpty()) tracks.add(it)
+                val renderer = item.optJSONObject("musicResponsiveListItemRenderer")
+                if (renderer != null) {
+                    parseTrackFromRawRenderer(renderer, albumArtist, albumArtistId, albumTitle, albumArtUrl)?.let {
+                        if (it.id.isNotEmpty()) tracks.add(it)
+                    }
+                    continue
+                }
+                val multiRow = item.optJSONObject("musicMultiRowListItemRenderer")
+                if (multiRow != null) {
+                    val epTitle = multiRow.optJSONObject("title")?.optJSONArray("runs")
+                        ?.optJSONObject(0)?.optString("text").orEmpty()
+                    val epVideoId = multiRow.optJSONObject("onTap")
+                        ?.optJSONObject("watchEndpoint")?.optString("videoId")?.takeIf { it.isNotBlank() }
+                        ?: multiRow.optJSONObject("title")?.optJSONArray("runs")
+                            ?.optJSONObject(0)?.optJSONObject("navigationEndpoint")
+                            ?.optJSONObject("watchEndpoint")?.optString("videoId")?.takeIf { it.isNotBlank() }
+                        ?: multiRow.optJSONObject("overlay")
+                            ?.optJSONObject("musicItemThumbnailOverlayRenderer")
+                            ?.optJSONObject("content")
+                            ?.optJSONObject("musicPlayButtonRenderer")
+                            ?.optJSONObject("playNavigationEndpoint")
+                            ?.optJSONObject("watchEndpoint")?.optString("videoId")?.takeIf { it.isNotBlank() }
+                    if (epTitle.isNotBlank() && !epVideoId.isNullOrBlank()) {
+                        val epThumb = getBestThumbnail(multiRow.optJSONObject("thumbnail")) ?: albumArtUrl
+                        tracks.add(
+                            Track(
+                                id = epVideoId,
+                                title = epTitle,
+                                artist = albumArtist,
+                                album = albumTitle,
+                                duration = 0L,
+                                path = "https://www.youtube.com/watch?v=$epVideoId",
+                                albumArtUri = epThumb,
+                                isYouTube = true,
+                                artistId = albumArtistId
+                            )
+                        )
+                    }
                 }
             }
         }

@@ -38,6 +38,7 @@ import coil.request.ImageRequest
 import com.example.ecodot.data.local.entities.Track
 import com.example.ecodot.ui.components.PlayingIndicator
 import com.example.ecodot.ui.components.SleeveFan
+import com.example.ecodot.ui.components.SwipeToQueueBox
 import com.example.ecodot.ui.theme.EcoDotBlack
 import com.example.ecodot.ui.viewmodel.MusicViewModel
 
@@ -650,7 +651,8 @@ fun CachedSongsScreen(
                             onClick = {
                                 viewModel.playTracks(filteredTracks, startIndex = index)
                             },
-                            onOptionsClick = { selectedTrackForMenu = track }
+                            onOptionsClick = { selectedTrackForMenu = track },
+                            onAddToQueue = { viewModel.addToQueue(track) }
                         )
                     }
                 }
@@ -668,15 +670,17 @@ private fun CachedTrackRow(
     track: Track,
     isPlaying: Boolean,
     onClick: () -> Unit,
-    onOptionsClick: () -> Unit
+    onOptionsClick: () -> Unit,
+    onAddToQueue: () -> Unit = {}
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 7.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    SwipeToQueueBox(onAddToQueue = onAddToQueue) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
         // Track Index Number
         Text(
             text = index.toString(),
@@ -767,4 +771,5 @@ private fun CachedTrackRow(
             )
         }
     }
+}
 }

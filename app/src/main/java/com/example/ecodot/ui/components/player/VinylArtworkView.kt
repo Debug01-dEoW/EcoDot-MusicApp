@@ -30,7 +30,8 @@ fun VinylArtworkView(
     imageUrl: String?,
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
-    dominantColor: Color = Color.DarkGray
+    dominantColor: Color = Color.DarkGray,
+    playbackProgress: Float = 0.25f
 ) {
     // Continuous 33 RPM rotation when playing
     val infiniteTransition = rememberInfiniteTransition(label = "vinyl_rotation")
@@ -45,18 +46,28 @@ fun VinylArtworkView(
     )
 
     var currentAngle by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(isPlaying) {
+    LaunchedEffect(isPlaying, rotation) {
         if (isPlaying) {
-            // Keep current rotation continuity
+            currentAngle = rotation
         }
     }
 
-    // Tonearm swing animation (rests at -25 deg, plays at 0 to 18 deg)
+    val targetTonearm = remember(isPlaying, playbackProgress) {
+        PlayerStyleMath.computeVinylTonearmAngle(
+            isPlaying = isPlaying,
+            playbackFraction = playbackProgress,
+            restAngle = -24f,
+            startPlayAngle = 14f,
+            endPlayAngle = 29f
+        )
+    }
+
+    // Tonearm swing animation: lifts off when paused (-24 deg), tracks across grooves while playing
     val tonearmAngle by animateFloatAsState(
-        targetValue = if (isPlaying) 18f else -24f,
+        targetValue = targetTonearm,
         animationSpec = spring(
-            dampingRatio = 0.65f,
-            stiffness = 250f
+            dampingRatio = 0.72f,
+            stiffness = 220f
         ),
         label = "tonearm_angle"
     )
@@ -133,12 +144,23 @@ fun VinylArtworkView(
                     .border(2.5.dp, Color(0xFF2C2D3A), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
+                var resolvedUrl by remember(imageUrl) {
+                    mutableStateOf(
+                        com.example.ecodot.data.remote.YouTubeParser.getHighResUrl(imageUrl) ?: imageUrl
+                    )
+                }
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
-                        .data(imageUrl)
+                        .data(resolvedUrl)
+                        .size(1080, 1080)
                         .crossfade(true)
                         .build(),
                     contentDescription = null,
+                    onError = {
+                        com.example.ecodot.data.remote.YouTubeParser.getFallbackThumbUrl(resolvedUrl)?.let { fallback ->
+                            resolvedUrl = fallback
+                        }
+                    },
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )

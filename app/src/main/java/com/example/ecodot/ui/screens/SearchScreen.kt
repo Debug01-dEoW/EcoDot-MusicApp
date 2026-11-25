@@ -1,20 +1,43 @@
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+
 package com.example.ecodot.ui.screens
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -28,24 +51,50 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import kotlinx.coroutines.flow.collect
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Album
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.QueueMusic
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SearchOff
+import androidx.compose.material.icons.rounded.WifiOff
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -59,40 +108,56 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import com.example.ecodot.LocalHazeState
-import com.example.ecodot.data.local.entities.Playlist
 import com.example.ecodot.data.local.entities.RecentSearchItem
 import com.example.ecodot.data.local.entities.Track
-import com.example.ecodot.ui.components.*
-import com.example.ecodot.ui.theme.*
+import com.example.ecodot.data.remote.HomeMediaItem
+import com.example.ecodot.data.remote.HomeMoodsData
+import com.example.ecodot.data.remote.MoodCategoryItem
+import com.example.ecodot.ui.components.AddToPlaylistDialog
+import com.example.ecodot.ui.components.AlbumOptionsBottomSheet
+import com.example.ecodot.ui.components.PlayingIndicator
+import com.example.ecodot.ui.components.SimpChip
+import com.example.ecodot.ui.components.SimpMoodCategoryCard
+import com.example.ecodot.ui.components.SimpMusicChartButton
+import com.example.ecodot.ui.components.SimpSearchArtistRow
+import com.example.ecodot.ui.components.SimpSearchCollectionRow
+import com.example.ecodot.ui.components.SimpSearchShimmer
+import com.example.ecodot.ui.components.SimpSearchSongRow
+import com.example.ecodot.ui.components.SimpSelectedSongsBottomSheet
+import com.example.ecodot.ui.components.SimpSongSelectionTopAppBar
+import com.example.ecodot.ui.components.SongRecognitionBottomSheet
+import com.example.ecodot.ui.components.SwipeToQueueBox
+import com.example.ecodot.ui.components.TrackOptionsBottomSheet
+import com.example.ecodot.ui.components.extractYouTubeLinkOrNull
+import com.example.ecodot.ui.components.homeChipStripEdgeFades
+import com.example.ecodot.ui.components.homeLiquidGlass
+import com.example.ecodot.ui.theme.ArrowOutward
+import com.example.ecodot.ui.theme.EcoDotRed
+import com.example.ecodot.ui.theme.SimpIcons
 import com.example.ecodot.ui.viewmodel.Album
 import com.example.ecodot.ui.viewmodel.Artist
+import com.example.ecodot.ui.viewmodel.InstantSearchItem
 import com.example.ecodot.ui.viewmodel.MusicViewModel
-import com.kyant.backdrop.Backdrop
-import com.kyant.backdrop.drawBackdrop
-import com.kyant.backdrop.effects.blur
-import com.kyant.backdrop.effects.colorControls
-import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.effects.vibrancy
-import com.kyant.backdrop.highlight.Highlight
-import com.kyant.backdrop.shadow.InnerShadow
-import com.kyant.backdrop.shadow.Shadow
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
 import dev.chrisbanes.haze.HazeDefaults
+import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.delay
 
 /**
- * SimpMusic clean 4-state architecture for search:
- * - EMPTY: Clean discovery state with minimalist header and trending vibe chips.
- * - SEARCH_HISTORY: Recent searches list with "Clear all" button and quick trending vibes.
- * - SEARCH_SUGGESTIONS: User is typing; shows live YouTube suggestions with bold highlight & insert arrow.
- * - SEARCH_RESULTS: Search submitted; shows pinned filter chips, top match hero card, and full width result rows.
+ * SimpMusic 4-state Search architecture:
+ * - EMPTY: Centered header + Charts button + 2-column Moods & Genres grid with tilted covers.
+ * - SEARCH_HISTORY: Sticky "Clear search history" + past searches & insert arrows (when bar focused).
+ * - SEARCH_SUGGESTIONS: Instant Artist/Song/Album/Playlist matches + highlighted autocomplete rows.
+ * - SEARCH_RESULTS: Pull-to-refresh results with pinned 8-filter SimpMusic chips & multi-select mode.
  */
 enum class SearchUIType {
     EMPTY,
@@ -108,151 +173,225 @@ fun SearchScreen(
     modifier: Modifier = Modifier,
     onWatchVideo: () -> Unit = {}
 ) {
-    val searchResults     by viewModel.searchResults.collectAsState()
-    val searchAlbums      by viewModel.searchAlbums.collectAsState()
-    val searchArtists     by viewModel.searchArtists.collectAsState()
-    val isSearching       by viewModel.isSearching.collectAsState()
-    val searchHistory     by viewModel.searchHistory.collectAsState()
+    val context = LocalContext.current
+    val searchResults by viewModel.searchResults.collectAsState()
+    val searchVideos by viewModel.searchVideos.collectAsState()
+    val searchAlbums by viewModel.searchAlbums.collectAsState()
+    val searchArtists by viewModel.searchArtists.collectAsState()
+    val searchPlaylists by viewModel.searchPlaylists.collectAsState()
+    val searchFeaturedPlaylists by viewModel.searchFeaturedPlaylists.collectAsState()
+    val searchPodcasts by viewModel.searchPodcasts.collectAsState()
+    val isSearching by viewModel.isSearching.collectAsState()
+    val searchHistory by viewModel.searchHistory.collectAsState()
     val searchSuggestions by viewModel.searchSuggestions.collectAsState()
-    val searchError       by viewModel.searchError.collectAsState()
-    val currentTrack      by viewModel.currentTrack.collectAsState()
-    val isPlaying         by viewModel.isPlaying.collectAsState()
-
-    var searchUIType       by rememberSaveable { mutableStateOf(SearchUIType.EMPTY) }
-    var searchText         by rememberSaveable { mutableStateOf("") }
-    var isSearchSubmitted  by rememberSaveable { mutableStateOf(false) }
-    var isFocused          by rememberSaveable { mutableStateOf(false) }
-    var selectedFilter     by rememberSaveable { mutableStateOf("All") }
-
-    val downloadedTracks    by viewModel.downloadedTracks.collectAsState()
+    val instantSearchItems by viewModel.instantSearchItems.collectAsState()
+    val searchError by viewModel.searchError.collectAsState()
+    val currentTrack by viewModel.currentTrack.collectAsState()
+    val isPlaying by viewModel.isPlaying.collectAsState()
+    val likedTrackIds by viewModel.likedTrackIds.collectAsState()
+    val downloadedTracks by viewModel.downloadedTracks.collectAsState()
     val downloadProgressMap by viewModel.downloadProgress.collectAsState()
-    var optionsMenuTrack    by remember { mutableStateOf<Track?>(null) }
-    var longPressedAlbum    by remember { mutableStateOf<Album?>(null) }
-    var longPressedPlaylist by remember { mutableStateOf<Playlist?>(null) }
-    var showPlaylistPicker  by remember { mutableStateOf<Track?>(null) }
+    val homeMoodsData by viewModel.homeMoodsData.collectAsState()
+    val moodArtworkMap by viewModel.moodCategoryArtwork.collectAsState()
 
-    val focusManager       = LocalFocusManager.current
+    var searchUIType by rememberSaveable { mutableStateOf(SearchUIType.EMPTY) }
+    var searchText by rememberSaveable { mutableStateOf("") }
+    var isSearchSubmitted by rememberSaveable { mutableStateOf(false) }
+    var isFocused by rememberSaveable { mutableStateOf(false) }
+    var isExpanded by rememberSaveable { mutableStateOf(false) }
+    var selectedFilter by rememberSaveable { mutableStateOf("All") }
+
+    var optionsMenuTrack by remember { mutableStateOf<Track?>(null) }
+    var longPressedAlbum by remember { mutableStateOf<Album?>(null) }
+    var showPlaylistPicker by remember { mutableStateOf<Track?>(null) }
+    var showBatchPlaylistPicker by remember { mutableStateOf(false) }
+    var showRecognitionSheet by remember { mutableStateOf(false) }
+
+    // Multi-select song state (SimpMusic feature)
+    var isSelectionMode by rememberSaveable { mutableStateOf(false) }
+    val selectedTrackMap = remember { mutableStateMapOf<String, Track>() }
+    var showSelectionSheet by remember { mutableStateOf(false) }
+
+    val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    val focusRequester     = remember { FocusRequester() }
+    val focusRequester = remember { FocusRequester() }
 
-    val filters = listOf("All", "Songs", "Videos", "Albums", "Artists")
+    val filters = remember {
+        listOf(
+            "All",
+            "Songs",
+            "Videos",
+            "Albums",
+            "Artists",
+            "Playlists",
+            "Featured playlists",
+            "Podcasts"
+        )
+    }
 
-    val isSearchPanelVisible = searchUIType == SearchUIType.SEARCH_HISTORY || searchUIType == SearchUIType.SEARCH_SUGGESTIONS
-    val dismissSearchPanel: () -> Unit = {
-        isFocused = false
-        focusManager.clearFocus()
-        keyboardController?.hide()
-        if (searchText.isEmpty()) {
-            searchUIType = SearchUIType.EMPTY
-        } else if (isSearchSubmitted) {
-            searchUIType = SearchUIType.SEARCH_RESULTS
+    LaunchedEffect(Unit) {
+        viewModel.ensureMoodsLoaded()
+    }
+
+    val exitSelectionMode: () -> Unit = {
+        isSelectionMode = false
+        selectedTrackMap.clear()
+        showSelectionSheet = false
+    }
+
+    val toggleTrackSelection: (Track) -> Unit = { track ->
+        if (selectedTrackMap.containsKey(track.id)) {
+            selectedTrackMap.remove(track.id)
+            if (selectedTrackMap.isEmpty()) isSelectionMode = false
         } else {
-            searchUIType = SearchUIType.EMPTY
+            isSelectionMode = true
+            selectedTrackMap[track.id] = track
         }
     }
 
-    // Hardware back button dismisses overlays, search panel, or search results cleanly
+    val isSearchPanelVisible =
+        searchUIType == SearchUIType.SEARCH_HISTORY || searchUIType == SearchUIType.SEARCH_SUGGESTIONS
+
+    val dismissSearchPanel: () -> Unit = {
+        isExpanded = false
+        isFocused = false
+        focusManager.clearFocus()
+        keyboardController?.hide()
+    }
+
     BackHandler(
-        enabled = optionsMenuTrack != null || longPressedAlbum != null || 
-                  longPressedPlaylist != null || showPlaylistPicker != null || 
-                  isSearchPanelVisible || searchUIType == SearchUIType.SEARCH_RESULTS
+        enabled = showBatchPlaylistPicker ||
+            showSelectionSheet ||
+            isSelectionMode ||
+            showRecognitionSheet ||
+            optionsMenuTrack != null ||
+            longPressedAlbum != null ||
+            showPlaylistPicker != null ||
+            isSearchPanelVisible ||
+            searchUIType == SearchUIType.SEARCH_RESULTS
     ) {
         when {
+            showBatchPlaylistPicker -> showBatchPlaylistPicker = false
+            showSelectionSheet -> showSelectionSheet = false
+            isSelectionMode -> exitSelectionMode()
+            showRecognitionSheet -> showRecognitionSheet = false
             showPlaylistPicker != null -> showPlaylistPicker = null
             optionsMenuTrack != null -> optionsMenuTrack = null
             longPressedAlbum != null -> longPressedAlbum = null
-            longPressedPlaylist != null -> longPressedPlaylist = null
             isSearchPanelVisible -> dismissSearchPanel()
             searchUIType == SearchUIType.SEARCH_RESULTS -> {
                 searchText = ""
                 isSearchSubmitted = false
-                searchUIType = SearchUIType.EMPTY
+                isExpanded = false
+                selectedFilter = "All"
+                viewModel.clearSearch()
                 focusManager.clearFocus()
             }
         }
     }
 
-    // Re-focus search when clicking Search button while already on Search screen (SimpMusic feature)
+    // Re-focus Search input when tapping Search icon while already on Search screen
     LaunchedEffect(Unit) {
         viewModel.searchFocusEvent.collect {
-            runCatching {
-                focusRequester.requestFocus()
-                keyboardController?.show()
-                isFocused = true
+            if (!isSelectionMode) {
+                isExpanded = true
+                runCatching {
+                    focusRequester.requestFocus()
+                    keyboardController?.show()
+                    isFocused = true
+                }
             }
         }
     }
 
-    fun executeSearch(query: String, filter: String = selectedFilter) {
+    fun executeSearch(
+        query: String,
+        filter: String = selectedFilter,
+        forceRefresh: Boolean = false
+    ) {
         val trimmed = query.trim()
         if (trimmed.isBlank()) return
         searchText = trimmed
         isSearchSubmitted = true
+        isExpanded = false
+        isFocused = false
+        exitSelectionMode()
         focusManager.clearFocus()
         keyboardController?.hide()
-        searchUIType = SearchUIType.SEARCH_RESULTS
 
-        // YouTube URL Parsing (SimpMusic feature): if a user pastes a direct link, resolve and play immediately
         val ytLink = extractYouTubeLinkOrNull(trimmed)
         if (ytLink != null) {
             when (ytLink.first) {
                 "video" -> {
-                    val dummyTrack = Track(
+                    val directTrack = Track(
                         id = ytLink.second,
                         title = "YouTube Video",
                         artist = "YouTube Music",
-                        album = "",
+                        album = "YouTube Video",
                         duration = 0L,
-                        path = "https://www.youtube.com/watch?v=${ytLink.second}",
+                        path = "ytvideo://${ytLink.second}",
                         isYouTube = true
                     )
-                    viewModel.playTrack(dummyTrack, isVideo = true)
+                    viewModel.playTrack(directTrack, isVideo = true)
+                    onWatchVideo()
                     return
                 }
                 "playlist" -> {
                     navController.navigate("album/${ytLink.second}")
                     return
                 }
+                "artist" -> {
+                    navController.navigate("artist/${ytLink.second}")
+                    return
+                }
             }
         }
 
-        viewModel.performSearch(trimmed, if (filter == "All") null else filter, saveToHistory = true)
+        viewModel.performSearch(
+            query = trimmed,
+            type = if (filter == "All") null else filter,
+            saveToHistory = !forceRefresh,
+            forceRefresh = forceRefresh
+        )
     }
 
-    // State machine updates
-    LaunchedEffect(searchText, isFocused, isSearchSubmitted, searchHistory.size) {
+    LaunchedEffect(isExpanded, searchText, isFocused, isSearchSubmitted) {
         searchUIType = when {
-            isSearchSubmitted && searchText.isNotEmpty() -> SearchUIType.SEARCH_RESULTS
-            searchText.isNotEmpty() && isFocused -> SearchUIType.SEARCH_SUGGESTIONS
-            searchHistory.isNotEmpty() -> SearchUIType.SEARCH_HISTORY
+            searchText.isNotEmpty() && isExpanded -> SearchUIType.SEARCH_SUGGESTIONS
+            isFocused && isExpanded -> SearchUIType.SEARCH_HISTORY
+            searchText.isEmpty() -> SearchUIType.EMPTY
+            isSearchSubmitted -> SearchUIType.SEARCH_RESULTS
             else -> SearchUIType.EMPTY
         }
     }
 
-    // Debounced query suggestions
-    LaunchedEffect(searchText) {
+    LaunchedEffect(searchText, isExpanded) {
         if (searchText.isBlank()) {
             viewModel.updateSuggestions("")
-        } else if (isFocused && !isSearchSubmitted) {
+        } else if (isExpanded) {
             delay(120)
             viewModel.updateSuggestions(searchText)
         }
     }
 
-    // Scroll states for content and floating header measurement
+    // Hoisted scroll states & sibling backdrop/haze sources
+    val moodGridState = rememberLazyGridState()
     val historyState = rememberLazyListState()
     val suggestionsState = rememberLazyListState()
-    val emptyState = rememberLazyListState()
     val resultsState = rememberLazyListState()
+    val chipRowScrollState = rememberScrollState()
 
+    val searchChipBackdrop = rememberLayerBackdrop()
+    val searchHazeState = remember { HazeState() }
+    val density = LocalDensity.current
     var searchBarHeightPx by remember { mutableIntStateOf(0) }
-    val searchBarHeight = with(LocalDensity.current) { searchBarHeightPx.toDp() }
+    val searchBarHeight = with(density) { searchBarHeightPx.toDp() }.coerceAtLeast(68.dp)
 
     val isContentAtTop by remember {
         derivedStateOf {
             when (searchUIType) {
                 SearchUIType.EMPTY ->
-                    emptyState.firstVisibleItemIndex == 0 && emptyState.firstVisibleItemScrollOffset == 0
+                    moodGridState.firstVisibleItemIndex == 0 && moodGridState.firstVisibleItemScrollOffset == 0
                 SearchUIType.SEARCH_HISTORY ->
                     historyState.firstVisibleItemIndex == 0 && historyState.firstVisibleItemScrollOffset == 0
                 SearchUIType.SEARCH_SUGGESTIONS ->
@@ -263,138 +402,245 @@ fun SearchScreen(
         }
     }
 
+    val downloadedIds = remember(downloadedTracks) { downloadedTracks.map { it.id }.toSet() }
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFF070709))
     ) {
-        // ── Main Scrollable Body Content ──────────────────────────────────────
-        Crossfade(
-            targetState = searchUIType,
-            animationSpec = tween(220),
-            label = "search_state_crossfade"
-        ) { state ->
-            when (state) {
-                SearchUIType.EMPTY -> {
-                    SimpEmptySearchBody(
-                        searchBarHeight = searchBarHeight,
-                        listState = emptyState,
-                        onVibeClick = { vibe ->
-                            executeSearch(vibe)
-                        }
+        // ── 1. Scrollable Body (Sibling source for Haze & Kyant Backdrop) ──────
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .layerBackdrop(searchChipBackdrop)
+                .hazeSource(searchHazeState)
+        ) {
+            // Subtle SimpMusic violet/crimson ambient glow at the top
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(360.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xFF391D48).copy(alpha = 0.42f),
+                                Color(0xFF191529).copy(alpha = 0.24f),
+                                Color.Transparent
+                            )
+                        )
                     )
-                }
+            )
 
-                SearchUIType.SEARCH_HISTORY -> {
-                    SimpSearchHistoryBody(
-                        searchBarHeight = searchBarHeight,
-                        historyState = historyState,
-                        history = searchHistory,
-                        onHistoryClick = { item ->
-                            when (item.type) {
-                                "Artist" -> {
-                                    viewModel.selectSearchResult(item.query, item.type, item.itemId, item.imageUrl, item.subtitle)
-                                    if (!item.itemId.isNullOrEmpty()) {
-                                        navController.navigate("artist/${item.itemId}")
-                                    } else {
-                                        executeSearch(item.query)
-                                    }
-                                }
-                                "Album" -> {
-                                    viewModel.selectSearchResult(item.query, item.type, item.itemId, item.imageUrl, item.subtitle)
-                                    if (!item.itemId.isNullOrEmpty()) {
-                                        navController.navigate("album/${item.itemId}")
-                                    } else {
-                                        executeSearch(item.query)
-                                    }
-                                }
-                                "Song", "Video" -> {
-                                    val dummyTrack = Track(
-                                        id = item.itemId ?: "",
-                                        title = item.query,
-                                        artist = item.subtitle ?: "",
-                                        album = "",
-                                        duration = 0L,
-                                        path = "",
-                                        albumArtUri = item.imageUrl
-                                    )
-                                    viewModel.selectSearchResult(item.query, item.type, item.itemId, item.imageUrl, item.subtitle)
-                                    viewModel.playTrack(dummyTrack, isVideo = item.type == "Video")
-                                }
-                                else -> {
-                                    executeSearch(item.query)
-                                }
+            Crossfade(
+                targetState = searchUIType,
+                animationSpec = tween(220),
+                label = "search_state_crossfade"
+            ) { state ->
+                when (state) {
+                    SearchUIType.EMPTY -> {
+                        SimpEmptyMoodsGridBody(
+                            searchBarHeight = searchBarHeight,
+                            gridState = moodGridState,
+                            moodsData = homeMoodsData,
+                            artworkMap = moodArtworkMap,
+                            onLoadArtwork = { viewModel.loadMoodCategoryArtwork(it) },
+                            onChartClick = {
+                                viewModel.openChartBrowsePage()
+                                navController.navigate("browse")
+                            },
+                            onCategoryClick = { item ->
+                                viewModel.openBrowsePage(
+                                    title = item.title,
+                                    strapline = "MOOD OR GENRE",
+                                    browseId = item.browseId,
+                                    params = item.params,
+                                    fallbackQuery = "${item.title} hits"
+                                )
+                                navController.navigate("browse")
                             }
-                        },
-                        onInsertClick = { text ->
-                            searchText = text
-                            isSearchSubmitted = false
-                            runCatching { focusRequester.requestFocus() }
-                        },
-                        onRemoveItem = { item ->
-                            viewModel.removeSearchHistory(item)
-                        },
-                        onClearAll = {
-                            viewModel.clearAllSearchHistory()
-                        },
-                        onVibeClick = { vibe ->
-                            executeSearch(vibe)
-                        }
-                    )
-                }
+                        )
+                    }
 
-                SearchUIType.SEARCH_SUGGESTIONS -> {
-                    SimpSuggestionsBody(
-                        searchBarHeight = searchBarHeight,
-                        suggestionsState = suggestionsState,
-                        query = searchText,
-                        suggestions = searchSuggestions,
-                        onSuggestionClick = { suggestion ->
-                            executeSearch(suggestion)
-                        },
-                        onInsertClick = { suggestion ->
-                            searchText = suggestion
-                            isSearchSubmitted = false
-                            runCatching { focusRequester.requestFocus() }
-                        }
-                    )
-                }
+                    SearchUIType.SEARCH_HISTORY -> {
+                        SimpSearchHistoryBody(
+                            searchBarHeight = searchBarHeight,
+                            historyState = historyState,
+                            history = searchHistory,
+                            onHistoryClick = { item ->
+                                when (item.type) {
+                                    "Artist" -> {
+                                        viewModel.selectSearchResult(item.query, item.type, item.itemId, item.imageUrl, item.subtitle)
+                                        if (!item.itemId.isNullOrEmpty()) {
+                                            navController.navigate("artist/${item.itemId}")
+                                        } else {
+                                            executeSearch(item.query)
+                                        }
+                                    }
+                                    "Album", "Playlist" -> {
+                                        viewModel.selectSearchResult(item.query, item.type, item.itemId, item.imageUrl, item.subtitle)
+                                        if (!item.itemId.isNullOrEmpty()) {
+                                            navController.navigate("album/${item.itemId}")
+                                        } else {
+                                            executeSearch(item.query)
+                                        }
+                                    }
+                                    "Song", "Video" -> {
+                                        val isVideoItem = item.type == "Video"
+                                        val vidId = item.itemId ?: ""
+                                        val track = Track(
+                                            id = vidId,
+                                            title = item.query,
+                                            artist = item.subtitle ?: "",
+                                            album = if (isVideoItem) "YouTube Video" else "",
+                                            duration = 0L,
+                                            path = if (isVideoItem && vidId.isNotBlank()) "ytvideo://$vidId" else "https://www.youtube.com/watch?v=$vidId",
+                                            albumArtUri = item.imageUrl,
+                                            isYouTube = vidId.isNotBlank()
+                                        )
+                                        viewModel.selectSearchResult(item.query, item.type, item.itemId, item.imageUrl, item.subtitle)
+                                        viewModel.playTrack(track, isVideo = isVideoItem)
+                                        if (isVideoItem) onWatchVideo()
+                                    }
+                                    else -> executeSearch(item.query)
+                                }
+                            },
+                            onInsertClick = { text ->
+                                searchText = text
+                                isSearchSubmitted = false
+                                isExpanded = true
+                                runCatching { focusRequester.requestFocus() }
+                            },
+                            onRemoveItem = { viewModel.removeSearchHistory(it) },
+                            onClearAll = { viewModel.clearAllSearchHistory() }
+                        )
+                    }
 
-                SearchUIType.SEARCH_RESULTS -> {
-                    SimpSearchResultsBody(
-                        searchBarHeight = searchBarHeight,
-                        resultsState = resultsState,
-                        tracks = searchResults,
-                        albums = searchAlbums,
-                        artists = searchArtists,
-                        selectedFilter = selectedFilter,
-                        isLoading = isSearching && searchResults.isEmpty() && searchAlbums.isEmpty() && searchArtists.isEmpty(),
-                        errorMessage = searchError,
-                        viewModel = viewModel,
-                        navController = navController,
-                        currentTrack = currentTrack,
-                        isPlaying = isPlaying,
-                        onFilterChange = { filter ->
-                            selectedFilter = filter
-                            executeSearch(searchText, filter)
-                        },
-                        onRetry = {
-                            executeSearch(searchText, selectedFilter)
-                        },
-                        onOptionsClick = { optionsMenuTrack = it },
-                        onAlbumLongClick = { longPressedAlbum = it },
-                        onVideoClick = { track ->
-                            viewModel.selectSearchResult(track.title, "Video", track.id, track.albumArtUri, track.artist)
-                            viewModel.playTrack(track, isVideo = true)
-                            viewModel.setVideoMode(true)
-                            onWatchVideo()
+                    SearchUIType.SEARCH_SUGGESTIONS -> {
+                        SimpSuggestionsBody(
+                            searchBarHeight = searchBarHeight,
+                            suggestionsState = suggestionsState,
+                            query = searchText,
+                            instantItems = instantSearchItems,
+                            suggestions = searchSuggestions,
+                            currentTrackId = currentTrack?.id,
+                            isPlaying = isPlaying,
+                            onTrackClick = { track ->
+                                viewModel.selectSearchResult(track.title, "Song", track.id, track.albumArtUri, track.artist)
+                                viewModel.playTrack(track)
+                                dismissSearchPanel()
+                            },
+                            onArtistClick = { id, name, thumb ->
+                                viewModel.selectSearchResult(name, "Artist", id, thumb, "Artist")
+                                navController.navigate("artist/$id")
+                            },
+                            onAlbumClick = { id, title, artist, art ->
+                                viewModel.selectSearchResult(title, "Album", id, art, artist)
+                                if (!id.isNullOrEmpty()) navController.navigate("album/$id")
+                                else executeSearch(title)
+                            },
+                            onPlaylistClick = { pl ->
+                                viewModel.selectSearchResult(pl.title, "Playlist", pl.id, pl.thumbnailUrl, pl.subtitle)
+                                navController.navigate("album/${pl.id}")
+                            },
+                            onSuggestionClick = { suggestion ->
+                                executeSearch(suggestion)
+                            },
+                            onInsertClick = { suggestion ->
+                                searchText = suggestion
+                                isSearchSubmitted = false
+                                isExpanded = true
+                                runCatching { focusRequester.requestFocus() }
+                            },
+                            onAddToQueue = { viewModel.addToQueue(it) }
+                        )
+                    }
+
+                    SearchUIType.SEARCH_RESULTS -> {
+                        val pullToRefreshState = rememberPullToRefreshState()
+                        PullToRefreshBox(
+                            modifier = Modifier.fillMaxSize(),
+                            state = pullToRefreshState,
+                            isRefreshing = isSearching,
+                            onRefresh = {
+                                executeSearch(searchText, selectedFilter, forceRefresh = true)
+                            },
+                            indicator = {
+                                PullToRefreshDefaults.Indicator(
+                                    state = pullToRefreshState,
+                                    isRefreshing = isSearching,
+                                    modifier = Modifier
+                                        .align(Alignment.TopCenter)
+                                        .padding(top = searchBarHeight + 4.dp),
+                                    containerColor = Color(0xFF1F1B2B),
+                                    color = Color(0xFFF0E3FF)
+                                )
+                            }
+                        ) {
+                            SimpSearchResultsBody(
+                                searchBarHeight = searchBarHeight,
+                                resultsState = resultsState,
+                                tracks = searchResults,
+                                videos = searchVideos,
+                                albums = searchAlbums,
+                                artists = searchArtists,
+                                playlists = searchPlaylists,
+                                featuredPlaylists = searchFeaturedPlaylists,
+                                podcasts = searchPodcasts,
+                                selectedFilter = selectedFilter,
+                                isLoading = isSearching &&
+                                    searchResults.isEmpty() &&
+                                    searchVideos.isEmpty() &&
+                                    searchAlbums.isEmpty() &&
+                                    searchArtists.isEmpty() &&
+                                    searchPlaylists.isEmpty() &&
+                                    searchFeaturedPlaylists.isEmpty() &&
+                                    searchPodcasts.isEmpty(),
+                                errorMessage = searchError,
+                                viewModel = viewModel,
+                                navController = navController,
+                                currentTrack = currentTrack,
+                                isPlaying = isPlaying,
+                                downloadedIds = downloadedIds,
+                                likedTrackIds = likedTrackIds,
+                                selectionMode = isSelectionMode,
+                                selectedTrackIds = selectedTrackMap.keys,
+                                onToggleTrackSelection = toggleTrackSelection,
+                                onFilterChange = { filter ->
+                                    selectedFilter = filter
+                                    val needsFetch = when (filter) {
+                                        "Songs" -> searchResults.isEmpty()
+                                        "Videos" -> searchVideos.isEmpty()
+                                        "Albums" -> searchAlbums.isEmpty()
+                                        "Artists" -> searchArtists.isEmpty()
+                                        "Playlists" -> searchPlaylists.isEmpty()
+                                        "Featured playlists" -> searchFeaturedPlaylists.isEmpty()
+                                        "Podcasts" -> searchPodcasts.isEmpty()
+                                        else -> false
+                                    }
+                                    if (needsFetch) {
+                                        executeSearch(searchText, filter)
+                                    }
+                                },
+                                onRetry = {
+                                    executeSearch(searchText, selectedFilter, forceRefresh = true)
+                                },
+                                onOptionsClick = { optionsMenuTrack = it },
+                                onAlbumLongClick = { longPressedAlbum = it },
+                                onVideoClick = { track ->
+                                    viewModel.selectSearchResult(track.title, "Video", track.id, track.albumArtUri, track.artist)
+                                    viewModel.playTrack(track, isVideo = true)
+                                    viewModel.setVideoMode(true)
+                                    onWatchVideo()
+                                }
+                            )
                         }
-                    )
+                    }
                 }
             }
         }
 
-        // ── Floating SimpMusic Header (Search Bar + Pinned Filter Chips) ────────
+        // ── 2. Floating Sibling SimpMusic Header (Liquid Glass Bar + Filter Chips) ─
         val placeholderTexts = remember {
             listOf(
                 "Search for songs...",
@@ -419,18 +665,33 @@ fun SearchScreen(
                 .fillMaxWidth()
                 .onGloballyPositioned { searchBarHeightPx = it.size.height }
         ) {
-            // Blurred backdrop that activates when content is scrolled under header
             AnimatedVisibility(
                 visible = !isContentAtTop,
                 modifier = Modifier.matchParentSize(),
-                enter = fadeIn(tween(250)),
-                exit = fadeOut(tween(200)),
-                label = "search_header_blur"
+                enter = fadeIn(tween(240)),
+                exit = fadeOut(tween(180)),
+                label = "search_header_haze"
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0xFF070709).copy(alpha = 0.94f))
+                        .hazeEffect(
+                            state = searchHazeState,
+                            style = HazeStyle(
+                                backgroundColor = Color(0xFF0A0B10).copy(alpha = 0.74f),
+                                tint = HazeDefaults.tint(Color(0xFF0A0B10).copy(alpha = 0.45f)),
+                                blurRadius = 22.dp,
+                                noiseFactor = 0.02f
+                            )
+                        )
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color(0xFF070709).copy(alpha = 0.58f),
+                                    Color(0xFF070709).copy(alpha = 0.14f)
+                                )
+                            )
+                        )
                 )
             }
 
@@ -438,198 +699,186 @@ fun SearchScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(top = 8.dp, bottom = 6.dp)
             ) {
-                // Authentic SimpMusic Liquid Glass Search Input Bar
-                val tilt = LocalTiltState.current
-                val searchBarShape = RoundedCornerShape(26.dp)
-
-                val searchGlassModifier = Modifier
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0x30FFFFFF),
-                                Color(0x10FFFFFF),
-                                Color(0x06000000)
-                            )
-                        ),
-                        shape = searchBarShape
+                // Multi-select TopAppBar (replaces / stacks over bar during song selection)
+                AnimatedVisibility(visible = isSelectionMode) {
+                    SimpSongSelectionTopAppBar(
+                        selectedCount = selectedTrackMap.size,
+                        onExit = exitSelectionMode,
+                        onSelectAll = {
+                            val visibleTracks = when (selectedFilter) {
+                                "Videos" -> searchVideos
+                                "All", "Songs" -> searchResults + searchVideos
+                                else -> searchResults
+                            }.distinctBy { it.id }
+                            if (visibleTracks.isNotEmpty() && visibleTracks.all { selectedTrackMap.containsKey(it.id) }) {
+                                selectedTrackMap.clear()
+                            } else {
+                                visibleTracks.take(50).forEach { selectedTrackMap[it.id] = it }
+                            }
+                        },
+                        onOpenActions = { showSelectionSheet = true }
                     )
-                    .background(
-                        color = if (isFocused) Color(0xFF1B1D2C).copy(alpha = 0.92f) else Color(0xFF11121C).copy(alpha = 0.88f),
-                        shape = searchBarShape
-                    )
-
-                val searchRimBrush = remember(tilt.tiltX, tilt.tiltY, isFocused) {
-                    if (isFocused) {
-                        Brush.linearGradient(
-                            colors = listOf(
-                                EcoDotRed.copy(alpha = 0.85f),
-                                EcoDotRed.copy(alpha = 0.40f),
-                                Color.White.copy(alpha = 0.20f),
-                                Color.White.copy(alpha = 0.05f)
-                            ),
-                            start = Offset(0f, 0f),
-                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                        )
-                    } else {
-                        createSpecularRimBrush(
-                            tiltX = tilt.tiltX,
-                            tiltY = tilt.tiltY,
-                            baseAlpha = 0.45f,
-                            secondaryAlpha = 0.18f
-                        )
-                    }
                 }
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(54.dp)
-                        .shadow(
-                            elevation = if (isFocused) 10.dp else 4.dp,
-                            shape = searchBarShape,
-                            clip = false,
-                            ambientColor = Color.Black.copy(alpha = 0.45f),
-                            spotColor = if (isFocused) EcoDotRed.copy(alpha = 0.35f) else Color.Black.copy(alpha = 0.5f)
-                        )
-                        .clip(searchBarShape)
-                        .then(searchGlassModifier)
-                        .border(1.dp, searchRimBrush, searchBarShape)
-                        .padding(horizontal = 14.dp),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalAlignment = Alignment.CenterVertically
+                // Liquid Glass Floating Search Input Field
+                if (!isSelectionMode) {
+                    val barShape = RoundedCornerShape(14.dp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .height(52.dp)
+                            .homeLiquidGlass(
+                                backdrop = searchChipBackdrop,
+                                shape = barShape,
+                                surfaceTint = if (isFocused) Color(0xFF1F1D2C) else Color(0xFF151622),
+                                surfaceAlpha = if (isFocused) 0.72f else 0.56f,
+                                specularAlpha = if (isFocused) 0.92f else 0.76f,
+                                frostSheenAlpha = 0.18f,
+                                blurDp = 12.dp,
+                                isPressed = false
+                            )
+                            .padding(horizontal = 10.dp),
+                        contentAlignment = Alignment.CenterStart
                     ) {
-                        // Leading Icon: Crossfade between Back arrow (when search panel active) and Search icon
-                        Crossfade(
-                            targetState = isSearchPanelVisible,
-                            animationSpec = tween(200),
-                            label = "search_leading_icon"
-                        ) { showBack ->
-                            if (showBack) {
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Crossfade(
+                                targetState = isSearchPanelVisible,
+                                animationSpec = tween(200),
+                                label = "search_leading_icon"
+                            ) { showBack ->
+                                if (showBack) {
+                                    IconButton(
+                                        onClick = dismissSearchPanel,
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                            contentDescription = "Back",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                } else {
+                                    Box(
+                                        modifier = Modifier.size(36.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Search,
+                                            contentDescription = "Search",
+                                            tint = if (isFocused) Color(0xFFF0E3FF) else Color.White.copy(alpha = 0.75f),
+                                            modifier = Modifier.size(21.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(6.dp))
+
+                            Box(
+                                modifier = Modifier.weight(1f),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                if (searchText.isEmpty()) {
+                                    AnimatedContent(
+                                        targetState = currentPlaceholderIndex,
+                                        transitionSpec = {
+                                            (fadeIn(tween(380)) + slideInVertically { it }).togetherWith(
+                                                fadeOut(tween(380)) + slideOutVertically { -it }
+                                            )
+                                        },
+                                        label = "placeholder_anim"
+                                    ) { index ->
+                                        Text(
+                                            text = placeholderTexts[index],
+                                            color = Color.White.copy(alpha = 0.50f),
+                                            fontSize = 15.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+
+                                BasicTextField(
+                                    value = searchText,
+                                    onValueChange = { newVal ->
+                                        searchText = newVal
+                                        isSearchSubmitted = false
+                                        isExpanded = true
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .focusRequester(focusRequester)
+                                        .onFocusChanged { state ->
+                                            isFocused = state.isFocused
+                                            if (state.isFocused) {
+                                                isExpanded = true
+                                            }
+                                        },
+                                    textStyle = MaterialTheme.typography.bodyLarge.copy(
+                                        color = Color.White,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Medium
+                                    ),
+                                    cursorBrush = SolidColor(Color(0xFFF0E3FF)),
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                    keyboardActions = KeyboardActions(
+                                        onSearch = { executeSearch(searchText) }
+                                    )
+                                )
+                            }
+
+                            if (searchText.isNotEmpty()) {
                                 IconButton(
-                                    onClick = dismissSearchPanel,
-                                    modifier = Modifier.size(36.dp)
+                                    onClick = {
+                                        searchText = ""
+                                        isSearchSubmitted = false
+                                        isExpanded = true
+                                        viewModel.clearSearch()
+                                        viewModel.updateSuggestions("")
+                                        runCatching { focusRequester.requestFocus() }
+                                    },
+                                    modifier = Modifier.size(34.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(22.dp)
+                                            .background(Color.White.copy(alpha = 0.14f), CircleShape),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Close,
+                                            contentDescription = "Clear search",
+                                            tint = Color.White.copy(alpha = 0.88f),
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                    }
+                                }
+                            } else {
+                                IconButton(
+                                    onClick = { showRecognitionSheet = true },
+                                    modifier = Modifier.size(34.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                                        contentDescription = "Back",
-                                        tint = Color.White,
+                                        imageVector = Icons.Rounded.GraphicEq,
+                                        contentDescription = "Recognize song",
+                                        tint = Color(0xFFF0E3FF),
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
-                            } else {
-                                Box(
-                                    modifier = Modifier.size(36.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Search,
-                                        contentDescription = "Search",
-                                        tint = if (isFocused) EcoDotRed else Color.White.copy(alpha = 0.6f),
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Text Field & Animated Placeholder
-                        Box(
-                            modifier = Modifier.weight(1f),
-                            contentAlignment = Alignment.CenterStart
-                        ) {
-                            if (searchText.isEmpty()) {
-                                AnimatedContent(
-                                    targetState = currentPlaceholderIndex,
-                                    transitionSpec = {
-                                        (fadeIn(tween(350)) + slideInVertically { it / 2 }).togetherWith(
-                                            fadeOut(tween(350)) + slideOutVertically { -it / 2 }
-                                        )
-                                    },
-                                    label = "placeholder_anim"
-                                ) { index ->
-                                    Text(
-                                        text = placeholderTexts[index],
-                                        color = Color.White.copy(alpha = 0.40f),
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Normal,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-
-                            BasicTextField(
-                                value = searchText,
-                                onValueChange = { newVal ->
-                                    searchText = newVal
-                                    isSearchSubmitted = false
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .focusRequester(focusRequester)
-                                    .onFocusChanged { isFocused = it.isFocused },
-                                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                    color = Color.White,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Medium
-                                ),
-                                cursorBrush = SolidColor(EcoDotRed),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                keyboardActions = KeyboardActions(
-                                    onSearch = { executeSearch(searchText) }
-                                )
-                            )
-                        }
-
-                        // Trailing Icon: Close ('X') to clear or GraphicEq / Recognition
-                        if (searchText.isNotEmpty()) {
-                            IconButton(
-                                onClick = {
-                                    searchText = ""
-                                    isSearchSubmitted = false
-                                    viewModel.clearSearch()
-                                    viewModel.updateSuggestions("")
-                                },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(22.dp)
-                                        .background(Color.White.copy(alpha = 0.12f), CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Close,
-                                        contentDescription = "Clear",
-                                        tint = Color.White.copy(alpha = 0.85f),
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                }
-                            }
-                        } else {
-                            Box(
-                                modifier = Modifier.size(32.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.GraphicEq,
-                                    contentDescription = "Voice",
-                                    tint = Color.White.copy(alpha = 0.5f),
-                                    modifier = Modifier.size(20.dp)
-                                )
                             }
                         }
                     }
                 }
 
-                // SimpMusic Filter Chips Row (Rides inside the floating header)
+                // SimpMusic 8 Filter Chips Row inside floating header
                 AnimatedVisibility(
                     visible = searchUIType == SearchUIType.SEARCH_RESULTS,
                     enter = fadeIn(tween(200)) + expandVertically(tween(200)),
@@ -639,18 +888,36 @@ fun SearchScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState())
-                            .padding(top = 10.dp, bottom = 2.dp)
+                            .padding(top = 10.dp)
+                            .homeChipStripEdgeFades(
+                                width = 20.dp,
+                                start = { if (chipRowScrollState.canScrollBackward) 1f else 0f },
+                                end = { if (chipRowScrollState.canScrollForward) 1f else 0f }
+                            )
+                            .horizontalScroll(chipRowScrollState)
+                            .padding(horizontal = 16.dp)
                     ) {
                         filters.forEach { filter ->
-                            val isSelected = selectedFilter == filter
                             SimpChip(
-                                isSelected = isSelected,
+                                isSelected = selectedFilter == filter,
                                 isAnimated = isSearching,
                                 text = filter,
+                                backdrop = searchChipBackdrop,
                                 onClick = {
                                     selectedFilter = filter
-                                    executeSearch(searchText, filter)
+                                    val needsFetch = when (filter) {
+                                        "Songs" -> searchResults.isEmpty()
+                                        "Videos" -> searchVideos.isEmpty()
+                                        "Albums" -> searchAlbums.isEmpty()
+                                        "Artists" -> searchArtists.isEmpty()
+                                        "Playlists" -> searchPlaylists.isEmpty()
+                                        "Featured playlists" -> searchFeaturedPlaylists.isEmpty()
+                                        "Podcasts" -> searchPodcasts.isEmpty()
+                                        else -> searchResults.isEmpty() && searchAlbums.isEmpty()
+                                    }
+                                    if (needsFetch) {
+                                        executeSearch(searchText, filter)
+                                    }
                                 }
                             )
                         }
@@ -660,11 +927,61 @@ fun SearchScreen(
         }
     }
 
-    // ── Bottom Sheets & Dialogs ──────────────────────────────────────────────
+    // ── 3. Sheets & Overlays ──────────────────────────────────────────────────
+    if (showSelectionSheet) {
+        val pickedTracks = selectedTrackMap.values.toList()
+        SimpSelectedSongsBottomSheet(
+            selectedCount = pickedTracks.size,
+            onDismiss = { showSelectionSheet = false },
+            onPlayNext = {
+                pickedTracks.asReversed().forEach { viewModel.playNext(it) }
+                Toast.makeText(context, "Playing ${pickedTracks.size} songs next", Toast.LENGTH_SHORT).show()
+                exitSelectionMode()
+            },
+            onAddToQueue = {
+                pickedTracks.forEach { viewModel.addToQueue(it) }
+                Toast.makeText(context, "Added ${pickedTracks.size} songs to queue", Toast.LENGTH_SHORT).show()
+                exitSelectionMode()
+            },
+            onAddToPlaylist = { showBatchPlaylistPicker = true },
+            onDownload = {
+                pickedTracks.forEach { viewModel.downloadTrack(it) }
+                Toast.makeText(context, "Downloading ${pickedTracks.size} songs", Toast.LENGTH_SHORT).show()
+                exitSelectionMode()
+            },
+            onAddToFavorites = {
+                pickedTracks.forEach { track ->
+                    if (track.id !in likedTrackIds) {
+                        viewModel.toggleTrackLike(track)
+                    }
+                }
+                Toast.makeText(context, "Added ${pickedTracks.size} songs to Favorites", Toast.LENGTH_SHORT).show()
+                exitSelectionMode()
+            }
+        )
+    }
+
+    if (showBatchPlaylistPicker && selectedTrackMap.isNotEmpty()) {
+        val playlists by viewModel.allPlaylists.collectAsState()
+        val pickedTracks = selectedTrackMap.values.toList()
+        AddToPlaylistDialog(
+            track = pickedTracks.first(),
+            playlists = playlists,
+            onDismiss = { showBatchPlaylistPicker = false },
+            onPlaylistSelected = { playlist ->
+                pickedTracks.forEach { viewModel.addTrackToPlaylist(playlist.id, it) }
+                showBatchPlaylistPicker = false
+                exitSelectionMode()
+                Toast.makeText(context, "Added to ${playlist.name}", Toast.LENGTH_SHORT).show()
+            },
+            onCreatePlaylist = { name -> viewModel.createPlaylist(name) }
+        )
+    }
+
     optionsMenuTrack?.let { track ->
-        val isDownloaded = downloadedTracks.any { it.id == track.id }
+        val isDownloaded = track.id in downloadedIds
         val downloadProgress = downloadProgressMap[track.id]
-        val isLiked by viewModel.isTrackLiked(track.id).collectAsState(initial = false)
+        val isLiked = track.id in likedTrackIds
 
         TrackOptionsBottomSheet(
             track = track,
@@ -673,10 +990,10 @@ fun SearchScreen(
             onAddToQueue = { viewModel.addToQueue(track) },
             onGoToAlbum = {
                 optionsMenuTrack = null
-                if (track.album.isNotBlank() && !track.albumId.isNullOrEmpty()) {
+                if (!track.albumId.isNullOrEmpty()) {
                     navController.navigate("album/${track.albumId}")
                 } else if (track.album.isNotBlank()) {
-                    viewModel.performSearch(track.album)
+                    executeSearch(track.album, "Albums")
                 }
             },
             onGoToArtist = {
@@ -684,7 +1001,7 @@ fun SearchScreen(
                 if (!track.artistId.isNullOrEmpty()) {
                     navController.navigate("artist/${track.artistId}")
                 } else if (track.artist.isNotBlank()) {
-                    viewModel.performSearch(track.artist)
+                    executeSearch(track.artist, "Artists")
                 }
             },
             isDownloaded = isDownloaded,
@@ -720,11 +1037,7 @@ fun SearchScreen(
                 }
             },
             onSaveToggle = {
-                if (isSaved) {
-                    viewModel.unsaveAlbum(album.tracks)
-                } else {
-                    viewModel.saveAlbum(album.tracks)
-                }
+                if (isSaved) viewModel.unsaveAlbum(album.tracks) else viewModel.saveAlbum(album.tracks)
             },
             onGoToArtist = {
                 longPressedAlbum = null
@@ -732,37 +1045,8 @@ fun SearchScreen(
                 if (artistTrack != null && !artistTrack.artistId.isNullOrEmpty()) {
                     navController.navigate("artist/${artistTrack.artistId}")
                 } else {
-                    viewModel.performSearch(album.artist)
+                    executeSearch(album.artist, "Artists")
                 }
-            }
-        )
-    }
-
-    longPressedPlaylist?.let { playlist ->
-        val tracksFlow = remember(playlist.id) { viewModel.getTracksInPlaylistFlow(playlist.id) }
-        val tracks by tracksFlow.collectAsState(initial = emptyList())
-        val isCustom = playlist.name != "Liked Songs" && playlist.name != "Downloads" && !playlist.name.startsWith("Daily")
-
-        PlaylistOptionsBottomSheet(
-            playlistName = playlist.name,
-            playlistCoverUri = playlist.coverArtUri ?: tracks.firstOrNull()?.albumArtUri,
-            isCustom = isCustom,
-            onDismiss = { longPressedPlaylist = null },
-            onPlayPlaylist = {
-                if (tracks.isNotEmpty()) {
-                    viewModel.playQueue(tracks, startIndex = 0)
-                }
-            },
-            onAddToQueue = {
-                tracks.forEach { viewModel.addToQueue(it) }
-            },
-            onEditPlaylist = {
-                longPressedPlaylist = null
-                navController.navigate("library")
-            },
-            onDeletePlaylist = {
-                longPressedPlaylist = null
-                viewModel.deletePlaylist(playlist)
             }
         )
     }
@@ -777,229 +1061,180 @@ fun SearchScreen(
                 viewModel.addTrackToPlaylist(playlist.id, track)
                 showPlaylistPicker = null
             },
-            onCreatePlaylist = { name ->
-                viewModel.createPlaylist(name)
-            }
+            onCreatePlaylist = { name -> viewModel.createPlaylist(name) }
+        )
+    }
+
+    if (showRecognitionSheet) {
+        SongRecognitionBottomSheet(
+            onFind = { recognizedSong ->
+                searchText = recognizedSong
+                executeSearch(recognizedSong, "All")
+            },
+            onDismiss = { showRecognitionSheet = false }
         )
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. SimpMusic CLEAN EMPTY SEARCH BODY (Minimalist Icon/Header + Trending Vibes)
+// 1. SimpMusic EMPTY STATE: "Everything you need" + Chart Pill + Moods & Genres
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun SimpEmptySearchBody(
-    searchBarHeight: androidx.compose.ui.unit.Dp,
-    listState: androidx.compose.foundation.lazy.LazyListState,
-    onVibeClick: (String) -> Unit
+private fun SimpEmptyMoodsGridBody(
+    searchBarHeight: Dp,
+    gridState: LazyGridState,
+    moodsData: HomeMoodsData,
+    artworkMap: Map<String, String>,
+    onLoadArtwork: (MoodCategoryItem) -> Unit,
+    onChartClick: () -> Unit,
+    onCategoryClick: (MoodCategoryItem) -> Unit
 ) {
-    LazyColumn(
-        state = listState,
+    val fallbackMoods = remember {
+        listOf(
+            MoodCategoryItem("Chill", "ggM8SgQIBxADSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAB", stripeColor = 0xFF71B280),
+            MoodCategoryItem("Feel good", "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBADSgQIBBABSgQIDhABSgQIAxABSgQIBhAB", stripeColor = 0xFFE94057),
+            MoodCategoryItem("Focus", "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAD", stripeColor = 0xFF00B4DB),
+            MoodCategoryItem("Workout", "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBADSgQIDhABSgQIAxABSgQIBhAB", stripeColor = 0xFFFF4B2B),
+            MoodCategoryItem("Party", "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhADSgQIAxABSgQIBhAB", stripeColor = 0xFF8E2DE2),
+            MoodCategoryItem("Romance", "ggM8SgQIBxABSgQIBRABSgQICRABSgQIChABSgQIDRADSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAB", stripeColor = 0xFFE100FF),
+            MoodCategoryItem("Energize", "ggM8SgQIBxABSgQIBRABSgQICRADSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAB", stripeColor = 0xFFF7971E),
+            MoodCategoryItem("Sleep", "ggM8SgQIBxABSgQIBRADSgQICRABSgQIChABSgQIDRABSgQICBABSgQIBBABSgQIDhABSgQIAxABSgQIBhAB", stripeColor = 0xFF396AFC)
+        )
+    }
+
+    val moodsSection = moodsData.moodsAndMoments.ifEmpty { fallbackMoods }
+    val genresSection = moodsData.genres
+
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        state = gridState,
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(top = searchBarHeight + 16.dp, bottom = 120.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        contentPadding = PaddingValues(top = searchBarHeight + 8.dp, bottom = 152.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Minimalist Centered Icon & Title Header
-        item {
+        item(span = { GridItemSpan(maxLineSpan) }, key = "empty_search_hero") {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 44.dp, bottom = 28.dp),
+                    .padding(top = 24.dp, bottom = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(68.dp)
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(Color(0xFF13141D))
-                        .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(22.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Search,
-                        contentDescription = null,
-                        tint = EcoDotRed,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(18.dp))
                 Text(
-                    text = "Search EcoDot",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 22.sp
+                    text = "Everything you need",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
                     ),
                     color = Color.White,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Find your favorite songs, artists, albums, or playlists",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 13.5.sp
-                    ),
-                    color = Color.White.copy(alpha = 0.45f),
-                    textAlign = TextAlign.Center
+                    text = "Search for songs, artists, albums, playlists, and more",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.5.sp),
+                    color = Color.White.copy(alpha = 0.62f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                SimpMusicChartButton(
+                    modifier = Modifier.padding(top = 14.dp),
+                    onClick = onChartClick
                 )
             }
         }
 
-        // Trending Vibes Clean Row
-        item {
-            TrendingVibesSection(
-                onVibeClick = onVibeClick,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun TrendingVibesSection(
-    onVibeClick: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val trendingVibes = remember {
-        listOf(
-            Triple("⚡ Trending Now", "Trending", Color(0xFFFF4B2B)),
-            Triple("🌙 Lo-Fi Midnight", "Lo-Fi Beats", Color(0xFF8A2387)),
-            Triple("🔥 Viral Hits", "Viral Hits", Color(0xFFFF416C)),
-            Triple("🎧 Deep Focus", "Focus Music", Color(0xFF00B4DB)),
-            Triple("🚗 Night Drive", "Night Drive Phonk Synthwave", Color(0xFF4776E6)),
-            Triple("💪 Workout Energy", "Workout Motivation", Color(0xFFF12711)),
-            Triple("☕ Acoustic Morning", "Acoustic Chill", Color(0xFFF7971E)),
-            Triple("✨ Retro Synthwave", "Synthwave 80s", Color(0xFFE100FF))
-        )
-    }
-
-    Column(
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.padding(bottom = 12.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.AutoAwesome,
-                contentDescription = null,
-                tint = EcoDotRed,
-                modifier = Modifier.size(17.dp)
-            )
-            Text(
-                text = "Trending Vibes",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
+        items(
+            items = moodsSection,
+            key = { item -> "moods/${item.title}/${item.params}" }
+        ) { item ->
+            LaunchedEffect(item.params) {
+                onLoadArtwork(item)
+            }
+            SimpMoodCategoryCard(
+                title = item.title,
+                artworkUrl = artworkMap[item.params],
+                onClick = { onCategoryClick(item) }
             )
         }
 
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(end = 8.dp)
-        ) {
-            items(trendingVibes) { (label, q, accentColor) ->
-                SimpVibeChip(
-                    label = label,
-                    accentColor = accentColor,
-                    onClick = { onVibeClick(q) }
+        if (genresSection.isNotEmpty()) {
+            item(span = { GridItemSpan(maxLineSpan) }, key = "genres_section_header") {
+                Text(
+                    text = "Genres",
+                    color = Color.White,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 10.dp)
+                )
+            }
+            items(
+                items = genresSection,
+                key = { item -> "genres/${item.title}/${item.params}" }
+            ) { item ->
+                LaunchedEffect(item.params) {
+                    onLoadArtwork(item)
+                }
+                SimpMoodCategoryCard(
+                    title = item.title,
+                    artworkUrl = artworkMap[item.params],
+                    onClick = { onCategoryClick(item) }
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun SimpVibeChip(
-    label: String,
-    accentColor: Color,
-    onClick: () -> Unit
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.94f else 1f,
-        animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f),
-        label = "vibe_scale"
-    )
-
-    Box(
-        modifier = Modifier
-            .scale(scale)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color(0xFF13141D))
-            .border(
-                width = 1.dp,
-                brush = Brush.horizontalGradient(
-                    listOf(accentColor.copy(alpha = 0.45f), Color.White.copy(alpha = 0.08f))
-                ),
-                shape = RoundedCornerShape(14.dp)
-            )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            )
-            .padding(horizontal = 14.dp, vertical = 8.dp)
-    ) {
-        Text(
-            text = label,
-            color = Color.White.copy(alpha = 0.88f),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold
-        )
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. SimpMusic SEARCH HISTORY BODY ("Clear all" + ArrowOutward button + Trending Vibes)
+// 2. SimpMusic SEARCH HISTORY
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun SimpSearchHistoryBody(
-    searchBarHeight: androidx.compose.ui.unit.Dp,
-    historyState: androidx.compose.foundation.lazy.LazyListState,
+    searchBarHeight: Dp,
+    historyState: LazyListState,
     history: List<RecentSearchItem>,
     onHistoryClick: (RecentSearchItem) -> Unit,
     onInsertClick: (String) -> Unit,
     onRemoveItem: (RecentSearchItem) -> Unit,
-    onClearAll: () -> Unit,
-    onVibeClick: (String) -> Unit
+    onClearAll: () -> Unit
 ) {
     LazyColumn(
         state = historyState,
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(top = searchBarHeight + 6.dp, bottom = 120.dp)
+        contentPadding = PaddingValues(top = searchBarHeight + 4.dp, bottom = 148.dp)
     ) {
         if (history.isNotEmpty()) {
-            item {
+            stickyHeader(key = "clear_history_header") {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 10.dp),
+                        .background(Color(0xFF070709).copy(alpha = 0.90f))
+                        .padding(vertical = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = "Recent searches",
-                        color = Color.White.copy(alpha = 0.9f),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
+                        color = Color.White.copy(alpha = 0.72f),
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.SemiBold
                     )
                     TextButton(
                         onClick = onClearAll,
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                     ) {
                         Text(
-                            text = "Clear all",
-                            color = EcoDotRed,
+                            text = "Clear search history",
+                            color = Color(0xFFF0E3FF),
                             fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
@@ -1013,19 +1248,12 @@ private fun SimpSearchHistoryBody(
                     onRemove = { onRemoveItem(item) }
                 )
             }
-
-            item {
-                Spacer(modifier = Modifier.height(28.dp))
-                TrendingVibesSection(
-                    onVibeClick = onVibeClick
-                )
-            }
         } else {
-            item {
+            item(key = "history_empty_placeholder") {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 60.dp),
+                        .padding(top = 72.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
@@ -1035,12 +1263,12 @@ private fun SimpSearchHistoryBody(
                         Icon(
                             imageVector = Icons.Rounded.History,
                             contentDescription = null,
-                            tint = Color.White.copy(alpha = 0.3f),
+                            tint = Color.White.copy(alpha = 0.30f),
                             modifier = Modifier.size(44.dp)
                         )
                         Text(
                             text = "No search history yet",
-                            color = Color.White.copy(alpha = 0.5f),
+                            color = Color.White.copy(alpha = 0.50f),
                             fontSize = 14.sp
                         )
                     }
@@ -1064,27 +1292,21 @@ private fun SimpHistoryRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
+            .padding(vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Leading Icon / Artwork thumbnail
         Box(
             modifier = Modifier
-                .size(42.dp)
+                .size(40.dp)
                 .clip(if (isArtist) CircleShape else RoundedCornerShape(8.dp))
-                .background(Color.White.copy(alpha = 0.04f))
-                .border(
-                    width = 0.5.dp,
-                    color = Color.White.copy(alpha = 0.08f),
-                    shape = if (isArtist) CircleShape else RoundedCornerShape(8.dp)
-                ),
+                .background(Color.White.copy(alpha = 0.05f)),
             contentAlignment = Alignment.Center
         ) {
             if (isQuery || item.imageUrl.isNullOrEmpty()) {
                 Icon(
                     imageVector = Icons.Rounded.History,
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.45f),
+                    tint = Color.White.copy(alpha = 0.55f),
                     modifier = Modifier.size(20.dp)
                 )
             } else {
@@ -1099,29 +1321,28 @@ private fun SimpHistoryRow(
 
         Spacer(Modifier.width(14.dp))
 
-        // Title & Subtitle
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = item.query,
-                color = Color.White.copy(alpha = 0.92f),
+                color = Color.White.copy(alpha = 0.94f),
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-
             val subtitle = when (item.type) {
                 "Song" -> if (!item.subtitle.isNullOrEmpty()) "Song · ${item.subtitle}" else "Song"
                 "Video" -> if (!item.subtitle.isNullOrEmpty()) "Video · ${item.subtitle}" else "Video"
                 "Artist" -> "Artist"
                 "Album" -> if (!item.subtitle.isNullOrEmpty()) "Album · ${item.subtitle}" else "Album"
+                "Playlist" -> if (!item.subtitle.isNullOrEmpty()) "Playlist · ${item.subtitle}" else "Playlist"
                 else -> null
             }
             if (subtitle != null) {
                 Spacer(modifier = Modifier.height(1.dp))
                 Text(
                     text = subtitle,
-                    color = Color.White.copy(alpha = 0.45f),
+                    color = Color.White.copy(alpha = 0.48f),
                     fontSize = 12.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -1129,24 +1350,15 @@ private fun SimpHistoryRow(
             }
         }
 
-        // Insert Button (SimpMusic ArrowOutward) - puts query in text field without executing search
-        IconButton(
-            onClick = onInsertClick,
-            modifier = Modifier.size(32.dp)
-        ) {
+        IconButton(onClick = onInsertClick, modifier = Modifier.size(34.dp)) {
             Icon(
-                imageVector = Icons.Rounded.NorthWest,
-                contentDescription = "Insert query",
-                tint = Color.White.copy(alpha = 0.35f),
-                modifier = Modifier.size(16.dp)
+                imageVector = SimpIcons.ArrowOutward,
+                contentDescription = "Insert suggestion",
+                tint = Color.White.copy(alpha = 0.65f),
+                modifier = Modifier.size(20.dp)
             )
         }
-
-        // Remove item button
-        IconButton(
-            onClick = onRemove,
-            modifier = Modifier.size(32.dp)
-        ) {
+        IconButton(onClick = onRemove, modifier = Modifier.size(32.dp)) {
             Icon(
                 imageVector = Icons.Rounded.Close,
                 contentDescription = "Remove",
@@ -1158,36 +1370,43 @@ private fun SimpHistoryRow(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. SimpMusic LIVE SUGGESTIONS BODY
+// 3. SimpMusic LIVE SUGGESTIONS + INSTANT ITEMS
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun SimpSuggestionsBody(
-    searchBarHeight: androidx.compose.ui.unit.Dp,
-    suggestionsState: androidx.compose.foundation.lazy.LazyListState,
+    searchBarHeight: Dp,
+    suggestionsState: LazyListState,
     query: String,
+    instantItems: List<InstantSearchItem>,
     suggestions: List<String>,
+    currentTrackId: String?,
+    isPlaying: Boolean,
+    onTrackClick: (Track) -> Unit,
+    onArtistClick: (id: String, name: String, thumb: String?) -> Unit,
+    onAlbumClick: (id: String?, title: String, artist: String, art: String?) -> Unit,
+    onPlaylistClick: (InstantSearchItem.PlaylistMatch) -> Unit,
     onSuggestionClick: (String) -> Unit,
-    onInsertClick: (String) -> Unit
+    onInsertClick: (String) -> Unit,
+    onAddToQueue: (Track) -> Unit
 ) {
     LazyColumn(
         state = suggestionsState,
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(top = searchBarHeight + 6.dp, bottom = 120.dp)
+        contentPadding = PaddingValues(top = searchBarHeight + 6.dp, bottom = 148.dp)
     ) {
-        // Direct link card if query looks like a link
         val ytLink = extractYouTubeLinkOrNull(query)
         if (ytLink != null) {
-            item {
+            item(key = "yt_direct_link") {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp)
                         .clip(RoundedCornerShape(14.dp))
-                        .background(Color(0xFF1E1F2D))
-                        .border(1.dp, EcoDotRed.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                        .background(Color(0xFF1F1B2B))
+                        .border(1.dp, Color(0xFFF0E3FF).copy(alpha = 0.45f), RoundedCornerShape(14.dp))
                         .clickable { onSuggestionClick(query) }
                         .padding(14.dp)
                 ) {
@@ -1199,26 +1418,26 @@ private fun SimpSuggestionsBody(
                             modifier = Modifier
                                 .size(38.dp)
                                 .clip(CircleShape)
-                                .background(EcoDotRed),
+                                .background(Color(0xFFF0E3FF)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.PlayArrow,
                                 contentDescription = null,
-                                tint = Color(0xFF121214),
+                                tint = Color(0xFF1A102B),
                                 modifier = Modifier.size(22.dp)
                             )
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Play YouTube Link Directly",
+                                text = "Open YouTube Link Directly",
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.5.sp
                             )
                             Text(
-                                text = "Detected ${if (ytLink.first == "video") "Video" else "Playlist"} · Tap to play",
-                                color = EcoDotRed,
+                                text = "Detected ${ytLink.first.replaceFirstChar { it.uppercase() }} · Tap to open",
+                                color = Color(0xFFF0E3FF),
                                 fontSize = 12.sp
                             )
                         }
@@ -1227,10 +1446,63 @@ private fun SimpSuggestionsBody(
             }
         }
 
-        items(suggestions.take(12)) { suggestion ->
-            SimpSuggestionRow(
-                suggestion = suggestion,
+        items(instantItems) { item ->
+            when (item) {
+                is InstantSearchItem.ArtistMatch -> {
+                    InstantMediaRow(
+                        title = item.name,
+                        subtitle = "Artist",
+                        imageUrl = item.thumbnailUrl,
+                        isCircular = true,
+                        onClick = { onArtistClick(item.id, item.name, item.thumbnailUrl) }
+                    )
+                }
+                is InstantSearchItem.SongMatch -> {
+                    val isTrackPlaying = isPlaying && currentTrackId == item.track.id
+                    SwipeToQueueBox(onAddToQueue = { onAddToQueue(item.track) }) {
+                        InstantMediaRow(
+                            title = item.track.title,
+                            subtitle = item.track.artist.ifBlank { "Song" },
+                            imageUrl = item.track.albumArtUri,
+                            isCircular = false,
+                            isPlaying = isTrackPlaying,
+                            trailingIcon = Icons.Rounded.Add,
+                            onTrailingClick = { onAddToQueue(item.track) },
+                            onClick = { onTrackClick(item.track) }
+                        )
+                    }
+                }
+                is InstantSearchItem.AlbumMatch -> {
+                    InstantMediaRow(
+                        title = item.title,
+                        subtitle = if (item.artist.isNotBlank()) "Album · ${item.artist}" else "Album",
+                        imageUrl = item.artUri,
+                        isCircular = false,
+                        onClick = { onAlbumClick(item.id, item.title, item.artist, item.artUri) }
+                    )
+                }
+                is InstantSearchItem.PlaylistMatch -> {
+                    InstantMediaRow(
+                        title = item.title,
+                        subtitle = item.subtitle.ifBlank { "Playlist" },
+                        imageUrl = item.thumbnailUrl,
+                        isCircular = false,
+                        onClick = { onPlaylistClick(item) }
+                    )
+                }
+            }
+        }
+
+        if (instantItems.isNotEmpty() && suggestions.isNotEmpty()) {
+            item(key = "suggestions_divider_space") {
+                Spacer(modifier = Modifier.height(6.dp))
+            }
+        }
+
+        items(suggestions, key = { "qsug_$it" }) { suggestion ->
+            InstantQueryRow(
                 query = query,
+                suggestion = suggestion,
                 onClick = { onSuggestionClick(suggestion) },
                 onInsertClick = { onInsertClick(suggestion) }
             )
@@ -1239,28 +1511,109 @@ private fun SimpSuggestionsBody(
 }
 
 @Composable
-private fun SimpSuggestionRow(
-    suggestion: String,
+private fun InstantMediaRow(
+    title: String,
+    subtitle: String,
+    imageUrl: String?,
+    isCircular: Boolean,
+    isPlaying: Boolean = false,
+    trailingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    onTrailingClick: (() -> Unit)? = null,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(if (isCircular) CircleShape else RoundedCornerShape(8.dp))
+                .background(Color(0xFF1E202E)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (!imageUrl.isNullOrEmpty()) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = if (isCircular) Icons.Rounded.Person else Icons.Rounded.MusicNote,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.5f),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            if (isPlaying) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.55f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    PlayingIndicator(color = Color(0xFFF0E3FF))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(14.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = if (isPlaying) Color(0xFFF0E3FF) else Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                color = Color.White.copy(alpha = 0.55f),
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        if (trailingIcon != null && onTrailingClick != null) {
+            IconButton(onClick = onTrailingClick, modifier = Modifier.size(34.dp)) {
+                Icon(
+                    imageVector = trailingIcon,
+                    contentDescription = "Add to queue",
+                    tint = Color.White.copy(alpha = 0.72f),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun InstantQueryRow(
     query: String,
+    suggestion: String,
     onClick: () -> Unit,
     onInsertClick: () -> Unit
 ) {
-    val annotatedString = buildAnnotatedString {
-        val startIndex = suggestion.indexOf(query, ignoreCase = true)
-        if (startIndex >= 0) {
-            withStyle(style = SpanStyle(color = Color.White.copy(alpha = 0.45f), fontWeight = FontWeight.Normal)) {
-                append(suggestion.substring(0, startIndex))
+    val trimmedQuery = query.trim()
+    val matchIdx = if (trimmedQuery.isNotEmpty()) suggestion.indexOf(trimmedQuery, ignoreCase = true) else -1
+    val annotated = buildAnnotatedString {
+        if (matchIdx >= 0) {
+            append(suggestion.substring(0, matchIdx))
+            withStyle(SpanStyle(color = Color.White, fontWeight = FontWeight.Bold)) {
+                append(suggestion.substring(matchIdx, matchIdx + trimmedQuery.length))
             }
-            withStyle(style = SpanStyle(color = Color.White, fontWeight = FontWeight.Bold)) {
-                append(suggestion.substring(startIndex, startIndex + query.length))
-            }
-            withStyle(style = SpanStyle(color = Color.White.copy(alpha = 0.45f), fontWeight = FontWeight.Normal)) {
-                append(suggestion.substring(startIndex + query.length))
-            }
+            append(suggestion.substring(matchIdx + trimmedQuery.length))
         } else {
-            withStyle(style = SpanStyle(color = Color.White.copy(alpha = 0.85f), fontWeight = FontWeight.Normal)) {
-                append(suggestion)
-            }
+            append(suggestion)
         }
     }
 
@@ -1268,59 +1621,43 @@ private fun SimpSuggestionRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(vertical = 10.dp, horizontal = 4.dp),
+            .padding(vertical = 8.dp, horizontal = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(34.dp)
-                .background(Color.White.copy(alpha = 0.05f), CircleShape)
-                .border(1.dp, Color.White.copy(alpha = 0.06f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Search,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.size(16.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.width(14.dp))
-
         Text(
-            text = annotatedString,
+            text = annotated,
+            color = Color.White.copy(alpha = 0.76f),
             fontSize = 15.sp,
             modifier = Modifier.weight(1f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-
-        IconButton(
-            onClick = onInsertClick,
-            modifier = Modifier.size(32.dp)
-        ) {
+        IconButton(onClick = onInsertClick, modifier = Modifier.size(34.dp)) {
             Icon(
-                imageVector = Icons.Rounded.NorthWest,
-                contentDescription = "Fill query",
-                tint = Color.White.copy(alpha = 0.35f),
-                modifier = Modifier.size(16.dp)
+                imageVector = SimpIcons.ArrowOutward,
+                contentDescription = "Insert query",
+                tint = Color.White.copy(alpha = 0.68f),
+                modifier = Modifier.size(20.dp)
             )
         }
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. SimpMusic SEARCH RESULTS BODY (Spotlight Hero + Songs + Artists + Albums)
+// 4. SimpMusic SEARCH RESULTS (All 8 Categories + Offline/Error/Shimmer)
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun SimpSearchResultsBody(
-    searchBarHeight: androidx.compose.ui.unit.Dp,
-    resultsState: androidx.compose.foundation.lazy.LazyListState,
+    searchBarHeight: Dp,
+    resultsState: LazyListState,
     tracks: List<Track>,
+    videos: List<Track>,
     albums: List<Album>,
     artists: List<Artist>,
+    playlists: List<HomeMediaItem>,
+    featuredPlaylists: List<HomeMediaItem>,
+    podcasts: List<HomeMediaItem>,
     selectedFilter: String,
     isLoading: Boolean,
     errorMessage: String?,
@@ -1328,6 +1665,11 @@ private fun SimpSearchResultsBody(
     navController: NavController,
     currentTrack: Track?,
     isPlaying: Boolean,
+    downloadedIds: Set<String>,
+    likedTrackIds: Set<String>,
+    selectionMode: Boolean,
+    selectedTrackIds: Set<String>,
+    onToggleTrackSelection: (Track) -> Unit,
     onFilterChange: (String) -> Unit,
     onRetry: () -> Unit,
     onOptionsClick: (Track) -> Unit,
@@ -1336,48 +1678,17 @@ private fun SimpSearchResultsBody(
 ) {
     val networkState by viewModel.networkState.collectAsState()
 
-    if (!networkState.isConnected && tracks.isEmpty() && albums.isEmpty() && artists.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = searchBarHeight),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(horizontal = 32.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .background(Color.White.copy(alpha = 0.04f), CircleShape)
-                        .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.WifiOff,
-                        contentDescription = null,
-                        tint = EcoDotRed.copy(alpha = 0.8f),
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = "No Internet Connection",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 17.sp
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = "Check your connection to search online music. You can still play your downloaded music in Library.",
-                    color = Color.White.copy(alpha = 0.45f),
-                    fontSize = 13.sp,
-                    textAlign = TextAlign.Center,
-                    lineHeight = 18.sp
-                )
-            }
-        }
+    val anyData = tracks.isNotEmpty() || videos.isNotEmpty() || albums.isNotEmpty() ||
+        artists.isNotEmpty() || playlists.isNotEmpty() ||
+        featuredPlaylists.isNotEmpty() || podcasts.isNotEmpty()
+
+    if (!networkState.isConnected && !anyData) {
+        SearchCenteredMessage(
+            searchBarHeight = searchBarHeight,
+            icon = Icons.Rounded.WifiOff,
+            title = "No Internet Connection",
+            subtitle = "Check your connection to search online music. Downloaded music remains available in Library."
+        )
         return
     }
 
@@ -1386,7 +1697,7 @@ private fun SimpSearchResultsBody(
         return
     }
 
-    if (errorMessage != null) {
+    if (errorMessage != null && !anyData) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -1401,130 +1712,97 @@ private fun SimpSearchResultsBody(
                     imageVector = Icons.Rounded.ErrorOutline,
                     contentDescription = null,
                     modifier = Modifier.size(52.dp),
-                    tint = EcoDotRed.copy(alpha = 0.6f)
+                    tint = EcoDotRed.copy(alpha = 0.72f)
                 )
                 Spacer(Modifier.height(14.dp))
-                Text("Search Failed", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Text("An error occurred", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(6.dp))
-                Text(errorMessage, color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp, textAlign = TextAlign.Center)
+                Text(errorMessage, color = Color.White.copy(alpha = 0.55f), fontSize = 13.sp, textAlign = TextAlign.Center)
                 Spacer(Modifier.height(18.dp))
                 Button(
                     onClick = onRetry,
-                    colors = ButtonDefaults.buttonColors(containerColor = EcoDotRed),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF0E3FF)),
                     shape = RoundedCornerShape(20.dp)
                 ) {
-                    Text("Retry Search", color = Color(0xFF121214), fontWeight = FontWeight.Bold)
+                    Text("Retry", color = Color(0xFF1A102B), fontWeight = FontWeight.Bold)
                 }
             }
         }
         return
     }
 
-    val hasSongs = tracks.isNotEmpty()
-    val hasAlbums = albums.isNotEmpty()
-    val hasArtists = artists.isNotEmpty()
-
     val isEmptyForFilter = when (selectedFilter) {
-        "Songs" -> !hasSongs
-        "Videos" -> !hasSongs
-        "Albums" -> !hasAlbums
-        "Artists" -> !hasArtists
-        else -> !hasSongs && !hasAlbums && !hasArtists
+        "Songs" -> tracks.isEmpty()
+        "Videos" -> videos.isEmpty()
+        "Albums" -> albums.isEmpty()
+        "Artists" -> artists.isEmpty()
+        "Playlists" -> playlists.isEmpty()
+        "Featured playlists" -> featuredPlaylists.isEmpty()
+        "Podcasts" -> podcasts.isEmpty()
+        else -> !anyData
     }
 
-    if (isEmptyForFilter && !hasSongs && !hasAlbums && !hasArtists) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = searchBarHeight),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(horizontal = 32.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .background(Color.White.copy(alpha = 0.04f), CircleShape)
-                        .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.SearchOff,
-                        contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.35f),
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-                Spacer(Modifier.height(14.dp))
-                Text("No results found", color = Color.White.copy(alpha = 0.85f), fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(4.dp))
-                Text("Try searching with a different term or spelling", color = Color.White.copy(alpha = 0.4f), fontSize = 13.sp)
-            }
-        }
+    if (isEmptyForFilter) {
+        SearchCenteredMessage(
+            searchBarHeight = searchBarHeight,
+            icon = Icons.Rounded.SearchOff,
+            title = "No results found",
+            subtitle = "Try another keyword or switch filter tab"
+        )
         return
     }
 
     LazyColumn(
         state = resultsState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = searchBarHeight + 6.dp, bottom = 140.dp)
+        contentPadding = PaddingValues(top = searchBarHeight + 6.dp, bottom = 152.dp)
     ) {
-        // ── Top Match Hero Spotlight ─────────────────────────────────────────
+        // 1. Top Artists (matching SimpMusic SearchAll placement of up to 3 top artists)
         if ((selectedFilter == "All" || selectedFilter == "Artists") && artists.isNotEmpty()) {
-            val topArtist = artists.first()
-            item(key = "spotlight_artist_${topArtist.id.ifEmpty { topArtist.name }}") {
-                SimpTopMatchArtistCard(
-                    artist = topArtist,
-                    onClick = {
-                        viewModel.selectSearchResult(topArtist.name, "Artist", topArtist.id, topArtist.imageUrl, null)
-                        if (topArtist.id.isNotEmpty()) {
-                            navController.navigate("artist/${topArtist.id}")
-                        }
-                    }
-                )
+            val topArtists = if (selectedFilter == "All") artists.take(3) else artists
+            if (selectedFilter == "All") {
+                item(key = "hdr_artists_top") {
+                    SearchCategoryHeader("Artists", if (artists.size > 3) ({ onFilterChange("Artists") }) else null)
+                }
             }
-        } else if ((selectedFilter == "All" || selectedFilter == "Songs") && tracks.isNotEmpty()) {
-            val topTrack = tracks.first()
-            val isCurrentPlaying = isPlaying && currentTrack?.id == topTrack.id
-            item(key = "spotlight_track_${topTrack.id}") {
-                SimpTopMatchTrackCard(
-                    track = topTrack,
-                    isPlaying = isCurrentPlaying,
-                    onPlayClick = {
-                        viewModel.selectSearchResult(topTrack.title, "Song", topTrack.id, topTrack.albumArtUri, topTrack.artist)
-                        viewModel.playTrack(topTrack)
-                    },
-                    onArtistClick = topTrack.artistId?.let { aid ->
-                        {
-                            viewModel.selectSearchResult(topTrack.artist, "Artist", aid, null, null)
-                            navController.navigate("artist/$aid")
+            items(
+                items = topArtists,
+                key = { a -> "art_${a.id.ifEmpty { a.name }}" }
+            ) { artist ->
+                SimpSearchArtistRow(
+                    artist = artist,
+                    onClick = {
+                        viewModel.selectSearchResult(artist.name, "Artist", artist.id, artist.imageUrl, null)
+                        if (artist.id.isNotEmpty()) {
+                            navController.navigate("artist/${artist.id}")
                         }
                     }
                 )
             }
         }
 
-        // ── Songs Section ────────────────────────────────────────────────────
-        if (tracks.isNotEmpty() && (selectedFilter == "All" || selectedFilter == "Songs")) {
-            val displaySongs = if (selectedFilter == "All") tracks.take(4) else tracks
-            item {
-                SimpSectionHeaderWithAction(
-                    title = "Songs",
-                    onSeeAll = if (selectedFilter == "All" && tracks.size > 4) { { onFilterChange("Songs") } } else null
-                )
+        // 2. Songs (with Swipe-to-Queue, Long-Press Multi-Select, Marquee, Explicit & Download badges)
+        if ((selectedFilter == "All" || selectedFilter == "Songs") && tracks.isNotEmpty()) {
+            val displaySongs = if (selectedFilter == "All") tracks.take(10) else tracks
+            if (selectedFilter == "All") {
+                item(key = "hdr_songs") {
+                    SearchCategoryHeader("Songs", if (tracks.size > 10) ({ onFilterChange("Songs") }) else null)
+                }
             }
-
-            items(displaySongs, key = { track -> "song_${track.id}" }) { track ->
-                val isCurrentPlaying = isPlaying && currentTrack?.id == track.id
-                val isLiked by viewModel.isTrackLiked(track.id).collectAsState(initial = false)
-
-                SimpSongResultRow(
+            items(
+                items = displaySongs,
+                key = { t -> "song_${t.id}" }
+            ) { track ->
+                SimpSearchSongRow(
                     track = track,
-                    type = "Song",
-                    isPlaying = isCurrentPlaying,
-                    isLiked = isLiked,
+                    isVideo = false,
+                    isPlaying = isPlaying && currentTrack?.id == track.id,
+                    isDownloaded = track.id in downloadedIds,
+                    isLiked = track.id in likedTrackIds,
+                    selectionMode = selectionMode,
+                    isSelected = track.id in selectedTrackIds,
+                    onSelectToggle = { onToggleTrackSelection(track) },
+                    onLongClick = { onToggleTrackSelection(track) },
                     onLikeToggle = { viewModel.toggleTrackLike(track) },
                     onArtistClick = track.artistId?.let { aid ->
                         {
@@ -1533,6 +1811,7 @@ private fun SimpSearchResultsBody(
                         }
                     },
                     onOptionsClick = { onOptionsClick(track) },
+                    onAddToQueue = { viewModel.addToQueue(track) },
                     onClick = {
                         viewModel.selectSearchResult(track.title, "Song", track.id, track.albumArtUri, track.artist)
                         viewModel.playTrack(track)
@@ -1541,42 +1820,59 @@ private fun SimpSearchResultsBody(
             }
         }
 
-        // ── Music Videos Section (16:9 Widescreen Cards like SimpMusic) ───────
-        if (tracks.isNotEmpty() && (selectedFilter == "All" || selectedFilter == "Videos")) {
-            val displayVideos = if (selectedFilter == "All") tracks.take(4) else tracks
-            item {
-                SimpSectionHeaderWithAction(
-                    title = "Music Videos",
-                    onSeeAll = if (selectedFilter == "All" && tracks.size > 4) { { onFilterChange("Videos") } } else null
-                )
+        // 3. Videos
+        if ((selectedFilter == "All" || selectedFilter == "Videos") && videos.isNotEmpty()) {
+            val displayVideos = if (selectedFilter == "All") videos.take(6) else videos
+            if (selectedFilter == "All") {
+                item(key = "hdr_videos") {
+                    SearchCategoryHeader("Videos", if (videos.size > 6) ({ onFilterChange("Videos") }) else null)
+                }
             }
-
-            items(displayVideos, key = { track -> "video_${track.id}" }) { track ->
-                val isCurrentPlaying = isPlaying && currentTrack?.id == track.id
-                SimpVideoResultCard(
-                    track = track,
-                    isPlaying = isCurrentPlaying,
-                    onClick = {
-                        viewModel.selectSearchResult(track.title, "Video", track.id, track.albumArtUri, track.artist)
-                        viewModel.playTrack(track, isVideo = true)
-                        onVideoClick(track)
-                    }
+            items(
+                items = displayVideos,
+                key = { v -> "vid_${v.id}" }
+            ) { videoTrack ->
+                SimpSearchSongRow(
+                    track = videoTrack,
+                    isVideo = true,
+                    isPlaying = isPlaying && currentTrack?.id == videoTrack.id,
+                    isDownloaded = videoTrack.id in downloadedIds,
+                    isLiked = videoTrack.id in likedTrackIds,
+                    selectionMode = selectionMode,
+                    isSelected = videoTrack.id in selectedTrackIds,
+                    onSelectToggle = { onToggleTrackSelection(videoTrack) },
+                    onLongClick = { onToggleTrackSelection(videoTrack) },
+                    onLikeToggle = { viewModel.toggleTrackLike(videoTrack) },
+                    onArtistClick = videoTrack.artistId?.let { aid ->
+                        {
+                            viewModel.selectSearchResult(videoTrack.artist, "Artist", aid, null, null)
+                            navController.navigate("artist/$aid")
+                        }
+                    },
+                    onOptionsClick = { onOptionsClick(videoTrack) },
+                    onAddToQueue = { viewModel.addToQueue(videoTrack) },
+                    onClick = { onVideoClick(videoTrack) }
                 )
             }
         }
 
-        // ── Albums Section ───────────────────────────────────────────────────
-        if (albums.isNotEmpty() && (selectedFilter == "All" || selectedFilter == "Albums")) {
-            val displayAlbums = if (selectedFilter == "All") albums.take(4) else albums
-            item {
-                SimpSectionHeaderWithAction(
-                    title = "Albums",
-                    onSeeAll = if (selectedFilter == "All" && albums.size > 4) { { onFilterChange("Albums") } } else null
-                )
+        // 4. Albums
+        if ((selectedFilter == "All" || selectedFilter == "Albums") && albums.isNotEmpty()) {
+            val displayAlbums = if (selectedFilter == "All") albums.take(6) else albums
+            if (selectedFilter == "All") {
+                item(key = "hdr_albums") {
+                    SearchCategoryHeader("Albums", if (albums.size > 6) ({ onFilterChange("Albums") }) else null)
+                }
             }
-            items(displayAlbums, key = { album -> "album_${album.id ?: album.title}" }) { album ->
-                SimpAlbumResultRow(
-                    album = album,
+            items(
+                items = displayAlbums,
+                key = { a -> "alb_${a.id ?: a.title}" }
+            ) { album ->
+                SimpSearchCollectionRow(
+                    title = album.title,
+                    typeLabel = "Album",
+                    subtitle = album.artist,
+                    thumbnailUrl = album.artUri,
                     onLongClick = { onAlbumLongClick(album) },
                     onClick = {
                         viewModel.selectSearchResult(album.title, "Album", album.id, album.artUri, album.artist)
@@ -1586,71 +1882,109 @@ private fun SimpSearchResultsBody(
             }
         }
 
-        // ── Artists Section ──────────────────────────────────────────────────
-        if (artists.isNotEmpty() && (selectedFilter == "All" || selectedFilter == "Artists")) {
-            val moreArtists = if (selectedFilter == "All") artists.drop(1).take(5) else artists
-            if (moreArtists.isNotEmpty()) {
-                item {
-                    SimpSectionHeaderWithAction(
-                        title = if (selectedFilter == "All") "More Artists" else "Artists",
-                        onSeeAll = if (selectedFilter == "All" && artists.size > 6) { { onFilterChange("Artists") } } else null
+        // 5. Community Playlists
+        if ((selectedFilter == "All" || selectedFilter == "Playlists") && playlists.isNotEmpty()) {
+            val displayPlaylists = if (selectedFilter == "All") playlists.take(6) else playlists
+            if (selectedFilter == "All") {
+                item(key = "hdr_playlists") {
+                    SearchCategoryHeader("Playlists", if (playlists.size > 6) ({ onFilterChange("Playlists") }) else null)
+                }
+            }
+            items(
+                items = displayPlaylists,
+                key = { pl -> "pl_${pl.id}" }
+            ) { pl ->
+                SimpSearchCollectionRow(
+                    title = pl.title,
+                    typeLabel = "Playlist",
+                    subtitle = pl.subtitle,
+                    thumbnailUrl = pl.thumbnailUrl,
+                    onClick = {
+                        viewModel.selectSearchResult(pl.title, "Playlist", pl.id, pl.thumbnailUrl, pl.subtitle)
+                        navController.navigate("album/${pl.id}")
+                    }
+                )
+            }
+        }
+
+        // 6. Featured Playlists
+        if ((selectedFilter == "All" || selectedFilter == "Featured playlists") && featuredPlaylists.isNotEmpty()) {
+            val displayFeatured = if (selectedFilter == "All") featuredPlaylists.take(6) else featuredPlaylists
+            if (selectedFilter == "All") {
+                item(key = "hdr_featured_playlists") {
+                    SearchCategoryHeader(
+                        "Featured playlists",
+                        if (featuredPlaylists.size > 6) ({ onFilterChange("Featured playlists") }) else null
                     )
                 }
-                items(moreArtists, key = { artist -> "artist_${artist.id.ifEmpty { artist.name }}" }) { artist ->
-                    SimpArtistResultRow(
-                        artist = artist,
-                        onClick = {
-                            viewModel.selectSearchResult(artist.name, "Artist", artist.id, artist.imageUrl, null)
-                            if (artist.id.isNotEmpty()) {
-                                navController.navigate("artist/${artist.id}")
-                            }
-                        }
-                    )
+            }
+            items(
+                items = displayFeatured,
+                key = { fpl -> "fpl_${fpl.id}" }
+            ) { fpl ->
+                SimpSearchCollectionRow(
+                    title = fpl.title,
+                    typeLabel = "Featured playlist",
+                    subtitle = fpl.subtitle,
+                    thumbnailUrl = fpl.thumbnailUrl,
+                    onClick = {
+                        viewModel.selectSearchResult(fpl.title, "Playlist", fpl.id, fpl.thumbnailUrl, fpl.subtitle)
+                        navController.navigate("album/${fpl.id}")
+                    }
+                )
+            }
+        }
+
+        // 7. Podcasts
+        if ((selectedFilter == "All" || selectedFilter == "Podcasts") && podcasts.isNotEmpty()) {
+            val displayPodcasts = if (selectedFilter == "All") podcasts.take(6) else podcasts
+            if (selectedFilter == "All") {
+                item(key = "hdr_podcasts") {
+                    SearchCategoryHeader("Podcasts", if (podcasts.size > 6) ({ onFilterChange("Podcasts") }) else null)
                 }
+            }
+            items(
+                items = displayPodcasts,
+                key = { pod -> "pod_${pod.id}" }
+            ) { pod ->
+                SimpSearchCollectionRow(
+                    title = pod.title,
+                    typeLabel = "Podcast",
+                    subtitle = pod.subtitle,
+                    thumbnailUrl = pod.thumbnailUrl,
+                    onClick = {
+                        viewModel.selectSearchResult(pod.title, "Playlist", pod.id, pod.thumbnailUrl, pod.subtitle)
+                        navController.navigate("album/${pod.id}")
+                    }
+                )
             }
         }
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Sub-Components & Full-Width Rows (SimpMusic Style)
-// ─────────────────────────────────────────────────────────────────────────────
-
 @Composable
-private fun SimpSectionHeader(title: String) {
-    Text(
-        text = title.uppercase(),
-        color = Color.White.copy(alpha = 0.45f),
-        fontSize = 11.sp,
-        fontWeight = FontWeight.ExtraBold,
-        letterSpacing = 1.8.sp,
-        modifier = Modifier.padding(start = 18.dp, top = 20.dp, bottom = 6.dp)
-    )
-}
-
-@Composable
-private fun SimpSectionHeaderWithAction(
+private fun SearchCategoryHeader(
     title: String,
-    onSeeAll: (() -> Unit)? = null
+    onSeeAll: (() -> Unit)?
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 18.dp, end = 18.dp, top = 20.dp, bottom = 6.dp),
+            .padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = title.uppercase(),
-            color = Color.White.copy(alpha = 0.50f),
+            color = Color.White.copy(alpha = 0.56f),
             fontSize = 11.5.sp,
             fontWeight = FontWeight.ExtraBold,
-            letterSpacing = 1.6.sp
+            letterSpacing = 1.5.sp
         )
         if (onSeeAll != null) {
             Text(
                 text = "See all >",
-                color = EcoDotRed,
+                color = Color(0xFFF0E3FF),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier
@@ -1662,724 +1996,52 @@ private fun SimpSectionHeaderWithAction(
     }
 }
 
-/**
- * 16:9 Dedicated Music Video Card (SimpMusic Style).
- * Includes 16:9 widescreen thumbnail, duration pill, MV tag, channel name, and instant video player launch.
- */
 @Composable
-private fun SimpVideoResultCard(
-    track: Track,
-    isPlaying: Boolean,
-    onClick: () -> Unit
+private fun SearchCenteredMessage(
+    searchBarHeight: Dp,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String
 ) {
-    var artworkUrl by remember(track.id, track.albumArtUri) {
-        mutableStateOf(track.albumArtUri)
-    }
-
     Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color(0x18FFFFFF))
-            .border(
-                1.dp,
-                if (isPlaying) EcoDotRed.copy(alpha = 0.60f) else Color.White.copy(alpha = 0.08f),
-                RoundedCornerShape(16.dp)
-            )
-            .clickable(onClick = onClick)
-            .padding(10.dp)
+            .fillMaxSize()
+            .padding(top = searchBarHeight),
+        contentAlignment = Alignment.Center
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(horizontal = 32.dp)
         ) {
-            // 16:9 Thumbnail
             Box(
                 modifier = Modifier
-                    .width(132.dp)
-                    .aspectRatio(16f / 9f)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color.Black)
-            ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(artworkUrl)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = track.title,
-                    placeholder = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Rounded.SmartDisplay),
-                    error = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Rounded.SmartDisplay),
-                    onError = {
-                        val fallback = artworkUrl?.replace("maxresdefault", "hqdefault")
-                        if (fallback != null && fallback != artworkUrl) {
-                            artworkUrl = fallback
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-
-                // Bottom-right duration pill badge
-                val formattedDuration = remember(track.duration) {
-                    val totalSec = track.duration / 1000L
-                    val min = totalSec / 60
-                    val sec = totalSec % 60
-                    if (min > 0 || sec > 0) String.format("%02d:%02d", min, sec) else "Video"
-                }
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(5.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Color.Black.copy(alpha = 0.75f))
-                        .padding(horizontal = 4.dp, vertical = 1.dp)
-                ) {
-                    Text(
-                        text = formattedDuration,
-                        color = Color.White,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                // Top-left MV badge
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(5.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(EcoDotRed.copy(alpha = 0.85f))
-                        .padding(horizontal = 4.dp, vertical = 1.dp)
-                ) {
-                    Text(
-                        text = "MV",
-                        color = Color.White,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Video details
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 4.dp)
-            ) {
-                Text(
-                    text = track.title,
-                    color = if (isPlaying) EcoDotRed else Color.White,
-                    fontSize = 14.5.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 18.sp
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.SmartDisplay,
-                        contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.45f),
-                        modifier = Modifier.size(13.dp)
-                    )
-                    Text(
-                        text = track.artist.ifEmpty { "YouTube Music" },
-                        color = Color.White.copy(alpha = 0.55f),
-                        fontSize = 12.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            // Play Icon
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(if (isPlaying) EcoDotRed else Color.White.copy(alpha = 0.12f)),
+                    .size(72.dp)
+                    .background(Color.White.copy(alpha = 0.05f), CircleShape)
+                    .border(1.dp, Color.White.copy(alpha = 0.10f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = if (isPlaying) Icons.Rounded.GraphicEq else Icons.Rounded.PlayArrow,
-                    contentDescription = "Play",
-                    tint = if (isPlaying) Color.White else Color.White.copy(alpha = 0.90f),
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SimpTopMatchArtistCard(
-    artist: Artist,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(Color(0xFF13141E))
-            .border(
-                1.dp,
-                Brush.linearGradient(
-                    listOf(EcoDotRed.copy(alpha = 0.4f), Color.White.copy(alpha = 0.05f))
-                ),
-                RoundedCornerShape(18.dp)
-            )
-            .clickable(onClick = onClick)
-            .padding(14.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(modifier = Modifier.size(68.dp)) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(artist.imageUrl)
-                        .crossfade(true)
-                        .build(),
+                    imageVector = icon,
                     contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape)
-                        .border(1.5.dp, Color.White.copy(alpha = 0.15f), CircleShape),
-                    contentScale = ContentScale.Crop
+                    tint = Color(0xFFF0E3FF).copy(alpha = 0.78f),
+                    modifier = Modifier.size(32.dp)
                 )
             }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Box(modifier = Modifier.size(5.dp).background(EcoDotRed, CircleShape))
-                    Text(
-                        text = "TOP MATCH",
-                        color = EcoDotRed,
-                        fontSize = 9.5.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 1.2.sp
-                    )
-                    Text(text = "•", color = Color.White.copy(alpha = 0.3f), fontSize = 9.sp)
-                    Text(
-                        text = "ARTIST",
-                        color = Color.White.copy(alpha = 0.5f),
-                        fontSize = 9.5.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(3.dp))
-
-                Text(
-                    text = artist.name,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 19.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(2.dp))
-
-                Text(
-                    text = "View artist profile →",
-                    color = Color.White.copy(alpha = 0.45f),
-                    fontSize = 12.sp
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SimpTopMatchTrackCard(
-    track: Track,
-    isPlaying: Boolean,
-    onPlayClick: () -> Unit,
-    onArtistClick: (() -> Unit)? = null
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(Color(0xFF13141E))
-            .border(
-                1.dp,
-                Brush.linearGradient(
-                    listOf(EcoDotRed.copy(alpha = 0.4f), Color.White.copy(alpha = 0.05f))
-                ),
-                RoundedCornerShape(18.dp)
-            )
-            .clickable(onClick = onPlayClick)
-            .padding(12.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(66.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFF1D1F2D))
-            ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(track.albumArtUri)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-                if (isPlaying) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.55f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        PlayingIndicator(color = EcoDotRed)
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.width(14.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Box(modifier = Modifier.size(5.dp).background(EcoDotRed, CircleShape))
-                    Text(
-                        text = "TOP MATCH",
-                        color = EcoDotRed,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 1.2.sp
-                    )
-                    Text(text = "•", color = Color.White.copy(alpha = 0.3f), fontSize = 9.sp)
-                    Text(
-                        text = "SONG",
-                        color = Color.White.copy(alpha = 0.5f),
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(3.dp))
-
-                Text(
-                    text = track.title,
-                    color = if (isPlaying) EcoDotRed else Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.height(2.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (track.isExplicit) {
-                        ExplicitBadge(modifier = Modifier.padding(end = 5.dp))
-                    }
-                    if (onArtistClick != null) {
-                        Text(
-                            text = track.artist,
-                            color = Color.White.copy(alpha = 0.6f),
-                            fontSize = 12.5.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.clickable { onArtistClick() }
-                        )
-                    } else {
-                        Text(
-                            text = track.artist,
-                            color = Color.White.copy(alpha = 0.6f),
-                            fontSize = 12.5.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-            }
-
-            IconButton(
-                onClick = onPlayClick,
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(EcoDotRed, CircleShape)
-            ) {
-                Icon(
-                    imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    contentDescription = "Play",
-                    tint = Color(0xFF121214),
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SimpSongResultRow(
-    track: Track,
-    type: String,
-    isPlaying: Boolean,
-    isLiked: Boolean,
-    onLikeToggle: () -> Unit,
-    onArtistClick: (() -> Unit)? = null,
-    onOptionsClick: () -> Unit,
-    onClick: () -> Unit
-) {
-    val isVideo = type == "Video"
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Thumbnail Artwork
-        Box(
-            modifier = Modifier
-                .size(if (isVideo) 60.dp else 48.dp, 48.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(Color(0xFF171822)),
-            contentAlignment = Alignment.Center
-        ) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(track.albumArtUri)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-
-            if (isPlaying) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.55f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    PlayingIndicator(color = EcoDotRed)
-                }
-            } else if (isVideo) {
-                Box(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .background(Color.Black.copy(alpha = 0.6f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.PlayArrow,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(12.dp)
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        // Title & Info
-        Column(modifier = Modifier.weight(1f)) {
+            Spacer(Modifier.height(16.dp))
             Text(
-                text = track.title,
-                color = if (isPlaying) EcoDotRed else Color.White,
-                fontWeight = if (isPlaying) FontWeight.Bold else FontWeight.SemiBold,
-                fontSize = 14.5.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(Modifier.height(2.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (track.isExplicit) {
-                    ExplicitBadge(modifier = Modifier.padding(end = 5.dp))
-                }
-
-                val durationText = if (track.duration > 0L) {
-                    val sec = (track.duration / 1000) % 60
-                    val min = (track.duration / 1000) / 60
-                    String.format(" · %d:%02d", min, sec)
-                } else ""
-
-                if (onArtistClick != null) {
-                    Text(
-                        text = track.artist,
-                        color = Color.White.copy(alpha = 0.55f),
-                        fontSize = 12.5.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.clickable { onArtistClick() }
-                    )
-                } else {
-                    Text(
-                        text = track.artist,
-                        color = Color.White.copy(alpha = 0.55f),
-                        fontSize = 12.5.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                if (durationText.isNotEmpty()) {
-                    Text(
-                        text = durationText,
-                        color = Color.White.copy(alpha = 0.35f),
-                        fontSize = 12.sp
-                    )
-                }
-            }
-        }
-
-        // Like button
-        IconButton(
-            onClick = onLikeToggle,
-            modifier = Modifier.size(34.dp)
-        ) {
-            Icon(
-                imageVector = if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                contentDescription = "Like",
-                tint = if (isLiked) EcoDotRed else Color.White.copy(alpha = 0.35f),
-                modifier = Modifier.size(18.dp)
-            )
-        }
-
-        // 3-dots Options
-        IconButton(
-            onClick = onOptionsClick,
-            modifier = Modifier.size(34.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.MoreVert,
-                contentDescription = "Options",
-                tint = Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.size(18.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun SimpAlbumResultRow(
-    album: Album,
-    onLongClick: () -> Unit,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        AsyncImage(
-            model = album.artUri,
-            contentDescription = null,
-            modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(Color(0xFF1E202C)),
-            contentScale = ContentScale.Crop
-        )
-
-        Spacer(modifier = Modifier.width(14.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = album.title,
+                text = title,
                 color = Color.White,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 14.5.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp
             )
-            Spacer(Modifier.height(2.dp))
+            Spacer(Modifier.height(6.dp))
             Text(
-                text = "Album · ${album.artist}",
-                color = Color.White.copy(alpha = 0.55f),
-                fontSize = 12.5.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                text = subtitle,
+                color = Color.White.copy(alpha = 0.52f),
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center,
+                lineHeight = 18.sp
             )
         }
-
-        Icon(
-            imageVector = Icons.Rounded.ChevronRight,
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.3f),
-            modifier = Modifier.size(20.dp)
-        )
     }
-}
-
-@Composable
-private fun SimpArtistResultRow(
-    artist: Artist,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        AsyncImage(
-            model = artist.imageUrl,
-            contentDescription = null,
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF1E202C))
-                .border(0.5.dp, Color.White.copy(alpha = 0.15f), CircleShape),
-            contentScale = ContentScale.Crop
-        )
-
-        Spacer(modifier = Modifier.width(14.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = artist.name,
-                color = Color.White,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 15.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = "Artist",
-                color = Color.White.copy(alpha = 0.5f),
-                fontSize = 12.sp
-            )
-        }
-
-        Icon(
-            imageVector = Icons.Rounded.ChevronRight,
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.3f),
-            modifier = Modifier.size(20.dp)
-        )
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Loading Shimmer Placeholder
-// ─────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun SimpSearchShimmer(searchBarHeight: androidx.compose.ui.unit.Dp) {
-    val infiniteTransition = rememberInfiniteTransition(label = "shimmer")
-    val shimmerAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.05f,
-        targetValue = 0.16f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 750, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "shimmer_alpha"
-    )
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = searchBarHeight + 6.dp)
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(88.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(Color.White.copy(alpha = shimmerAlpha))
-        )
-
-        Box(
-            modifier = Modifier
-                .width(90.dp)
-                .height(14.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(Color.White.copy(alpha = shimmerAlpha))
-        )
-
-        repeat(7) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(Color.White.copy(alpha = shimmerAlpha))
-                )
-
-                Spacer(modifier = Modifier.width(14.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.65f)
-                            .height(14.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(Color.White.copy(alpha = shimmerAlpha))
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.35f)
-                            .height(11.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(Color.White.copy(alpha = shimmerAlpha))
-                    )
-                }
-            }
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// YouTube Link Extractor Utility
-// ─────────────────────────────────────────────────────────────────────────────
-
-private fun extractYouTubeLinkOrNull(input: String): Pair<String, String>? {
-    val trimmed = input.trim()
-    if (!trimmed.contains("youtube.com") && !trimmed.contains("youtu.be")) return null
-
-    val videoRegex = Regex("(?:v=|/v/|youtu\\.be/|/embed/|/watch\\?v=)([a-zA-Z0-9_-]{11})")
-    videoRegex.find(trimmed)?.let {
-        return Pair("video", it.groupValues[1])
-    }
-    val listRegex = Regex("[?&]list=([a-zA-Z0-9_-]+)")
-    listRegex.find(trimmed)?.let {
-        return Pair("playlist", it.groupValues[1])
-    }
-    return null
 }

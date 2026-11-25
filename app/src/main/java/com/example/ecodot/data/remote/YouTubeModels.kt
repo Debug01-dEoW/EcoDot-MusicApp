@@ -191,7 +191,18 @@ data class BrowseEndpoint(
 
 @JsonClass(generateAdapter = true)
 data class WatchEndpoint(
-    val videoId: String?
+    val videoId: String?,
+    val watchEndpointMusicSupportedConfigs: WatchEndpointMusicSupportedConfigs? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class WatchEndpointMusicSupportedConfigs(
+    val watchEndpointMusicConfig: WatchEndpointMusicConfig? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class WatchEndpointMusicConfig(
+    val musicVideoType: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -262,7 +273,9 @@ data class Thumbnails(
 
 @JsonClass(generateAdapter = true)
 data class Thumbnail(
-    val url: String
+    val url: String,
+    val width: Int? = null,
+    val height: Int? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -348,13 +361,67 @@ data class HomeMediaItem(
     val subtitle: String,
     val thumbnailUrl: String,
     val type: MediaType,
-    val isExplicit: Boolean = false
+    val isExplicit: Boolean = false,
+    val isLive: Boolean = false,
+    val views: String? = null,
+    val aspectRatio: Float = 1f,
+    val artistId: String? = null,
+    val playlistId: String? = null
 )
 
 data class HomeSection(
     val title: String,
     val items: List<HomeMediaItem>,
-    val strapline: String? = null
+    val strapline: String? = null,
+    val thumbnailUrl: String? = null,
+    val channelId: String? = null,
+    val moreBrowseId: String? = null,
+    val moreParams: String? = null,
+    val playAllPlaylistId: String? = null,
+    val playAllVideoId: String? = null
+)
+
+data class HomeFeedPage(
+    val sections: List<HomeSection>,
+    val continuation: String? = null,
+    val backgroundUrl: String? = null,
+    val visitorData: String? = null
+)
+
+data class MoodCategoryItem(
+    val title: String,
+    val params: String,
+    val browseId: String = "FEmusic_moods_and_genres_category",
+    val stripeColor: Long
+)
+
+data class HomeMoodsData(
+    val moodsAndMoments: List<MoodCategoryItem> = emptyList(),
+    val genres: List<MoodCategoryItem> = emptyList()
+)
+
+data class HomeChartArtist(
+    val rank: String,
+    val title: String,
+    val subscribers: String,
+    val thumbnailUrl: String,
+    val browseId: String
+)
+
+data class HomeChartPodcast(
+    val rank: String,
+    val title: String,
+    val host: String,
+    val thumbnailUrl: String,
+    val browseId: String
+)
+
+data class HomeChartData(
+    val countryName: String,
+    val videoCharts: List<HomeMediaItem> = emptyList(),
+    val chartPlaylists: List<HomeMediaItem> = emptyList(),
+    val topArtists: List<HomeChartArtist> = emptyList(),
+    val topPodcasts: List<HomeChartPodcast> = emptyList()
 )
 
 @JsonClass(generateAdapter = true)

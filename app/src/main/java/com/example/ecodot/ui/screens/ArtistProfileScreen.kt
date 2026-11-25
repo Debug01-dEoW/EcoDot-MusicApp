@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ecodot.ui.components.SwipeToQueueBox
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -862,38 +863,7 @@ fun ArtistTrackRow(
         String.format("%d:%02d", mins, secs)
     }
 
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = {
-            if (it != SwipeToDismissBoxValue.Settled) {
-                onSwipeToAdd()
-                false
-            } else {
-                false
-            }
-        }
-    )
-
-    SwipeToDismissBox(
-        state = dismissState,
-        backgroundContent = {
-            val color by animateColorAsState(
-                targetValue = if (dismissState.targetValue != SwipeToDismissBoxValue.Settled) activeColor else Color.Transparent,
-                label = "swipe_color"
-            )
-            val iconAlignment = if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd) Alignment.CenterStart else Alignment.CenterEnd
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 4.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(color)
-                    .padding(horizontal = 24.dp),
-                contentAlignment = iconAlignment
-            ) {
-                Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = "Add to Queue", tint = Color.White)
-            }
-        }
-    ) {
+    SwipeToQueueBox(onAddToQueue = onSwipeToAdd) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

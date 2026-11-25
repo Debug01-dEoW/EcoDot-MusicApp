@@ -4,14 +4,17 @@ import android.content.Context
 import android.content.Intent
 import android.media.audiofx.AudioEffect
 import android.media.audiofx.Equalizer
+import android.media.audiofx.LoudnessEnhancer
 import android.media.audiofx.Virtualizer
 import android.util.Log
 
 class AudioEffectManager(private val context: Context, private var audioSessionId: Int) {
     private var equalizer: Equalizer? = null
     private var virtualizer: Virtualizer? = null
+    private var loudnessEnhancer: LoudnessEnhancer? = null
 
     private var isEnabled = false
+    private var isNormalizeEnabled = false
     private val bandLevels = mutableMapOf<Short, Short>()
     private var vStrength: Short = 0
 
@@ -25,6 +28,7 @@ class AudioEffectManager(private val context: Context, private var audioSessionI
         try {
             equalizer?.release()
             virtualizer?.release()
+            loudnessEnhancer?.release()
 
             try {
                 equalizer = Equalizer(1, audioSessionId)
@@ -32,7 +36,7 @@ class AudioEffectManager(private val context: Context, private var audioSessionI
                 Log.w("AudioEffectManager", "Failed to init Equalizer with priority 1, falling back to 0")
                 equalizer = Equalizer(0, audioSessionId)
             }
-            
+
             try {
                 virtualizer = Virtualizer(1, audioSessionId)
             } catch (e: Exception) {
@@ -40,16 +44,26 @@ class AudioEffectManager(private val context: Context, private var audioSessionI
                 virtualizer = Virtualizer(0, audioSessionId)
             }
 
+            try {
+                loudnessEnhancer = LoudnessEnhancer(audioSessionId).apply {
+                    setTargetGain(if (isNormalizeEnabled) 550 else 0)
+                    enabled = isNormalizeEnabled
+                }
+            } catch (e: Exception) {
+                Log.w("AudioEffectManager", "Failed to init LoudnessEnhancer: ${e.message}")
+                loudnessEnhancer = null
+            }
+
             equalizer?.enabled = isEnabled
             virtualizer?.enabled = isEnabled
-            
+
             broadcastSessionId(isEnabled)
 
             for ((band, level) in bandLevels) {
                 try {
                     equalizer?.setBandLevel(band, level)
                 } catch (e: Exception) {
-                    Log.e("AudioEffectManager", "Error setting band \$band to \$level", e)
+                    Log.e("AudioEffectManager", "Error setting band $band to $level", e)
                 }
             }
 
@@ -100,7 +114,7 @@ class AudioEffectManager(private val context: Context, private var audioSessionI
         try {
             virtualizer?.setStrength(strength)
         } catch (e: Exception) {
-             Log.e("AudioEffectManager", "Error applying virtualizer strength", e)
+            Log.e("AudioEffectManager", "Error applying virtualizer strength", e)
         }
     }
 
@@ -111,7 +125,20 @@ class AudioEffectManager(private val context: Context, private var audioSessionI
             virtualizer?.enabled = enabled
             broadcastSessionId(enabled)
         } catch (e: Exception) {
-             Log.e("AudioEffectManager", "Error applying enabled state", e)
+            Log.e("AudioEffectManager", "Error applying enabled state", e)
+        }
+    }
+
+    fun setNormalizeVolume(enabled: Boolean) {
+        isNormalizeEnabled = enabled
+        try {
+            if (loudnessEnhancer == null && audioSessionId != 0) {
+                loudnessEnhancer = LoudnessEnhancer(audioSessionId)
+            }
+            loudnessEnhancer?.setTargetGain(if (enabled) 550 else 0)
+            loudnessEnhancer?.enabled = enabled
+        } catch (e: Exception) {
+            Log.e("AudioEffectManager", "Error applying loudness normalization", e)
         }
     }
 
@@ -129,7 +156,9 @@ class AudioEffectManager(private val context: Context, private var audioSessionI
         broadcastSessionId(false)
         equalizer?.release()
         virtualizer?.release()
+        loudnessEnhancer?.release()
         equalizer = null
         virtualizer = null
+        loudnessEnhancer = null
     }
 }

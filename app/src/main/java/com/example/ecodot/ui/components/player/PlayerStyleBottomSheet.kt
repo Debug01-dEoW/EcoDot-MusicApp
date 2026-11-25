@@ -4,8 +4,10 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
@@ -13,12 +15,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ecodot.data.local.prefs.PlayerStyle
+import com.example.ecodot.ui.theme.poppinsFamily
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,9 +32,12 @@ fun PlayerStyleBottomSheet(
     onStyleSelected: (PlayerStyle) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val resolvedAccent = if (accentColor == Color.Black) Color(0xFF8C6EFF) else accentColor
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF141416),
+        sheetState = sheetState,
+        containerColor = Color(0xFF14151A),
         dragHandle = {
             Box(
                 modifier = Modifier
@@ -45,72 +52,83 @@ fun PlayerStyleBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
                 .padding(bottom = 36.dp)
         ) {
             Text(
-                text = "Player Style",
+                text = "Now Playing Style",
+                fontFamily = poppinsFamily,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )
             Text(
-                text = "Choose your preferred Now Playing layout and visual theme",
-                fontSize = 13.sp,
-                color = Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)
+                text = "Switch layouts seamlessly — all styles support HD Song & Responsive Video modes",
+                fontFamily = poppinsFamily,
+                fontSize = 12.5.sp,
+                color = Color.White.copy(alpha = 0.58f),
+                modifier = Modifier.padding(top = 4.dp, bottom = 18.dp)
             )
-
-            StyleOptionCard(
-                title = "EcoDot Classic",
-                description = "42-bar waveform visualizer, liquid glassmorphism & canvas video",
-                icon = Icons.Rounded.GraphicEq,
-                isSelected = currentStyle == PlayerStyle.ECODOT,
-                accentColor = accentColor,
-                onClick = {
-                    onStyleSelected(PlayerStyle.ECODOT)
-                    onDismiss()
-                }
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
 
             StyleOptionCard(
                 title = "Apple Music",
-                description = "Fluid mesh gradient background, prominent live karaoke lyrics",
+                description = "Artwork mesh backdrop, frosted blur, expanding pill scrubber, live lyric strip & dock tabs",
+                badge = "Mesh + Dock",
                 icon = Icons.Rounded.MusicNote,
+                previewBrush = Brush.linearGradient(listOf(Color(0xFFFA233B), Color(0xFF4C1D3D))),
                 isSelected = currentStyle == PlayerStyle.APPLE_MUSIC,
-                accentColor = accentColor,
+                accentColor = Color(0xFFFF375F),
                 onClick = {
                     onStyleSelected(PlayerStyle.APPLE_MUSIC)
                     onDismiss()
                 }
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            StyleOptionCard(
+                title = "Vinyl Turntable",
+                description = "Spinning 33⅓ RPM disc, tracking aluminum tonearm, sleeve notes & studio monitor video",
+                badge = "33⅓ RPM",
+                icon = Icons.Rounded.Radio,
+                previewBrush = Brush.linearGradient(listOf(Color(0xFFE5C07B), Color(0xFF3E2D1E))),
+                isSelected = currentStyle == PlayerStyle.VINYL,
+                accentColor = Color(0xFFE5C07B),
+                onClick = {
+                    onStyleSelected(PlayerStyle.VINYL)
+                    onDismiss()
+                }
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
 
             StyleOptionCard(
                 title = "Spotify",
-                description = "High-contrast minimalist cards, slim seeker & instant equalizer",
+                description = "Obsidian gradient canvas, swipeable art, emerald Save toggle, crisp cards & output pill",
+                badge = "Canvas + Cards",
                 icon = Icons.Rounded.Album,
+                previewBrush = Brush.linearGradient(listOf(Color(0xFF1ED760), Color(0xFF143622))),
                 isSelected = currentStyle == PlayerStyle.SPOTIFY,
-                accentColor = accentColor,
+                accentColor = Color(0xFF1ED760),
                 onClick = {
                     onStyleSelected(PlayerStyle.SPOTIFY)
                     onDismiss()
                 }
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             StyleOptionCard(
-                title = "Vinyl Turntable",
-                description = "Spinning 33 RPM vinyl record with realistic tonearm, grooves & vintage glow",
-                icon = Icons.Rounded.Radio,
-                isSelected = currentStyle == PlayerStyle.VINYL,
-                accentColor = accentColor,
+                title = "EcoDot Classic",
+                description = "Vibrant Liquid Glass aesthetics, inline synced lyrics card & ambient video aurora",
+                badge = "Liquid Glass",
+                icon = Icons.Rounded.GraphicEq,
+                previewBrush = Brush.linearGradient(listOf(resolvedAccent, Color(0xFF191B26))),
+                isSelected = currentStyle == PlayerStyle.ECODOT,
+                accentColor = resolvedAccent,
                 onClick = {
-                    onStyleSelected(PlayerStyle.VINYL)
+                    onStyleSelected(PlayerStyle.ECODOT)
                     onDismiss()
                 }
             )
@@ -122,13 +140,15 @@ fun PlayerStyleBottomSheet(
 private fun StyleOptionCard(
     title: String,
     description: String,
+    badge: String,
     icon: ImageVector,
+    previewBrush: Brush,
     isSelected: Boolean,
     accentColor: Color,
     onClick: () -> Unit
 ) {
-    val bgColor = if (isSelected) accentColor.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.04f)
-    val borderColor = if (isSelected) accentColor.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.08f)
+    val bgColor = if (isSelected) accentColor.copy(alpha = 0.13f) else Color.White.copy(alpha = 0.045f)
+    val borderColor = if (isSelected) accentColor.copy(alpha = 0.65f) else Color.White.copy(alpha = 0.08f)
 
     Surface(
         shape = RoundedCornerShape(18.dp),
@@ -140,38 +160,56 @@ private fun StyleOptionCard(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(14.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(if (isSelected) accentColor.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.08f)),
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(13.dp))
+                    .background(previewBrush),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (isSelected) accentColor else Color.White.copy(alpha = 0.8f),
-                    modifier = Modifier.size(24.dp)
+                    tint = Color.White,
+                    modifier = Modifier.size(23.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(14.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = title,
+                        fontFamily = poppinsFamily,
+                        fontSize = 15.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = Color.White.copy(alpha = 0.10f)
+                    ) {
+                        Text(
+                            text = badge,
+                            fontFamily = poppinsFamily,
+                            fontSize = 9.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isSelected) accentColor else Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                        )
+                    }
+                }
                 Text(
                     text = description,
-                    fontSize = 12.sp,
-                    color = Color.White.copy(alpha = 0.5f),
-                    lineHeight = 16.sp,
-                    modifier = Modifier.padding(top = 2.dp)
+                    fontFamily = poppinsFamily,
+                    fontSize = 11.5.sp,
+                    color = Color.White.copy(alpha = 0.56f),
+                    lineHeight = 15.sp,
+                    modifier = Modifier.padding(top = 3.dp)
                 )
             }
 

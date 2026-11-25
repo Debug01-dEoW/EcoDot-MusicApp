@@ -65,12 +65,8 @@ fun SimpBottomNavigationBar(
     var lastNavTime by remember { mutableLongStateOf(0L) }
 
     val safeNavigate: (String) -> Unit = { route ->
-        val now = System.currentTimeMillis()
-        if (now - lastNavTime > 200L) {
-            lastNavTime = now
-            hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-            onNavigate(route)
-        }
+        hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        onNavigate(route)
     }
 
     // Determine target index: 0 = Home, 1 = Search, 2 = Library
@@ -161,14 +157,7 @@ fun SimpBottomNavigationBar(
                             InnerShadow(radius = 5.dp, alpha = 0.16f, color = Color.White)
                         },
                         effects = {
-                            vibrancy()
-                            blur(1.5.dp.toPx())
-                            lens(
-                                refractionHeight = 8.dp.toPx(),
-                                refractionAmount = 14.dp.toPx(),
-                                depthEffect = true,
-                                chromaticAberration = true
-                            )
+                            blur(2.dp.toPx())
                         },
                         onDrawSurface = {
                             drawRect(Color.Black.copy(alpha = 0.04f))
@@ -228,18 +217,11 @@ fun SimpBottomNavigationBar(
                         InnerShadow(radius = 7.dp, alpha = 0.42f, color = Color.White)
                     },
                     effects = {
-                        vibrancy()
+                        blur(2.dp.toPx())
                         colorControls(
                             brightness = 0.05f,
                             contrast = 1.08f,
-                            saturation = 1.45f
-                        )
-                        blur(1.5.dp.toPx())
-                        lens(
-                            refractionHeight = 12.dp.toPx(),
-                            refractionAmount = 24.dp.toPx(),
-                            depthEffect = true,
-                            chromaticAberration = true
+                            saturation = 1.25f
                         )
                     },
                     onDrawSurface = {
