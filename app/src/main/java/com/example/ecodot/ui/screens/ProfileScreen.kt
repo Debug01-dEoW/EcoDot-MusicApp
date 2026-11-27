@@ -15,18 +15,18 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -34,6 +34,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBackIos
@@ -56,8 +58,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -71,11 +71,11 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -98,10 +98,16 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -134,7 +140,7 @@ private val ProfileHairline = Color.White.copy(alpha = 0.06f)
 
 private const val AVATAR_SOURCE_FILE = "profile_avatar_source.jpg"
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     viewModel: MusicViewModel,
@@ -376,23 +382,28 @@ fun ProfileScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     if (favoriteGenreList.isNotEmpty()) {
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        GenreWrapLayout(
+                            horizontalSpacing = 8.dp,
+                            verticalSpacing = 8.dp,
+                            centerRows = true,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             favoriteGenreList.forEach { genre ->
-                                Surface(
-                                    shape = CircleShape,
-                                    color = ProfileSurface
-                                ) {
-                                    Text(
-                                        text = genre,
-                                        fontFamily = poppinsFamily,
-                                        fontSize = 12.5.sp,
-                                        color = Color.White.copy(alpha = 0.82f),
-                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
-                                    )
+                                key(genre) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = ProfileSurface
+                                    ) {
+                                        Text(
+                                            text = genre,
+                                            fontFamily = poppinsFamily,
+                                            fontSize = 12.5.sp,
+                                            color = Color.White.copy(alpha = 0.82f),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1018,10 +1029,82 @@ private fun AdjustProfilePictureDialog(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Edit Profile Bottom Sheet
+// Edit Profile Dialog Sheet (Crash-Safe IME + Dynamic Genre Wrap)
 // ─────────────────────────────────────────────────────────────────────────────
 
-@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GenreWrapLayout(
+    modifier: Modifier = Modifier,
+    horizontalSpacing: Dp = 8.dp,
+    verticalSpacing: Dp = 8.dp,
+    centerRows: Boolean = false,
+    content: @Composable () -> Unit
+) {
+    Layout(content = content, modifier = modifier) { measurables, constraints ->
+        val hGap = horizontalSpacing.roundToPx()
+        val vGap = verticalSpacing.roundToPx()
+        val hasBoundedWidth = constraints.hasBoundedWidth && constraints.maxWidth > 0
+        val maxWidth = if (hasBoundedWidth) constraints.maxWidth else Int.MAX_VALUE
+        val childConstraints = constraints.copy(minWidth = 0, minHeight = 0)
+
+        val rows = mutableListOf<List<Placeable>>()
+        val rowWidths = mutableListOf<Int>()
+        val rowHeights = mutableListOf<Int>()
+        var currentRow = mutableListOf<Placeable>()
+        var currentWidth = 0
+        var currentHeight = 0
+
+        measurables.forEach { measurable ->
+            val placeable = measurable.measure(childConstraints)
+            val neededWidth = if (currentRow.isEmpty()) placeable.width else currentWidth + hGap + placeable.width
+            if (currentRow.isNotEmpty() && hasBoundedWidth && neededWidth > maxWidth) {
+                rows.add(currentRow)
+                rowWidths.add(currentWidth)
+                rowHeights.add(currentHeight)
+                currentRow = mutableListOf(placeable)
+                currentWidth = placeable.width
+                currentHeight = placeable.height
+            } else {
+                currentRow.add(placeable)
+                currentWidth = neededWidth
+                currentHeight = maxOf(currentHeight, placeable.height)
+            }
+        }
+        if (currentRow.isNotEmpty()) {
+            rows.add(currentRow)
+            rowWidths.add(currentWidth)
+            rowHeights.add(currentHeight)
+        }
+
+        val maxRowWidth = rowWidths.maxOrNull() ?: 0
+        val layoutWidth = if (hasBoundedWidth) {
+            constraints.maxWidth.coerceAtLeast(constraints.minWidth)
+        } else {
+            maxRowWidth.coerceIn(constraints.minWidth, constraints.maxWidth)
+        }
+        val totalHeight = if (rows.isEmpty()) {
+            0
+        } else {
+            rowHeights.sum() + vGap * (rows.size - 1)
+        }.coerceIn(constraints.minHeight, constraints.maxHeight)
+
+        layout(layoutWidth, totalHeight) {
+            var y = 0
+            rows.forEachIndexed { rowIdx, row ->
+                val rowHeight = rowHeights[rowIdx]
+                val rowWidth = rowWidths[rowIdx]
+                var x = if (centerRows) ((layoutWidth - rowWidth) / 2).coerceAtLeast(0) else 0
+                row.forEach { placeable ->
+                    val yOffset = ((rowHeight - placeable.height) / 2).coerceAtLeast(0)
+                    placeable.placeRelative(x, y + yOffset)
+                    x += placeable.width + hGap
+                }
+                y += rowHeight + vGap
+            }
+        }
+    }
+}
+
 @Composable
 private fun EditProfileSheet(
     currentName: String,
@@ -1033,269 +1116,327 @@ private fun EditProfileSheet(
     onSave: (name: String, genres: String, isPro: Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var name by remember { mutableStateOf(currentName) }
-    val selectedGenres = remember {
+    var name by remember(currentName) { mutableStateOf(currentName) }
+    val selectedGenres = remember(currentGenres) {
         mutableStateListOf<String>().apply {
             addAll(PlayerStyleMath.parseFavoriteGenres(currentGenres))
         }
     }
     var customGenreInput by remember { mutableStateOf("") }
-    var isPro by remember { mutableStateOf(currentIsPro) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var isPro by remember(currentIsPro) { mutableStateOf(currentIsPro) }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = Color(0xFF14151B),
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .padding(vertical = 12.dp)
-                    .width(36.dp)
-                    .height(4.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.2f))
-            )
+    fun commitCustomGenres() {
+        val merged = PlayerStyleMath.mergeFavoriteGenres(selectedGenres.toList(), customGenreInput)
+        if (merged.size != selectedGenres.size || merged != selectedGenres.toList()) {
+            selectedGenres.clear()
+            selectedGenres.addAll(merged)
         }
+        customGenreInput = ""
+    }
+
+    fun closeSafely() {
+        focusManager.clearFocus(force = true)
+        keyboardController?.hide()
+        onDismiss()
+    }
+
+    Dialog(
+        onDismissRequest = ::closeSafely,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = true
+        )
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .imePadding()
-                .padding(horizontal = 22.dp)
-                .padding(bottom = 32.dp)
-        ) {
-            Text(
-                text = "Edit profile",
-                fontFamily = poppinsFamily,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(CircleShape)
-                        .background(ProfileTonalButton)
-                        .clickable {
-                            if (!currentAvatarUri.isNullOrBlank()) onAdjustAvatar() else onPickAvatar()
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (!currentAvatarUri.isNullOrBlank()) {
-                        AsyncImage(
-                            model = currentAvatarUri,
-                            contentDescription = "Avatar",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Icon(Icons.Rounded.Person, contentDescription = null, tint = Color.White.copy(alpha = 0.78f))
-                    }
-                }
-                Spacer(modifier = Modifier.width(14.dp))
-                Column {
-                    Text(
-                        text = "Profile photo",
-                        fontFamily = poppinsFamily,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(
-                            text = "Choose photo",
-                            fontFamily = poppinsFamily,
-                            fontSize = 12.5.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.White.copy(alpha = 0.76f),
-                            modifier = Modifier.clickable(onClick = onPickAvatar)
-                        )
-                        if (!currentAvatarUri.isNullOrBlank()) {
-                            Text(
-                                text = "Adjust picture",
-                                fontFamily = poppinsFamily,
-                                fontSize = 12.5.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color.White.copy(alpha = 0.76f),
-                                modifier = Modifier.clickable(onClick = onAdjustAvatar)
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Display name", fontFamily = poppinsFamily) },
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.White.copy(alpha = 0.55f),
-                    unfocusedBorderColor = Color.White.copy(alpha = 0.16f),
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedLabelColor = Color.White.copy(alpha = 0.78f),
-                    unfocusedLabelColor = Color.White.copy(alpha = 0.55f)
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.62f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = ::closeSafely
                 ),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Text(
-                text = "Favorite genres",
-                fontFamily = poppinsFamily,
-                fontSize = 13.5.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            val allDisplayGenres = remember(selectedGenres.toList()) {
-                (CURATED_PROFILE_GENRES + selectedGenres).distinctBy { it.lowercase() }
-            }
-            Column(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                allDisplayGenres.chunked(3).forEach { rowGenres ->
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        rowGenres.forEach { genre ->
-                            val isSelected = selectedGenres.any { it.equals(genre, ignoreCase = true) }
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = {
-                                    if (isSelected) {
-                                        selectedGenres.removeAll { it.equals(genre, ignoreCase = true) }
-                                    } else {
-                                        selectedGenres.add(genre)
-                                    }
-                                },
-                                label = {
-                                    Text(
-                                        text = genre,
-                                        fontFamily = poppinsFamily,
-                                        fontSize = 11.5.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = Color.White,
-                                    selectedLabelColor = Color.Black,
-                                    containerColor = ProfileTonalButton,
-                                    labelColor = Color.White.copy(alpha = 0.76f)
-                                ),
-                                border = null,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        repeat(3 - rowGenres.size) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = customGenreInput,
-                    onValueChange = { customGenreInput = it },
-                    placeholder = { Text("Add custom genre...", fontSize = 12.5.sp) },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.White.copy(alpha = 0.55f),
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.14f),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                TextButton(
-                    onClick = {
-                        val trimmed = customGenreInput.trim()
-                        if (trimmed.isNotEmpty() && selectedGenres.none { it.equals(trimmed, ignoreCase = true) }) {
-                            selectedGenres.add(trimmed)
-                            customGenreInput = ""
-                        }
-                    }
-                ) {
-                    Text("Add", color = Color.White, fontWeight = FontWeight.SemiBold)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Verified listener badge",
-                        fontFamily = poppinsFamily,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
-                    )
-                    Text(
-                        text = "Show verified checkmark beside your name",
-                        fontFamily = poppinsFamily,
-                        fontSize = 11.5.sp,
-                        color = Color.White.copy(alpha = 0.52f)
-                    )
-                }
-                Switch(
-                    checked = isPro,
-                    onCheckedChange = { isPro = it },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.Black,
-                        checkedTrackColor = Color.White
-                    )
-                )
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            Button(
-                onClick = {
-                    onSave(
-                        name.trim().ifBlank { "EcoDot Listener" },
-                        selectedGenres.joinToString(", "),
-                        isPro
-                    )
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                shape = CircleShape,
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Surface(
+                color = Color(0xFF14151B),
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(46.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
+                    )
             ) {
-                Text(
-                    text = "Save",
-                    fontFamily = poppinsFamily,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.Black
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 680.dp)
+                        .verticalScroll(rememberScrollState())
+                        .navigationBarsPadding()
+                        .padding(horizontal = 22.dp)
+                        .padding(top = 12.dp, bottom = 24.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .padding(bottom = 14.dp)
+                            .width(36.dp)
+                            .height(4.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.2f))
+                    )
+
+                    Text(
+                        text = "Edit profile",
+                        fontFamily = poppinsFamily,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .background(ProfileTonalButton)
+                                .clickable {
+                                    if (!currentAvatarUri.isNullOrBlank()) onAdjustAvatar() else onPickAvatar()
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (!currentAvatarUri.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = currentAvatarUri,
+                                    contentDescription = "Avatar",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                Icon(Icons.Rounded.Person, contentDescription = null, tint = Color.White.copy(alpha = 0.78f))
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column {
+                            Text(
+                                text = "Profile photo",
+                                fontFamily = poppinsFamily,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text(
+                                    text = "Choose photo",
+                                    fontFamily = poppinsFamily,
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color.White.copy(alpha = 0.76f),
+                                    modifier = Modifier.clickable(onClick = onPickAvatar)
+                                )
+                                if (!currentAvatarUri.isNullOrBlank()) {
+                                    Text(
+                                        text = "Adjust picture",
+                                        fontFamily = poppinsFamily,
+                                        fontSize = 12.5.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.White.copy(alpha = 0.76f),
+                                        modifier = Modifier.clickable(onClick = onAdjustAvatar)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Display name", fontFamily = poppinsFamily) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color.White.copy(alpha = 0.55f),
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.16f),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedLabelColor = Color.White.copy(alpha = 0.78f),
+                            unfocusedLabelColor = Color.White.copy(alpha = 0.55f)
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(
+                        text = "Favorite genres & tags",
+                        fontFamily = poppinsFamily,
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    val allDisplayGenres = remember(selectedGenres.toList()) {
+                        (CURATED_PROFILE_GENRES + selectedGenres).distinctBy { it.lowercase() }
+                    }
+                    GenreWrapLayout(
+                        horizontalSpacing = 8.dp,
+                        verticalSpacing = 8.dp,
+                        centerRows = false,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        allDisplayGenres.forEach { genre ->
+                            key(genre.lowercase()) {
+                                val isSelected = selectedGenres.any { it.equals(genre, ignoreCase = true) }
+                                val isCustom = CURATED_PROFILE_GENRES.none { it.equals(genre, ignoreCase = true) }
+                                Surface(
+                                    shape = CircleShape,
+                                    color = if (isSelected) Color.White else ProfileTonalButton,
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .clickable {
+                                            if (isSelected) {
+                                                selectedGenres.removeAll { it.equals(genre, ignoreCase = true) }
+                                            } else {
+                                                selectedGenres.add(genre)
+                                            }
+                                        }
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(
+                                            horizontal = 13.dp,
+                                            vertical = 7.dp
+                                        ),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                    ) {
+                                        Text(
+                                            text = genre,
+                                            fontFamily = poppinsFamily,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                                            color = if (isSelected) Color.Black else Color.White.copy(alpha = 0.80f),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        if (isCustom && isSelected) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Close,
+                                                contentDescription = "Remove $genre",
+                                                tint = Color.Black.copy(alpha = 0.72f),
+                                                modifier = Modifier.size(13.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = customGenreInput,
+                            onValueChange = { customGenreInput = it.take(48) },
+                            placeholder = { Text("Add custom tag or genre...", fontSize = 12.5.sp) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(
+                                onDone = { commitCustomGenres() }
+                            ),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.White.copy(alpha = 0.55f),
+                                unfocusedBorderColor = Color.White.copy(alpha = 0.14f),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            ),
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        TextButton(
+                            enabled = customGenreInput.trim().isNotEmpty(),
+                            onClick = { commitCustomGenres() }
+                        ) {
+                            Text(
+                                text = "Add",
+                                color = if (customGenreInput.trim().isNotEmpty()) Color.White else Color.White.copy(alpha = 0.35f),
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Verified listener badge",
+                                fontFamily = poppinsFamily,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "Show verified checkmark beside your name",
+                                fontFamily = poppinsFamily,
+                                fontSize = 11.5.sp,
+                                color = Color.White.copy(alpha = 0.52f)
+                            )
+                        }
+                        Switch(
+                            checked = isPro,
+                            onCheckedChange = { isPro = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.Black,
+                                checkedTrackColor = Color.White
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    Button(
+                        onClick = {
+                            commitCustomGenres()
+                            focusManager.clearFocus(force = true)
+                            keyboardController?.hide()
+                            onSave(
+                                name.trim().ifBlank { "EcoDot Listener" },
+                                selectedGenres.joinToString(", "),
+                                isPro
+                            )
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                        shape = CircleShape,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(46.dp)
+                    ) {
+                        Text(
+                            text = "Save",
+                            fontFamily = poppinsFamily,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.Black
+                        )
+                    }
+                }
             }
         }
     }

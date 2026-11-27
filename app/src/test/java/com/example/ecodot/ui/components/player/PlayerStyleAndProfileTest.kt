@@ -206,4 +206,38 @@ class PlayerStyleAndProfileTest {
         assertEquals(1000f, clampedLeftDrag.left, 0.5f)
         assertEquals(1000f, clampedLeftDrag.size, 0.5f)
     }
+
+    @Test
+    fun `selectValidAudioTelemetry rejects bogus 1kbps container headers and downsampled 22kHz rate`() {
+        val selected = PlayerStyleMath.selectValidAudioTelemetry(
+            selectedTrackBitrate = 800,
+            selectedTrackAvgBitrate = 0,
+            decoderBitrate = 1_200,
+            resolvedBitrateBps = 138_420,
+            selectedTrackSampleRate = 0,
+            decoderSampleRate = 22_050,
+            resolvedSampleRateHz = 48_000
+        )
+        assertEquals(138_420, selected.bitrateBps)
+        assertEquals(48_000, selected.sampleRateHz)
+        assertEquals("138 kbps · 48 kHz", PlayerStyleMath.formatRealTimeAudioDetail(selected.bitrateBps, selected.sampleRateHz))
+    }
+
+    @Test
+    fun `formatRealTimeAudioDetail never displays 1 kbps for sub-16kbps container artifacts`() {
+        assertEquals("48 kHz", PlayerStyleMath.formatRealTimeAudioDetail(1_000, 48_000))
+        assertEquals(null, PlayerStyleMath.formatRealTimeAudioDetail(900, 0))
+        assertEquals("140 kbps", PlayerStyleMath.formatBitrateKbps("140,931", 0))
+        assertEquals("138 kbps", PlayerStyleMath.formatBitrateKbps("0", 138_000))
+        assertEquals("—", PlayerStyleMath.formatBitrateKbps("0", 0))
+    }
+
+    @Test
+    fun `mergeFavoriteGenres normalizes whitespace splits separators and blocks duplicates`() {
+        val merged = PlayerStyleMath.mergeFavoriteGenres(
+            existing = listOf("Pop", "Lo-Fi"),
+            rawInput = "  Indie   Rock , pop ; Synthwave \n Indie Rock "
+        )
+        assertEquals(listOf("Pop", "Lo-Fi", "Indie Rock", "Synthwave"), merged)
+    }
 }

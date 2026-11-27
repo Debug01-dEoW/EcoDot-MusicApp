@@ -255,6 +255,7 @@ fun NowPlayingScreen(
     var showFullScreenLyrics by remember { mutableStateOf(false) }
     var showShareStorySheet by remember { mutableStateOf(false) }
     var optionsMenuTrack by remember { mutableStateOf<com.example.ecodot.data.local.entities.Track?>(null) }
+    var optionsMenuQueueIndex by remember { mutableStateOf<Int?>(null) }
     var showPlaylistPicker by remember { mutableStateOf<com.example.ecodot.data.local.entities.Track?>(null) }
     var showRingtoneClipper by remember { mutableStateOf<com.example.ecodot.data.local.entities.Track?>(null) }
     var showVideoControls by remember { mutableStateOf(false) }
@@ -564,7 +565,10 @@ fun NowPlayingScreen(
                 onOpenFullLyrics = { showFullScreenLyrics = true },
                 onOpenShareLyrics = { showShareStorySheet = true },
                 onOpenTrackInfo = { showInfoSheet = true },
-                onOpenOptionsMenu = { optionsMenuTrack = it },
+                onOpenOptionsMenu = {
+                    optionsMenuQueueIndex = null
+                    optionsMenuTrack = it
+                },
                 onOpenArtist = navigateArtistFromPlayer,
                 onOpenOutputSheet = { showAudioOutputSheet = true },
                 formatDuration = { viewModel.formatDuration(it) },
@@ -613,7 +617,10 @@ fun NowPlayingScreen(
                 onOpenTrackInfo = { showInfoSheet = true },
                 onOpenSleepTimer = { showSleepTimerSheet = true },
                 onOpenStylePicker = { showPlayerStyleSheet = true },
-                onOpenOptionsMenu = { optionsMenuTrack = it },
+                onOpenOptionsMenu = {
+                    optionsMenuQueueIndex = null
+                    optionsMenuTrack = it
+                },
                 onOpenArtist = navigateArtistFromPlayer,
                 onOpenOutputSheet = { showAudioOutputSheet = true },
                 formatDuration = { viewModel.formatDuration(it) },
@@ -671,7 +678,10 @@ fun NowPlayingScreen(
                 onOpenShareLyrics = { showShareStorySheet = true },
                 onOpenTrackInfo = { showInfoSheet = true },
                 onOpenStylePicker = { showPlayerStyleSheet = true },
-                onOpenOptionsMenu = { optionsMenuTrack = it },
+                onOpenOptionsMenu = {
+                    optionsMenuQueueIndex = null
+                    optionsMenuTrack = it
+                },
                 onOpenArtist = navigateArtistFromPlayer,
                 onOpenOutputSheet = { showAudioOutputSheet = true },
                 formatDuration = { viewModel.formatDuration(it) },
@@ -2257,7 +2267,10 @@ fun NowPlayingScreen(
                                     dragOffsetPx = if (isDragged) dragAccumPx else 0f,
                                     accentColor = accentColor,
                                     onTrackClick = { if (!isEndlessRepeat) viewModel.skipToQueueItem(absoluteIndex) },
-                                    onOptionsClick = { optionsMenuTrack = track },
+                                    onOptionsClick = {
+                                        optionsMenuQueueIndex = if (!isEndlessRepeat) absoluteIndex else null
+                                        optionsMenuTrack = track
+                                    },
                                     onItemHeightMeasured = { h -> if (h > 0f) itemHeightPx = h },
                                     onDragStart = {
                                         if (!isEndlessRepeat) {
@@ -2385,7 +2398,13 @@ fun NowPlayingScreen(
             isLyricsLoading = isLyricsLoading,
             currentPosition = 0L,
             positionProvider = positionProvider,
-            onClose = { showFullScreenLyrics = false }
+            onClose = { showFullScreenLyrics = false },
+            onOpenOptionsMenu = {
+                currentTrack?.let {
+                    optionsMenuQueueIndex = null
+                    optionsMenuTrack = it
+                }
+            }
         )
     }
 
@@ -2393,12 +2412,19 @@ fun NowPlayingScreen(
         val isDownloaded = downloadedTracks.any { it.id == track.id }
         val downloadProgress = downloadProgressMap[track.id]
         val isLikedTrack by viewModel.isTrackLiked(track.id).collectAsState(initial = false)
-        
+        val isInQueue = remember(playbackQueue, track.id) { playbackQueue.any { it.id == track.id } }
+
         TrackOptionsBottomSheet(
             track = track,
-            onDismiss = { optionsMenuTrack = null },
+            onDismiss = {
+                optionsMenuTrack = null
+                optionsMenuQueueIndex = null
+            },
             onPlayNext = { viewModel.playNext(track) },
             onAddToQueue = { viewModel.addToQueue(track) },
+            onRemoveFromQueue = if (isInQueue) {
+                { viewModel.removeTrackFromQueue(track, preferredIndex = optionsMenuQueueIndex) }
+            } else null,
             onGoToAlbum = { 
                 optionsMenuTrack = null
                 if (track.album != "Unknown Album" && !track.albumId.isNullOrEmpty()) {

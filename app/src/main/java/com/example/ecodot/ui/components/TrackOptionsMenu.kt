@@ -89,7 +89,8 @@ fun TrackOptionsBottomSheet(
     onToggleVideoMode: (() -> Unit)? = null,
     onSwitchPlayerStyle: (() -> Unit)? = null,
     onPlayNow: (() -> Unit)? = null,
-    onRemoveFromPlaylist: (() -> Unit)? = null
+    onRemoveFromPlaylist: (() -> Unit)? = null,
+    onRemoveFromQueue: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -296,7 +297,7 @@ fun TrackOptionsBottomSheet(
                         // Primary quick-action strip
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             QuickActionTile(
                                 icon = Icons.Rounded.QueuePlayNext,
@@ -316,6 +317,18 @@ fun TrackOptionsBottomSheet(
                                 },
                                 modifier = Modifier.weight(1f)
                             )
+                            if (onRemoveFromQueue != null) {
+                                QuickActionTile(
+                                    icon = Icons.Rounded.RemoveCircleOutline,
+                                    label = "Remove",
+                                    tintColor = Color(0xFFFF6B6B),
+                                    onClick = {
+                                        onRemoveFromQueue()
+                                        onDismiss()
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
                             QuickActionTile(
                                 icon = Icons.Rounded.PlaylistAdd,
                                 label = "Playlist",
@@ -414,6 +427,20 @@ fun TrackOptionsBottomSheet(
                                         )
                                     }
                                 }
+                            }
+
+                            if (onRemoveFromQueue != null) {
+                                SheetHairlineDivider()
+                                SheetActionRow(
+                                    icon = Icons.Rounded.RemoveCircleOutline,
+                                    iconTint = Color(0xFFFF6B6B),
+                                    title = "Remove from queue",
+                                    titleColor = Color(0xFFFF6B6B),
+                                    onClick = {
+                                        onRemoveFromQueue()
+                                        onDismiss()
+                                    }
+                                )
                             }
 
                             if (onRemoveFromPlaylist != null) {
@@ -558,6 +585,7 @@ fun TrackOptionsBottomSheet(
 private fun QuickActionTile(
     icon: ImageVector,
     label: String,
+    tintColor: Color = Color.White,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -567,20 +595,20 @@ private fun QuickActionTile(
             .background(SheetGroupCard)
             .border(0.5.dp, SheetBorderSubtle, RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 8.dp),
+            .padding(vertical = 11.dp, horizontal = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(5.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = label,
-            tint = Color.White,
-            modifier = Modifier.size(22.dp)
+            tint = tintColor,
+            modifier = Modifier.size(21.dp)
         )
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.9f),
-            fontSize = 12.sp,
+            color = tintColor.copy(alpha = 0.92f),
+            fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis

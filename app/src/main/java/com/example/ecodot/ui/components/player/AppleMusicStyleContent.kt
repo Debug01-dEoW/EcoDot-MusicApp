@@ -1248,7 +1248,7 @@ private fun AppleMusicLyricsBody(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp)
+                .padding(horizontal = 4.dp)
         ) {
             LyricsPanel(
                 syncedLyrics = syncedLyrics,
@@ -1257,48 +1257,77 @@ private fun AppleMusicLyricsBody(
                 isLyricsLoading = isLyricsLoading,
                 onSeek = onSeekTo,
                 isFullScreen = false,
+                useAppleMusicScale = true,
+                showAttributionFooter = true,
                 backgroundColor = Color.Transparent,
                 accentColor = if (accentColor == Color.Black) Color.White else accentColor,
                 positionProvider = positionProvider
             )
+        }
 
-            Row(
+        // Dedicated non-overlapping toolbar above scrubber: never obscures lyric lines
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = AppleCapsuleBg,
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(10.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .height(34.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onOpenShareLyrics)
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = AppleCapsuleBg,
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clickable(onClick = onOpenShareLyrics)
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Rounded.Share,
-                            contentDescription = "Share lyrics",
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Rounded.Share,
+                        contentDescription = "Share lyrics",
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "Share",
+                        fontFamily = poppinsFamily,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
                 }
-                Surface(
-                    shape = CircleShape,
-                    color = AppleCapsuleBg,
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clickable(onClick = onOpenFullLyrics)
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Surface(
+                shape = CircleShape,
+                color = AppleCapsuleBg,
+                modifier = Modifier
+                    .height(34.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onOpenFullLyrics)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Rounded.OpenInFull,
-                            contentDescription = "Fullscreen lyrics",
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Rounded.OpenInFull,
+                        contentDescription = "Fullscreen lyrics",
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "Full screen",
+                        fontFamily = poppinsFamily,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
                 }
             }
         }

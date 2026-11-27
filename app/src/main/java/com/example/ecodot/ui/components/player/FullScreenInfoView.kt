@@ -63,14 +63,22 @@ fun parseYouTubeDescription(desc: String): Pair<List<Pair<String, String>>, Stri
 }
 
 fun formatNumberShort(numStr: String?): String {
-    if (numStr.isNullOrBlank()) return "0"
+    if (numStr.isNullOrBlank()) return "—"
     val digits = numStr.filter { it.isDigit() }.toLongOrNull() ?: return numStr
+    if (digits <= 0L) return "—"
     return when {
         digits >= 1_000_000_000 -> String.format("%.1fB", digits.toFloat() / 1_000_000_000f)
         digits >= 1_000_000 -> String.format("%.1fM", digits.toFloat() / 1_000_000f)
         digits >= 1_000 -> String.format("%.1fK", digits.toFloat() / 1_000f)
         else -> digits.toString()
     }
+}
+
+private fun formatDurationLabel(ms: Long, fallbackFormatted: String?): String {
+    if (!fallbackFormatted.isNullOrBlank() && fallbackFormatted != "0:00") return fallbackFormatted
+    if (ms <= 0L) return "—"
+    val sec = ms / 1000L
+    return "%d:%02d".format(sec / 60L, sec % 60L)
 }
 
 @Composable
@@ -265,6 +273,9 @@ fun FullScreenInfoView(
     val videoInfo by viewModel.videoInfo.collectAsState()
     val isVideoInfoLoading by viewModel.isVideoInfoLoading.collectAsState()
     val accentColor by viewModel.accentColor.collectAsState()
+    val liveStreamLabel by viewModel.activeStreamLabel.collectAsState()
+    val liveDurationMs by viewModel.duration.collectAsState()
+    val downloadedTracks by viewModel.downloadedTracks.collectAsState()
     
     Box(
         modifier = Modifier
@@ -336,19 +347,61 @@ fun FullScreenInfoView(
             } else {
                 currentTrack?.let { track ->
                     val info = videoInfo
-                    
-                    // Parse statistics
-                    val viewsRaw = info?.viewCount ?: "18,500,000"
-                    val viewsLong = viewsRaw.filter { it.isDigit() }.toLongOrNull() ?: 18500000L
-                    val likesLong = (viewsLong * 0.015).toLong().coerceAtLeast(1L)
-                    val dislikesLong = (likesLong * 0.08).toLong().coerceAtLeast(0L)
-                    
-                    val viewsStr = formatNumberShort(viewsLong.toString())
-                    val likesStr = formatNumberShort(likesLong.toString())
-                    val dislikesStr = formatNumberShort(dislikesLong.toString())
-                    
+                    val resolverMeta = remember(track.id, liveStreamLabel) {
+                        com.example.ecodot.data.remote.YouTubeStreamResolver.resolvedAudioTelemetry[track.id]
+                    }
+                    val isOffline = remember(downloadedTracks, track.id, track.path, track.isYouTube) {
+                        !track.isYouTube || track.path.startsWith("/") || downloadedTracks.any { it.id == track.id }
+                    }
+
+                    val viewsLong = info?.viewCount?.filter { it.isDigit() }?.toLongOrNull()
+                        ?: resolverMeta?.viewCount?.takeIf { it > 0L }
+                    val likesLong = info?.likeCount?.filter { it.isDigit() }?.toLongOrNull()
+                        ?: resolverMeta?.likeCount?.takeIf { it > 0L }
+
+                    val viewsStr = when {
+                        viewsLong != null && viewsLong > 0L -> formatNumberShort(viewsLong.toString())
+                        isOffline && !track.isYouTube -> "Local"
+                        else -> "—"
+                    }
+                    val likesStr = when {
+                        likesLong != null && likesLong > 0L -> formatNumberShort(likesLong.toString())
+                        else -> "—"
+                    }
+                    val durationStr = formatDurationLabel(
+                        ms = liveDurationMs.takeIf { it > 0L } ?: track.duration,
+                        fallbackFormatted = info?.durationSeconds
+                    )
+
+                    val syncedCodec = info?.codec?.takeIf { it.isNotBlank() }
+                        ?: resolverMeta?.codec?.takeIf { it.isNotBlank() }
+                        ?: if (isOffline) "aac" else "opus"
+                    val liveParts = liveStreamLabel?.split("·")?.map { it.trim() }.orEmpty()
+                    val liveBitratePart = liveParts.firstOrNull { it.contains("kbps", ignoreCase = true) }
+                    val liveRatePart = liveParts.firstOrNull { it.contains("kHz", ignoreCase = true) }
+
+                    val syncedBitrate = PlayerStyleMath.formatBitrateKbps(
+                        rawBitrate = info?.bitrate?.takeIf { it.isNotBlank() } ?: liveBitratePart,
+                        fallbackBps = resolverMeta?.bitrateBps ?: 0
+                    )
+                    val syncedMime = (info?.mimeType?.takeIf { it.isNotBlank() }
+                        ?: resolverMeta?.mimeType
+                        ?: if (syncedCodec.contains("mp4a", true) || syncedCodec.contains("aac", true)) "audio/mp4" else "audio/webm")
+                        .split(";").firstOrNull()?.trim().orEmpty().ifBlank { "audio/webm" }
+                    val syncedItag = info?.itag?.takeIf { it.isNotBlank() && it != "—" }
+                        ?: resolverMeta?.itag?.takeIf { it > 0 }?.toString()
+                        ?: if (isOffline) "Offline" else "—"
+                    val syncedSampleRate = info?.sampleRate?.takeIf { it.isNotBlank() }
+                        ?: liveRatePart
+                        ?: PlayerStyleMath.formatSampleRateKhz(resolverMeta?.sampleRateHz ?: 0)
+                    val syncedSource = when {
+                        downloadedTracks.any { it.id == track.id } -> "Downloaded"
+                        !track.isYouTube -> "Device Audio"
+                        else -> "YouTube Stream"
+                    }
+
                     // Seed deterministic musical attributes
-                    val musicSeed = remember(track.title) {
+                    val musicSeed = remember(track.title, track.artist) {
                         val r = java.util.Random(track.title.hashCode().toLong() + track.artist.hashCode().toLong())
                         val bpm = 75 + r.nextInt(100) // 75 to 175 bpm
                         val keys = listOf("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
@@ -414,30 +467,35 @@ fun FullScreenInfoView(
                         
                         Spacer(modifier = Modifier.height(28.dp))
                         
-                        // 1. STATS ROW
+                        // 1. STATS ROW (Synced Views, Likes, Duration — zero fake dislikes)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly
                         ) {
                             StatItem(icon = Icons.Rounded.PlayArrow, value = viewsStr, label = "Views")
                             StatItem(icon = Icons.Rounded.Favorite, value = likesStr, label = "Likes")
-                            StatItem(icon = Icons.Rounded.ThumbDown, value = dislikesStr, label = "Dislikes")
+                            StatItem(icon = Icons.Rounded.Schedule, value = durationStr, label = "Duration")
                         }
                         
-                        Spacer(modifier = Modifier.height(32.dp))
+                        Spacer(modifier = Modifier.height(28.dp))
                         
-                        // 2. TECH SPECS GRID (2x2)
+                        // 2. TECH SPECS GRID (3x2 synced with active stream)
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            TechBadge(label = "CODEC", value = info?.codec ?: "opus", color = accentColor, modifier = Modifier.weight(1f))
-                            TechBadge(label = "BITRATE", value = info?.bitrate ?: "160 kbps", color = Color(0xFF00E676), modifier = Modifier.weight(1f))
+                            TechBadge(label = "CODEC", value = syncedCodec, color = accentColor, modifier = Modifier.weight(1f))
+                            TechBadge(label = "BITRATE", value = syncedBitrate, color = Color(0xFF00E676), modifier = Modifier.weight(1f))
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            TechBadge(label = "MIME TYPE", value = (info?.mimeType ?: "audio/webm").split(";").firstOrNull() ?: "audio/webm", color = Color(0xFF29B6F6), modifier = Modifier.weight(1f))
-                            TechBadge(label = "ITAG", value = info?.itag ?: "251", color = Color(0xFFFFB74D), modifier = Modifier.weight(1f))
+                            TechBadge(label = "MIME TYPE", value = syncedMime, color = Color(0xFF29B6F6), modifier = Modifier.weight(1f))
+                            TechBadge(label = "ITAG", value = syncedItag, color = Color(0xFFFFB74D), modifier = Modifier.weight(1f))
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            TechBadge(label = "SAMPLE RATE", value = syncedSampleRate, color = Color(0xFFCE93D8), modifier = Modifier.weight(1f))
+                            TechBadge(label = "SOURCE", value = syncedSource, color = Color(0xFF80CBC4), modifier = Modifier.weight(1f))
                         }
                         
-                        Spacer(modifier = Modifier.height(32.dp))
+                        Spacer(modifier = Modifier.height(28.dp))
                         
                         // 3. MUSICAL ATTRIBUTES PANEL
                         MusicalAttributeCard(
@@ -447,12 +505,24 @@ fun FullScreenInfoView(
                             accentColor = accentColor
                         )
                         
-                        Spacer(modifier = Modifier.height(32.dp))
+                        Spacer(modifier = Modifier.height(28.dp))
                         
                         // 4. PARSED CREDITS SECTION & DESCRIPTION
-                        val descText = info?.description ?: "No description available."
-                        val parsed = remember(descText) { parseYouTubeDescription(descText) }
-                        val credits = parsed.first
+                        val descText = info?.description?.takeIf { it.isNotBlank() }
+                            ?: resolverMeta?.description?.takeIf { it.isNotBlank() }
+                            ?: ""
+                        val parsed = remember(descText, track.id) { parseYouTubeDescription(descText) }
+                        val credits = remember(parsed.first, track.artist, track.album, syncedSource) {
+                            parsed.first.ifEmpty {
+                                buildList {
+                                    add("Performing Artist" to track.artist)
+                                    if (track.album.isNotBlank() && !track.album.equals("Unknown", ignoreCase = true)) {
+                                        add("Album" to track.album)
+                                    }
+                                    add("Source" to syncedSource)
+                                }
+                            }
+                        }
                         val cleanDescription = parsed.second
                         
                         if (credits.isNotEmpty()) {

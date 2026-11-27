@@ -269,6 +269,8 @@ fun LibraryScreen(
         val isDownloaded = downloadedTracks.any { it.id == track.id }
         val downloadProgress = downloadProgressMap[track.id]
         val isLiked by viewModel.isTrackLiked(track.id).collectAsState(initial = false)
+        val queueState by viewModel.playbackQueue.collectAsState()
+        val isInQueue = remember(queueState, track.id) { queueState.any { it.id == track.id } }
         val isActiveTrack = currentTrack?.id == track.id
         val trackInVideoMode = isActiveTrack && (isVideoMode || viewModel.isTrackVideo(track))
 
@@ -278,6 +280,7 @@ fun LibraryScreen(
             onPlayNow = { viewModel.playTrack(track) },
             onPlayNext = { viewModel.playNext(track) },
             onAddToQueue = { viewModel.addToQueue(track) },
+            onRemoveFromQueue = if (isInQueue) { { viewModel.removeTrackFromQueue(track) } } else null,
             onGoToAlbum = {
                 trackForOptions = null
                 if (track.album.isNotBlank() && !track.albumId.isNullOrEmpty()) {

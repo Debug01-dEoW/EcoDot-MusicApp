@@ -521,18 +521,23 @@ class EcoDotSessionService : MediaSessionService() {
             com.example.ecodot.data.remote.YouTubeStreamResolver.resolvedAudioTelemetry[it]
         }
 
-        val sampleRate = decoderAudioFormat?.sampleRate?.takeIf { it > 0 }
-            ?: selectedTrackFormat?.sampleRate?.takeIf { it > 0 }
-            ?: resolverMeta?.sampleRateHz
-            ?: 0
+        val selectedTelemetry = com.example.ecodot.ui.components.player.PlayerStyleMath.selectValidAudioTelemetry(
+            selectedTrackBitrate = selectedTrackFormat?.bitrate ?: 0,
+            selectedTrackAvgBitrate = selectedTrackFormat?.averageBitrate ?: 0,
+            decoderBitrate = decoderAudioFormat?.bitrate ?: 0,
+            resolvedBitrateBps = resolverMeta?.bitrateBps ?: 0,
+            selectedTrackSampleRate = selectedTrackFormat?.sampleRate ?: 0,
+            decoderSampleRate = decoderAudioFormat?.sampleRate ?: 0,
+            resolvedSampleRateHz = resolverMeta?.sampleRateHz ?: 0
+        )
 
-        var bitrate = selectedTrackFormat?.bitrate?.takeIf { it > 0 }
-            ?: selectedTrackFormat?.averageBitrate?.takeIf { it > 0 }
-            ?: decoderAudioFormat?.bitrate?.takeIf { it > 0 }
-            ?: resolverMeta?.bitrateBps
-            ?: 0
+        val sampleRate = selectedTelemetry.sampleRateHz
+        var bitrate = selectedTelemetry.bitrateBps
 
-        if (bitrate <= 0 && mediaId != null && player.duration > 0) {
+        if (bitrate < com.example.ecodot.ui.components.player.PlayerStyleMath.MIN_VALID_AUDIO_BITRATE_BPS &&
+            mediaId != null &&
+            player.duration > 0
+        ) {
             val uriStr = player.currentMediaItem?.localConfiguration?.uri?.toString().orEmpty()
             val localPath = when {
                 uriStr.startsWith("file://") -> android.net.Uri.parse(uriStr).path
@@ -550,8 +555,12 @@ class EcoDotSessionService : MediaSessionService() {
 
         lastStreamBitrateBps = bitrate
         lastStreamSampleRateHz = sampleRate
-        lastStreamMimeType = selectedTrackFormat?.sampleMimeType ?: decoderAudioFormat?.sampleMimeType
-        lastStreamCodecs = selectedTrackFormat?.codecs ?: decoderAudioFormat?.codecs ?: resolverMeta?.codec
+        lastStreamMimeType = selectedTrackFormat?.sampleMimeType
+            ?: decoderAudioFormat?.sampleMimeType
+            ?: resolverMeta?.mimeType
+        lastStreamCodecs = selectedTrackFormat?.codecs
+            ?: decoderAudioFormat?.codecs
+            ?: resolverMeta?.codec
         emitSessionExtras()
     }
 
@@ -1073,7 +1082,13 @@ class EcoDotSessionService : MediaSessionService() {
                     lastPreCachedTrackId = null
                     clearStagedCrossfade()
                 }
-                ACTION_UPDATE_QUEUE, ACTION_UPDATE_INDEX -> { /* no-op */ }
+                ACTION_UPDATE_QUEUE -> {
+                    lastPreCachedTrackId = null
+                    if (!isCrossfading) {
+                        clearStagedCrossfade()
+                    }
+                }
+                ACTION_UPDATE_INDEX -> { /* index tracked natively by player timeline */ }
                 ACTION_SET_SLEEP_TIMER -> {
                     val minutes = args.getInt("minutes", 0)
                     val endOfTrack = args.getBoolean("endOfTrack", false)

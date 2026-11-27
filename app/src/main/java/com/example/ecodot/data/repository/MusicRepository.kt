@@ -705,11 +705,16 @@ class MusicRepository(
 
             val resolvedBps = ((bestFormat.averageBitrate ?: bestFormat.bitrate) ?: 0L).toInt()
             if (resolvedBps > 0 && finalUrl != null) {
+                val rawMime = bestFormat.mimeType.orEmpty()
+                val parsedCodec = Regex("codecs=\"([^\"]+)\"").find(rawMime)?.groupValues?.getOrNull(1)
+                    ?: rawMime.substringBefore(";").trim().takeIf { it.isNotBlank() }
                 com.example.ecodot.data.remote.YouTubeStreamResolver.resolvedAudioTelemetry[videoId] =
                     com.example.ecodot.data.remote.ResolvedAudioTelemetry(
                         bitrateBps = resolvedBps,
                         sampleRateHz = 48_000,
-                        codec = bestFormat.mimeType
+                        codec = parsedCodec,
+                        mimeType = rawMime.substringBefore(";").trim().takeIf { it.isNotBlank() },
+                        itag = bestFormat.itag?.takeIf { it > 0 }
                     )
             }
             Log.d(TAG, "[${client.clientName}] Selected bitrate: ${bestFormat.bitrate}")
@@ -975,97 +980,144 @@ class MusicRepository(
 
 
     /**
-     * Fetches rich video metadata: view count, likes, description, codec info.
-     * Uses the player endpoint (already called for stream URL) which returns videoDetails,
-     * and parses the best audio format for codec/bitrate/itag.
+     * Fetches synced video & audio telemetry metadata: view count, likes, description, codec, bitrate, sample rate, itag.
+     * Combines live NewPipeExtractor StreamInfo telemetry with InnerTube player details.
      */
     suspend fun fetchVideoInfo(
         videoId: String,
         preferredQuality: AudioQuality = AudioQuality.HIGH
-    ): VideoInfo? {
-        return try {
-            val client = if (preferredQuality == AudioQuality.HIGH_AAC) Client.ANDROID_MUSIC else Client.WEB_REMIX
-            val json = JSONObject().apply {
-                put("context", getContext(client))
-                put("videoId", videoId)
-                put("cpn", generateCPN())
-                put("playbackContext", JSONObject().apply {
-                    put("contentPlaybackContext", JSONObject().apply {
-                        put("signatureTimestamp", 20252)
-                    })
-                })
+    ): VideoInfo? = withContext(Dispatchers.IO) {
+        try {
+            val newPipeMeta = runCatching {
+                streamResolver.resolveStreamMetadata(videoId, preferredQuality)
+            }.getOrNull()
+
+            var innerTubeMime = ""
+            var innerTubeCodec = ""
+            var innerTubeBps = 0L
+            var innerTubeItag = ""
+            var innerTubeViews = -1L
+            var innerTubeLikes = -1L
+            var innerTubeDesc = ""
+            var innerTubeAuthor = ""
+            var innerTubeTitle = ""
+            var innerTubeDurSec = 0L
+
+            val needsInnerTubeFallback = newPipeMeta == null ||
+                newPipeMeta.viewCount <= 0L ||
+                newPipeMeta.itag == null ||
+                newPipeMeta.bitrateBps < com.example.ecodot.ui.components.player.PlayerStyleMath.MIN_VALID_AUDIO_BITRATE_BPS
+
+            if (needsInnerTubeFallback) {
+                runCatching {
+                    val client = if (preferredQuality == AudioQuality.HIGH_AAC) Client.ANDROID_MUSIC else Client.WEB_REMIX
+                    val json = JSONObject().apply {
+                        put("context", getContext(client))
+                        put("videoId", videoId)
+                        put("cpn", generateCPN())
+                        put("playbackContext", JSONObject().apply {
+                            put("contentPlaybackContext", JSONObject().apply {
+                                put("signatureTimestamp", 20252)
+                            })
+                        })
+                    }
+                    val requestBody = json.toString().toRequestBody("application/json".toMediaType())
+                    val response = apiService.getPlayer(requestBody, getHeaders(client))
+                    val details = response.videoDetails
+                    val formats = response.streamingData?.adaptiveFormats
+                    val audioCandidates = formats?.filter { it.mimeType?.contains("audio") == true }.orEmpty()
+
+                    val bestAudio = when (preferredQuality) {
+                        AudioQuality.HIGH_AAC -> {
+                            audioCandidates.filter(::isAacFormat).maxByOrNull { it.averageBitrate ?: it.bitrate ?: 0L }
+                                ?: audioCandidates.maxByOrNull { it.averageBitrate ?: it.bitrate ?: 0L }
+                        }
+                        AudioQuality.NORMAL -> {
+                            audioCandidates.minByOrNull { kotlin.math.abs((it.averageBitrate ?: it.bitrate ?: 0L) - 128000L) }
+                        }
+                        AudioQuality.LOW -> {
+                            audioCandidates.minByOrNull { kotlin.math.abs((it.averageBitrate ?: it.bitrate ?: 0L) - 48000L) }
+                        }
+                        AudioQuality.HIGH -> {
+                            audioCandidates.filter { !isAacFormat(it) }.maxByOrNull { it.averageBitrate ?: it.bitrate ?: 0L }
+                                ?: audioCandidates.maxByOrNull { it.averageBitrate ?: it.bitrate ?: 0L }
+                        }
+                    }
+
+                    val rawMime = bestAudio?.mimeType.orEmpty()
+                    innerTubeCodec = Regex("codecs=\"([^\"]+)\"").find(rawMime)?.groupValues?.getOrNull(1).orEmpty()
+                    innerTubeMime = rawMime.substringBefore(";").trim()
+                    innerTubeBps = bestAudio?.averageBitrate ?: bestAudio?.bitrate ?: 0L
+                    innerTubeItag = bestAudio?.itag?.takeIf { it > 0 }?.toString().orEmpty()
+                    innerTubeTitle = details?.title.orEmpty()
+                    innerTubeAuthor = details?.author.orEmpty()
+
+                    val rawResponse = sharedHttpClient.newCall(
+                        okhttp3.Request.Builder()
+                            .url("https://music.youtube.com/youtubei/v1/player?key=${YouTubeApiService.API_KEY}&prettyPrint=false")
+                            .post(json.toString().toRequestBody("application/json".toMediaType()))
+                            .apply { getHeaders(client).forEach { (k, v) -> header(k, v) } }
+                            .build()
+                    ).execute().use { it.body?.string().orEmpty() }
+
+                    if (rawResponse.isNotBlank()) {
+                        val playerObj = JSONObject(rawResponse)
+                        val detailsObj = playerObj.optJSONObject("videoDetails")
+                        innerTubeViews = detailsObj?.optString("viewCount", "")?.filter { it.isDigit() }?.toLongOrNull() ?: -1L
+                        innerTubeDesc = detailsObj?.optString("shortDescription", "").orEmpty()
+                        if (innerTubeAuthor.isBlank()) innerTubeAuthor = detailsObj?.optString("author", "").orEmpty()
+                        if (innerTubeTitle.isBlank()) innerTubeTitle = detailsObj?.optString("title", "").orEmpty()
+                        innerTubeDurSec = detailsObj?.optString("lengthSeconds", "0")?.toLongOrNull() ?: 0L
+                    }
+                }
             }
-            val requestBody = json.toString().toRequestBody("application/json".toMediaType())
-            val response = apiService.getPlayer(requestBody, getHeaders(client))
 
-            val details = response.videoDetails
-            val formats = response.streamingData?.adaptiveFormats
-            val audioCandidates = formats?.filter { it.mimeType?.contains("audio") == true }.orEmpty()
+            val bestBps = newPipeMeta?.bitrateBps?.takeIf {
+                it >= com.example.ecodot.ui.components.player.PlayerStyleMath.MIN_VALID_AUDIO_BITRATE_BPS
+            }?.toLong() ?: innerTubeBps
+            val bestSampleRate = newPipeMeta?.sampleRateHz?.takeIf {
+                it >= com.example.ecodot.ui.components.player.PlayerStyleMath.MIN_VALID_SAMPLE_RATE_HZ
+            } ?: 48_000
+            val bestCodec = newPipeMeta?.codec?.takeIf { it.isNotBlank() }
+                ?: innerTubeCodec.takeIf { it.isNotBlank() }
+                ?: ""
+            val bestMime = newPipeMeta?.mimeType?.substringBefore(";")?.trim()?.takeIf { it.isNotBlank() }
+                ?: innerTubeMime.takeIf { it.isNotBlank() }
+                ?: ""
+            val bestItag = newPipeMeta?.itag?.takeIf { it > 0 }?.toString()
+                ?: innerTubeItag.takeIf { it.isNotBlank() }
+                ?: ""
+            val bestViews = newPipeMeta?.viewCount?.takeIf { it > 0L }
+                ?: innerTubeViews.takeIf { it > 0L }
+            val bestLikes = newPipeMeta?.likeCount?.takeIf { it > 0L }
+                ?: innerTubeLikes.takeIf { it > 0L }
+            val bestDesc = newPipeMeta?.description?.takeIf { it.isNotBlank() } ?: innerTubeDesc
+            val bestDurSec = newPipeMeta?.durationSec?.takeIf { it > 0L } ?: innerTubeDurSec
 
-            // Match audio format to active quality setting (High AAC vs Opus/Normal/Low)
-            val bestAudio = when (preferredQuality) {
-                AudioQuality.HIGH_AAC -> {
-                    audioCandidates.filter(::isAacFormat).maxByOrNull { it.averageBitrate ?: it.bitrate ?: 0L }
-                        ?: audioCandidates.maxByOrNull { it.averageBitrate ?: it.bitrate ?: 0L }
-                }
-                AudioQuality.NORMAL -> {
-                    audioCandidates.minByOrNull { kotlin.math.abs((it.averageBitrate ?: it.bitrate ?: 0L) - 128000L) }
-                }
-                AudioQuality.LOW -> {
-                    audioCandidates.minByOrNull { kotlin.math.abs((it.averageBitrate ?: it.bitrate ?: 0L) - 48000L) }
-                }
-                AudioQuality.HIGH -> {
-                    audioCandidates.filter { !isAacFormat(it) }.maxByOrNull { it.averageBitrate ?: it.bitrate ?: 0L }
-                        ?: audioCandidates.maxByOrNull { it.averageBitrate ?: it.bitrate ?: 0L }
-                }
-            }
-
-            val rawMime   = bestAudio?.mimeType ?: "audio/webm"
-            val codec     = Regex("codecs=\"([^\"]+)\"").find(rawMime)?.groupValues?.getOrNull(1) ?: "opus"
-            val mimeClean = rawMime.substringBefore(";").trim()
-            val bitrate   = bestAudio?.averageBitrate ?: bestAudio?.bitrate ?: 0L
-            val itag      = bestAudio?.itag?.toString() ?: "—"
-
-            // View count: in videoDetails as "viewCount" string
-            // We parse it manually from the raw JSON because Moshi model doesn't include it yet
-            val rawJson = JSONObject(json.toString())  // re-use same body for parsing trick
-            // Re-fetch raw to get viewCount from response JSON
-            val rawResponse = sharedHttpClient.newCall(
-                okhttp3.Request.Builder()
-                    .url("https://music.youtube.com/youtubei/v1/player?prettyPrint=false")
-                    .post(requestBody)
-                    .apply { getHeaders(client).forEach { (k, v) -> header(k, v) } }
-                    .build()
-            ).execute().body?.string() ?: "{}"
-
-            val playerObj   = JSONObject(rawResponse)
-            val detailsObj  = playerObj.optJSONObject("videoDetails")
-            val viewCount   = detailsObj?.optString("viewCount", "0") ?: "0"
-            val rawDesc     = detailsObj?.optString("shortDescription", "") ?: ""
-            val authorName  = detailsObj?.optString("author", details?.author ?: "Unknown") ?: "Unknown"
-            val title       = detailsObj?.optString("title", details?.title ?: "") ?: ""
-
-            // Format view count with commas
-            val formattedViews = try {
-                "%,d".format(viewCount.toLong())
-            } catch (e: Exception) { viewCount }
-
-            val durationSec = detailsObj?.optString("lengthSeconds", "0")?.toLongOrNull() ?: 0L
-            val durFormatted = "%d:%02d".format(durationSec / 60, durationSec % 60)
+            val formattedViews = bestViews?.let { "%,d".format(it) }.orEmpty()
+            val formattedLikes = bestLikes?.let { "%,d".format(it) }.orEmpty()
+            val durFormatted = if (bestDurSec > 0L) "%d:%02d".format(bestDurSec / 60, bestDurSec % 60) else ""
+            val formattedBitrate = com.example.ecodot.ui.components.player.PlayerStyleMath.formatBitrateKbps(
+                rawBitrate = null,
+                fallbackBps = bestBps.toInt()
+            ).takeIf { it != "—" }.orEmpty()
+            val formattedSampleRate = com.example.ecodot.ui.components.player.PlayerStyleMath.formatSampleRateKhz(bestSampleRate)
+                .takeIf { it != "—" }.orEmpty()
 
             VideoInfo(
-                videoId       = videoId,
-                title         = title.ifEmpty { details?.title ?: "" },
-                artist        = authorName,
-                album         = "",
-                viewCount     = formattedViews,
-                likeCount     = "—",            // YouTube hides likes in API responses
-                description   = rawDesc,
-                mimeType      = mimeClean,
-                codec         = codec,
-                bitrate       = "%,d".format(bitrate),
-                itag          = itag,
-                durationSeconds = durFormatted
+                videoId = videoId,
+                title = newPipeMeta?.title?.takeIf { it.isNotBlank() } ?: innerTubeTitle,
+                artist = newPipeMeta?.uploaderName?.takeIf { it.isNotBlank() } ?: innerTubeAuthor,
+                album = "",
+                viewCount = formattedViews,
+                likeCount = formattedLikes,
+                description = bestDesc,
+                mimeType = bestMime,
+                codec = bestCodec,
+                bitrate = formattedBitrate,
+                itag = bestItag,
+                durationSeconds = durFormatted,
+                sampleRate = formattedSampleRate
             )
         } catch (e: Exception) {
             Log.e(TAG, "fetchVideoInfo failed for $videoId", e)

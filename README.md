@@ -18,7 +18,16 @@
 
 ---
 
-## 📣 What's New & Release News (`1.27v`)
+## 📣 What's New in `1.27v`
+
+EcoDot `1.27v` delivers a major polish pass — **120Hz fluidity**, **RSA-2048 release signing**, **Spotify-inspired playlists**, **reliable Queue + Remove from Queue controls**, **synced Song Info & live telemetry**, **unified Lyrics**, and **crash-free Profile custom tags**:
+
+- **Fixed `Play Next`, `Add Queue` & New `Remove` Queue Action**: `Play Next` and `Add Queue` now insert ahead of auto-generated Endless Queue tracks, start playback cleanly when idle, sync with AutoMix crossfade decks (`EcoDotSessionService`), and showcase a **Remove** quick tile + full row option whenever a track is in the queue.
+- **Synced Song Info & Live Stream Telemetry**: Eliminated fake `0 Views / 1 Likes / 0 Dislikes` and `BITRATE: 0 / ITAG: -` cards plus `1 kbps · 22.0 kHz` badges by merging live NewPipeExtractor + keyed InnerTube + Media3 telemetry.
+- **Unified Inline & Full Lyrics Experience**: Shared `SyncedLyricsList` engine ensures inline Apple Music Lyrics and `FullScreenLyricsView` share consistent scaling, centered auto-scrolling, blur focus, LRCLIB attribution, and non-overlapping `Share` / `Full screen` buttons.
+- **Fixed Edit Profile Custom Tag Crash**: Replaced unstable nested sheet/IME/FlowRow wrappers in `ProfileScreen` with a crash-safe dialog editor supporting `Done` submit and comma-separated custom tags.
+
+## Highlights (`1.27v`)
 
 EcoDot `1.27v` delivers a major polish pass focused on **120Hz butter-smooth performance**, **crystal-clear Liquid Glass lens refraction**, **authentic Spotify-style playlists**, **a complete scrollable 3-dots Track Options menu**, **interactive circular profile picture adjustment**, and **over-the-air update notifications for all `v1.26v` users**.
 
