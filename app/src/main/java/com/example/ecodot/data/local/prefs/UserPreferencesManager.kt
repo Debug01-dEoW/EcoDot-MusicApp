@@ -276,6 +276,10 @@ class UserPreferencesManager(context: Context) {
         get() = prefs.getLong("last_update_check_time", 0L)
         set(value) = prefs.edit().putLong("last_update_check_time", value).apply()
 
+    var lastNotifiedUpdateVersionCode: Long
+        get() = prefs.getLong("last_notified_update_version_code", 0L)
+        set(value) = prefs.edit().putLong("last_notified_update_version_code", value).apply()
+
     companion object {
         const val DEFAULT_GITHUB_OWNER = "Debug01-dEoW"
         const val DEFAULT_GITHUB_REPO = "EcoDot-MusicApp"

@@ -179,8 +179,16 @@ fun UpdateDialog(
                                         .border(0.5.dp, UpdateGreen.copy(alpha = 0.45f), RoundedCornerShape(50))
                                         .padding(horizontal = 10.dp, vertical = 4.dp)
                                 ) {
+                                    val versionChipLabel = if (
+                                        displayCurrentVersion.equals(displayTargetVersion, ignoreCase = true) &&
+                                        (info?.versionCode ?: 0L) > 0L
+                                    ) {
+                                        "$displayCurrentVersion -> $displayTargetVersion (Build ${info!!.versionCode})"
+                                    } else {
+                                        "$displayCurrentVersion -> $displayTargetVersion"
+                                    }
                                     Text(
-                                        text = "$displayCurrentVersion -> $displayTargetVersion",
+                                        text = versionChipLabel,
                                         color = UpdateGreen,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold

@@ -35,7 +35,7 @@ android {
         applicationId = "com.example.ecodot"
         minSdk = 24
         targetSdk = 37
-        versionCode = 27
+        versionCode = 28
         versionName = "1.27v"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
