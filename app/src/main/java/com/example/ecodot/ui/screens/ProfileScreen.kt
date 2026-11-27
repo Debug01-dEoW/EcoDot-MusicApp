@@ -5,19 +5,18 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,6 +29,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,29 +37,19 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBackIos
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.Album
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.Badge
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CameraAlt
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.DownloadDone
-import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.Equalizer
-import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.GraphicEq
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.LibraryMusic
-import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.People
+import androidx.compose.material.icons.rounded.NewReleases
+import androidx.compose.material.icons.rounded.NotificationsNone
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Radio
-import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Style
+import androidx.compose.material.icons.rounded.SupportAgent
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -79,9 +69,11 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -90,12 +82,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -107,11 +103,8 @@ import com.example.ecodot.data.local.prefs.AudioQuality
 import com.example.ecodot.data.local.prefs.PlayerStyle
 import com.example.ecodot.data.local.prefs.UserPreferencesManager
 import com.example.ecodot.data.remote.YouTubeParser
-import com.example.ecodot.ui.components.IOSSettingsGroup
-import com.example.ecodot.ui.components.IOSSettingsRow
 import com.example.ecodot.ui.components.player.PlayerStyleBottomSheet
 import com.example.ecodot.ui.components.player.PlayerStyleMath
-import com.example.ecodot.ui.theme.EcoDotCard
 import com.example.ecodot.ui.theme.poppinsFamily
 import com.example.ecodot.ui.viewmodel.MusicViewModel
 
@@ -119,6 +112,11 @@ private val CURATED_PROFILE_GENRES = listOf(
     "Pop", "Lo-Fi", "Hip-Hop", "Indie", "Electronic", "Rock",
     "R&B", "Jazz", "Bollywood", "Phonk", "Classical", "Ambient"
 )
+
+private val ProfileBg = Color(0xFF090A0D)
+private val ProfileSurface = Color(0xFF13141A)
+private val ProfileTonalButton = Color(0xFF1C1E26)
+private val ProfileHairline = Color.White.copy(alpha = 0.06f)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -154,7 +152,7 @@ fun ProfileScreen(
     ) { uri ->
         if (uri != null) {
             viewModel.updateProfile(
-                name = userProfile?.name ?: "EcoDot User",
+                name = userProfile?.name ?: "EcoDot Listener",
                 genres = userProfile?.favoriteGenres ?: "",
                 avatarUrl = uri.toString(),
                 isPro = userProfile?.isPro ?: true
@@ -168,559 +166,583 @@ fun ProfileScreen(
     val favoriteGenreList = remember(userProfile?.favoriteGenres) {
         PlayerStyleMath.parseFavoriteGenres(userProfile?.favoriteGenres.orEmpty())
     }
-    val resolvedAccent = if (accentColor == Color.Black) Color(0xFF8C6EFF) else accentColor
+    val resolvedAccent = if (accentColor == Color.Black) Color(0xFFEADBC8) else accentColor
     val topTrack = mostPlayed.firstOrNull()
+    val displayName = userProfile?.name?.ifBlank { "EcoDot Listener" } ?: "EcoDot Listener"
+
+    // Quiet, natural header scrim like Spotify/YouTube Music — never a harsh neon glow
+    val headerWashBrush = remember(dominantColor) {
+        val mutedTop = lerp(Color(0xFF171922), dominantColor, 0.14f)
+        Brush.verticalGradient(
+            colors = listOf(mutedTop, ProfileBg)
+        )
+    }
+
+    val listState = rememberLazyListState()
+    val showCollapsedTitle by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 140
+        }
+    }
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF06070A))
+            .background(ProfileBg)
     ) {
-        // Subtle ambient aura anchored at top behind profile card
+        // Subtle charcoal-to-black editorial wash anchored at top
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(340.dp)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            dominantColor.copy(alpha = 0.42f),
-                            resolvedAccent.copy(alpha = 0.16f),
-                            Color(0xFF06070A)
-                        )
-                    )
-                )
+                .height(230.dp)
+                .drawBehind { drawRect(headerWashBrush) }
         )
 
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding(),
-            contentPadding = PaddingValues(bottom = 140.dp)
+                .statusBarsPadding()
         ) {
-            // ── 1. Top Header Bar ─────────────────────────────────────────────
-            item {
+            // ── 1. Clean Top Navigation Bar ───────────────────────────────────
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.ArrowBackIos,
-                                contentDescription = "Back",
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        Text(
-                            text = "Profile",
-                            fontFamily = poppinsFamily,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBackIos,
+                            contentDescription = "Back",
+                            tint = Color.White,
+                            modifier = Modifier.size(19.dp)
                         )
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        IconButton(onClick = { showEditProfile = true }) {
-                            Icon(
-                                imageVector = Icons.Rounded.Edit,
-                                contentDescription = "Edit Profile",
-                                tint = Color.White
-                            )
+                    Text(
+                        text = displayName,
+                        fontFamily = poppinsFamily,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.graphicsLayer {
+                            alpha = if (showCollapsedTitle) 1f else 0f
                         }
-                        IconButton(onClick = { navController.navigate("settings") }) {
-                            Icon(
-                                imageVector = Icons.Rounded.Settings,
-                                contentDescription = "Settings",
-                                tint = Color.White
-                            )
-                        }
-                    }
+                    )
+                }
+                IconButton(onClick = { navController.navigate("settings") }) {
+                    Icon(
+                        imageVector = Icons.Rounded.Settings,
+                        contentDescription = "Settings",
+                        tint = Color.White.copy(alpha = 0.88f),
+                        modifier = Modifier.size(21.dp)
+                    )
                 }
             }
 
-            // ── 2. Hero Profile Identity Card ─────────────────────────────────
-            item {
-                Surface(
-                    shape = RoundedCornerShape(26.dp),
-                    color = Color.White.copy(alpha = 0.06f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                ) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 140.dp)
+            ) {
+                // ── 2. Open-Canvas Profile Header (Spotify / Apple Music style) ──
+                item(key = "profile_header", contentType = "header") {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .padding(horizontal = 20.dp)
+                            .padding(top = 8.dp, bottom = 18.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(96.dp),
-                            contentAlignment = Alignment.Center
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(96.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        Brush.linearGradient(
-                                            listOf(resolvedAccent, Color(0xFFFF6B8B))
-                                        )
-                                    )
-                                    .padding(3.dp)
-                                    .clip(CircleShape)
-                                    .background(EcoDotCard)
-                                    .clickable { imagePicker.launch("image/*") },
-                                contentAlignment = Alignment.Center
+                                    .size(84.dp)
+                                    .clickable { imagePicker.launch("image/*") }
                             ) {
                                 val avatarUri = userProfile?.avatarUri
-                                if (!avatarUri.isNullOrBlank()) {
-                                    AsyncImage(
-                                        model = ImageRequest.Builder(context)
-                                            .data(avatarUri)
-                                            .crossfade(true)
-                                            .build(),
-                                        contentDescription = "Profile Picture",
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape)
+                                        .background(ProfileTonalButton),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (!avatarUri.isNullOrBlank()) {
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(context)
+                                                .data(avatarUri)
+                                                .size(256, 256)
+                                                .crossfade(160)
+                                                .build(),
+                                            contentDescription = "Profile Picture",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        val initial = displayName.firstOrNull()?.uppercaseChar()
+                                        if (initial != null && initial.isLetter()) {
+                                            Text(
+                                                text = initial.toString(),
+                                                fontFamily = poppinsFamily,
+                                                fontSize = 30.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White.copy(alpha = 0.86f)
+                                            )
+                                        } else {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Person,
+                                                contentDescription = null,
+                                                tint = Color.White.copy(alpha = 0.72f),
+                                                modifier = Modifier.size(36.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .size(26.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF232530))
+                                        .border(2.dp, ProfileBg, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
                                     Icon(
-                                        imageVector = Icons.Rounded.Person,
-                                        contentDescription = null,
-                                        tint = Color.White.copy(alpha = 0.8f),
-                                        modifier = Modifier.size(44.dp)
+                                        imageVector = Icons.Rounded.CameraAlt,
+                                        contentDescription = "Change avatar",
+                                        tint = Color.White.copy(alpha = 0.86f),
+                                        modifier = Modifier.size(13.dp)
                                     )
                                 }
                             }
 
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .size(30.dp)
-                                    .clip(CircleShape)
-                                    .background(resolvedAccent)
-                                    .border(2.dp, Color(0xFF0D0F14), CircleShape)
-                                    .clickable { imagePicker.launch("image/*") },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.CameraAlt,
-                                    contentDescription = "Change avatar",
-                                    tint = Color.Black,
-                                    modifier = Modifier.size(16.dp)
+                            Spacer(modifier = Modifier.width(18.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = displayName,
+                                        fontFamily = poppinsFamily,
+                                        fontSize = 24.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = (-0.3).sp,
+                                        color = Color.White,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f, fill = false)
+                                    )
+                                    if (userProfile?.isPro == true) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Icon(
+                                            imageVector = Icons.Rounded.Verified,
+                                            contentDescription = "Hi-Fi Pro",
+                                            tint = Color.White.copy(alpha = 0.78f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                Text(
+                                    text = "${likedTrackIds.size} liked · ${allPlaylists.size} playlists · ${followedArtists.size} artists",
+                                    fontFamily = poppinsFamily,
+                                    fontSize = 12.5.sp,
+                                    color = Color.White.copy(alpha = 0.62f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
+
+                                Spacer(modifier = Modifier.height(2.dp))
+
+                                Text(
+                                    text = "${audioQualityShortLabel(audioQuality)} · ${profileStyleDisplayName(playerStyle)}",
+                                    fontFamily = poppinsFamily,
+                                    fontSize = 11.5.sp,
+                                    color = Color.White.copy(alpha = 0.44f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Clean borderless pill actions row (like Spotify's Edit / Style pills)
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = ProfileTonalButton,
+                                modifier = Modifier
+                                    .height(36.dp)
+                                    .clickable { showEditProfile = true }
+                            ) {
+                                Box(
+                                    modifier = Modifier.padding(horizontal = 18.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Edit profile",
+                                        fontFamily = poppinsFamily,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+
+                            Surface(
+                                shape = CircleShape,
+                                color = ProfileTonalButton,
+                                modifier = Modifier
+                                    .height(36.dp)
+                                    .clickable { showPlayerStyleSheet = true }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Style,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.80f),
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = profileStyleShortName(playerStyle),
+                                        fontFamily = poppinsFamily,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+
+                            Surface(
+                                shape = CircleShape,
+                                color = ProfileTonalButton,
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clickable(onClick = onEqualizerClick)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Equalizer,
+                                        contentDescription = "Equalizer",
+                                        tint = Color.White.copy(alpha = 0.82f),
+                                        modifier = Modifier.size(17.dp)
+                                    )
+                                }
                             }
                         }
 
                         Spacer(modifier = Modifier.height(14.dp))
 
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                text = userProfile?.name?.ifBlank { "EcoDot Listener" } ?: "EcoDot Listener",
-                                fontFamily = poppinsFamily,
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            if (userProfile?.isPro == true) {
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Surface(
-                                    shape = RoundedCornerShape(50),
-                                    color = resolvedAccent.copy(alpha = 0.20f),
-                                    border = BorderStroke(1.dp, resolvedAccent.copy(alpha = 0.55f))
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Verified,
-                                            contentDescription = null,
-                                            tint = resolvedAccent,
-                                            modifier = Modifier.size(13.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = "HI-FI PRO",
-                                            fontFamily = poppinsFamily,
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text = "${audioQualityShortLabel(audioQuality)} • ${profileStyleDisplayName(playerStyle)}",
-                            fontFamily = poppinsFamily,
-                            fontSize = 12.sp,
-                            color = Color.White.copy(alpha = 0.62f)
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
                         if (favoriteGenreList.isNotEmpty()) {
                             LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 items(favoriteGenreList, key = { it }) { genre ->
                                     Surface(
-                                        shape = RoundedCornerShape(50),
-                                        color = Color.White.copy(alpha = 0.08f),
-                                        border = BorderStroke(0.75.dp, Color.White.copy(alpha = 0.14f))
+                                        shape = CircleShape,
+                                        color = Color(0xFF15171F)
                                     ) {
                                         Text(
                                             text = genre,
                                             fontFamily = poppinsFamily,
-                                            fontSize = 11.5.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = Color.White.copy(alpha = 0.90f),
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Normal,
+                                            color = Color.White.copy(alpha = 0.74f),
                                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
                                         )
                                     }
                                 }
                             }
                         } else {
-                            Surface(
-                                shape = RoundedCornerShape(50),
-                                color = Color.White.copy(alpha = 0.06f),
-                                border = BorderStroke(0.75.dp, Color.White.copy(alpha = 0.12f)),
-                                modifier = Modifier.clickable { showEditProfile = true }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.AutoAwesome,
-                                        contentDescription = null,
-                                        tint = resolvedAccent,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Add your favorite music genres",
-                                        fontFamily = poppinsFamily,
-                                        fontSize = 12.sp,
-                                        color = Color.White.copy(alpha = 0.78f)
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Surface(
-                                shape = RoundedCornerShape(14.dp),
-                                color = Color.White.copy(alpha = 0.10f),
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
-                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
                                     .clickable { showEditProfile = true }
+                                    .padding(vertical = 4.dp, horizontal = 2.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(vertical = 10.dp),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Edit,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Edit Profile",
-                                        fontFamily = poppinsFamily,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color.White
-                                    )
-                                }
-                            }
-                            Surface(
-                                shape = RoundedCornerShape(14.dp),
-                                color = resolvedAccent.copy(alpha = 0.20f),
-                                border = BorderStroke(1.dp, resolvedAccent.copy(alpha = 0.45f)),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable { showPlayerStyleSheet = true }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(vertical = 10.dp),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Style,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Player Style",
-                                        fontFamily = poppinsFamily,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color.White
-                                    )
-                                }
+                                Icon(
+                                    imageVector = Icons.Rounded.Add,
+                                    contentDescription = null,
+                                    tint = Color.White.copy(alpha = 0.56f),
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Add favorite genres",
+                                    fontFamily = poppinsFamily,
+                                    fontSize = 12.5.sp,
+                                    color = Color.White.copy(alpha = 0.56f)
+                                )
                             }
                         }
                     }
                 }
-            }
 
-            // ── 3. Library Footprint Strip ────────────────────────────────────
-            item {
-                Spacer(modifier = Modifier.height(14.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    LibraryMetricTile(
-                        icon = Icons.Rounded.Favorite,
-                        count = likedTrackIds.size,
-                        label = "Liked",
-                        tint = Color(0xFFFF4D6D),
-                        modifier = Modifier.weight(1f),
-                        onClick = { navController.navigate("library") }
-                    )
-                    LibraryMetricTile(
-                        icon = Icons.Rounded.LibraryMusic,
-                        count = allPlaylists.size,
-                        label = "Playlists",
-                        tint = Color(0xFF4CC9F0),
-                        modifier = Modifier.weight(1f),
-                        onClick = { navController.navigate("library") }
-                    )
-                    LibraryMetricTile(
-                        icon = Icons.Rounded.People,
-                        count = followedArtists.size,
-                        label = "Artists",
-                        tint = Color(0xFFA78BFA),
-                        modifier = Modifier.weight(1f),
-                        onClick = { navController.navigate("library") }
-                    )
-                    LibraryMetricTile(
-                        icon = Icons.Rounded.DownloadDone,
-                        count = offlineUniqueCount,
-                        label = "Offline",
-                        tint = Color(0xFF1ED760),
-                        modifier = Modifier.weight(1f),
-                        onClick = { navController.navigate("library") }
-                    )
-                }
-            }
-
-            // ── 4. Listening Insights (Always visible 2x2 Grid) ───────────────
-            item {
-                Spacer(modifier = Modifier.height(22.dp))
-                SectionTitleRow(title = "Listening Insights", subtitle = "Your playback telemetry")
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                // ── 3. Clean Library Metrics Bar (Single flat surface, hairline dividers) ──
+                item(key = "library_metrics", contentType = "metrics_bar") {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = ProfileSurface,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
                     ) {
-                        StatCard(
-                            label = "Time Listened",
-                            value = PlayerStyleMath.formatListeningTime(totalMinutes),
-                            subtitle = if (totalMinutes > 0) "${playbackHistory.size} sessions logged" else "Start listening today",
-                            gradient = Brush.linearGradient(
-                                listOf(Color(0xFF3E1F72), Color(0xFF171326))
-                            ),
-                            modifier = Modifier.weight(1f)
-                        )
-                        StatCard(
-                            label = "Top Taste",
-                            value = topGenre.ifBlank { "Discovery" },
-                            subtitle = if (favoriteGenreList.isNotEmpty()) "Primary vibe" else "Based on plays",
-                            gradient = Brush.linearGradient(
-                                listOf(Color(0xFF0E4B5A), Color(0xFF0E1B24))
-                            ),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        StatCard(
-                            label = "Top Track",
-                            value = topTrack?.title ?: "None yet",
-                            subtitle = if (topTrack != null) "${topTrack.playCount} plays · ${topTrack.artist}" else "Play tracks to unlock",
-                            gradient = Brush.linearGradient(
-                                listOf(Color(0xFF5D1F39), Color(0xFF1D1017))
-                            ),
-                            modifier = Modifier.weight(1f)
-                        )
-                        StatCard(
-                            label = "Unique Tracks",
-                            value = "${mostPlayed.size}",
-                            subtitle = if (mostPlayed.isNotEmpty()) "All-time distinct songs" else "Discover new music",
-                            gradient = Brush.linearGradient(
-                                listOf(Color(0xFF154F30), Color(0xFF0D1D14))
-                            ),
-                            modifier = Modifier.weight(1f)
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(IntrinsicSize.Min)
+                                .padding(vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            LibrarySummaryStat(
+                                count = likedTrackIds.size,
+                                label = "Liked",
+                                modifier = Modifier.weight(1f),
+                                onClick = { navController.navigate("library") }
+                            )
+                            VerticalDivider(
+                                color = ProfileHairline,
+                                thickness = 0.5.dp,
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .padding(vertical = 4.dp)
+                            )
+                            LibrarySummaryStat(
+                                count = allPlaylists.size,
+                                label = "Playlists",
+                                modifier = Modifier.weight(1f),
+                                onClick = { navController.navigate("library") }
+                            )
+                            VerticalDivider(
+                                color = ProfileHairline,
+                                thickness = 0.5.dp,
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .padding(vertical = 4.dp)
+                            )
+                            LibrarySummaryStat(
+                                count = followedArtists.size,
+                                label = "Artists",
+                                modifier = Modifier.weight(1f),
+                                onClick = { navController.navigate("library") }
+                            )
+                            VerticalDivider(
+                                color = ProfileHairline,
+                                thickness = 0.5.dp,
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .padding(vertical = 4.dp)
+                            )
+                            LibrarySummaryStat(
+                                count = offlineUniqueCount,
+                                label = "Offline",
+                                modifier = Modifier.weight(1f),
+                                onClick = { navController.navigate("library") }
+                            )
+                        }
                     }
                 }
-            }
 
-            // ── 5. Top Played Tracks List ─────────────────────────────────────
-            if (mostPlayed.isNotEmpty()) {
-                item {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    SectionTitleRow(
-                        title = "Your Top Tracks",
-                        subtitle = "Most replayed songs"
+                // ── 4. Listening Activity (Matte 2x2 Recap Grid) ─────────────────
+                item(key = "listening_activity", contentType = "stats_grid") {
+                    Spacer(modifier = Modifier.height(26.dp))
+                    ProfileSectionHeader(
+                        title = "Listening activity",
+                        trailingText = if (playbackHistory.isNotEmpty()) "${playbackHistory.size} plays" else null
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
+
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        mostPlayed.take(5).forEachIndexed { idx, track ->
-                            TopTrackRow(
-                                rank = idx + 1,
-                                track = track,
-                                accentColor = resolvedAccent,
-                                onClick = { viewModel.playTracks(mostPlayed, startIndex = idx) }
-                            )
-                        }
-                    }
-                }
-            }
-
-            // ── 6. Recently Played Strip ──────────────────────────────────────
-            if (recentlyPlayed.isNotEmpty()) {
-                item {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    SectionTitleRow(title = "Recently Played", subtitle = "Jump back in")
-                    Spacer(modifier = Modifier.height(10.dp))
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        itemsIndexed(
-                            items = recentlyPlayed.take(12),
-                            key = { idx, track -> "prof_rec_${idx}_${track.id}" }
-                        ) { idx, track ->
-                            RecentTrackCard(
-                                track = track,
-                                onClick = { viewModel.playTracks(recentlyPlayed, startIndex = idx) }
-                            )
-                        }
-                    }
-                }
-            }
-
-            // ── 7. Preferences & Account Shortcuts ────────────────────────────
-            item {
-                Spacer(modifier = Modifier.height(24.dp))
-                SettingsSection("Player & Audio") {
-                    SettingsRow(
-                        icon = Icons.Rounded.Style,
-                        title = "Now Playing Style",
-                        subtitle = profileStyleDisplayName(playerStyle),
-                        onClick = { showPlayerStyleSheet = true }
-                    )
-                    SettingsRow(
-                        icon = Icons.Rounded.Equalizer,
-                        title = "Equalizer & Effects",
-                        subtitle = "5-band EQ, bass boost & spatializer",
-                        onClick = onEqualizerClick
-                    )
-                    SettingsRow(
-                        icon = Icons.Rounded.Settings,
-                        title = "App Settings",
-                        subtitle = "Audio quality, crossfade, theme & storage",
-                        onClick = { navController.navigate("settings") }
-                    )
-                    SettingsRow(
-                        icon = Icons.Rounded.Notifications,
-                        title = "Notifications",
-                        subtitle = "Manage notification settings",
-                        onClick = {
-                            val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-                            }
-                            context.startActivity(intent)
-                        }
-                    )
-                }
-            }
-
-            // ── 8. Developer Info (@Debug01-dEoW) ─────────────────────────────
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Surface(
-                    shape = RoundedCornerShape(22.dp),
-                    color = Color.White.copy(alpha = 0.045f),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f)),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                ) {
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        Text(
-                            text = "Developer Info",
-                            fontFamily = poppinsFamily,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Made by Debug01-dEoW aka Deep · Lead Engineer & Designer",
-                            fontFamily = poppinsFamily,
-                            fontSize = 12.5.sp,
-                            color = Color.White.copy(alpha = 0.65f)
-                        )
-                        Spacer(modifier = Modifier.height(14.dp))
-
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            DevLinkChip(
-                                label = "GitHub Profile",
-                                modifier = Modifier.weight(1f),
-                                onClick = {
+                            ProfileMetricTile(
+                                label = "Time listened",
+                                value = PlayerStyleMath.formatListeningTime(totalMinutes),
+                                detail = if (totalMinutes > 0) "${playbackHistory.size} sessions" else "Start playing music",
+                                modifier = Modifier.weight(1f)
+                            )
+                            ProfileMetricTile(
+                                label = "Top vibe",
+                                value = topGenre.ifBlank { "Discovery" },
+                                detail = if (favoriteGenreList.isNotEmpty()) "Primary taste" else "Based on plays",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            ProfileMetricTile(
+                                label = "Most replayed",
+                                value = topTrack?.title ?: "None yet",
+                                detail = if (topTrack != null) "${topTrack.playCount} plays · ${topTrack.artist}" else "Waiting for plays",
+                                modifier = Modifier.weight(1f)
+                            )
+                            ProfileMetricTile(
+                                label = "Unique tracks",
+                                value = "${mostPlayed.size}",
+                                detail = if (mostPlayed.isNotEmpty()) "Distinct songs heard" else "Explore catalog",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+
+                // ── 5. Top Tracks (Clean Borderless Track List) ──────────────────
+                if (mostPlayed.isNotEmpty()) {
+                    item(key = "top_tracks_section", contentType = "track_list") {
+                        Spacer(modifier = Modifier.height(26.dp))
+                        ProfileSectionHeader(
+                            title = "Top tracks",
+                            actionLabel = "Play all",
+                            onActionClick = { viewModel.playTracks(mostPlayed, startIndex = 0) }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            mostPlayed.take(5).forEachIndexed { idx, track ->
+                                EditorialTopTrackRow(
+                                    rank = idx + 1,
+                                    track = track,
+                                    onClick = { viewModel.playTracks(mostPlayed, startIndex = idx) }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // ── 6. Recently Played Shelf ─────────────────────────────────────
+                if (recentlyPlayed.isNotEmpty()) {
+                    item(key = "recently_played_section", contentType = "recent_shelf") {
+                        Spacer(modifier = Modifier.height(26.dp))
+                        ProfileSectionHeader(title = "Recently played")
+                        Spacer(modifier = Modifier.height(10.dp))
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            itemsIndexed(
+                                items = recentlyPlayed.take(12),
+                                key = { idx, track -> "prof_rec_${idx}_${track.id}" }
+                            ) { idx, track ->
+                                RecentTrackCard(
+                                    track = track,
+                                    onClick = { viewModel.playTracks(recentlyPlayed, startIndex = idx) }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // ── 7. Preferences & Playback Group (Borderless Matte Surface) ──
+                item(key = "preferences_group", contentType = "settings_group") {
+                    Spacer(modifier = Modifier.height(28.dp))
+                    ProfileSectionHeader(title = "Playback & preferences")
+                    Spacer(modifier = Modifier.height(10.dp))
+                    MatteListGroup {
+                        MattePreferenceRow(
+                            icon = Icons.Rounded.Style,
+                            title = "Now Playing style",
+                            value = profileStyleShortName(playerStyle),
+                            onClick = { showPlayerStyleSheet = true }
+                        )
+                        MatteGroupDivider()
+                        MattePreferenceRow(
+                            icon = Icons.Rounded.GraphicEq,
+                            title = "Audio quality",
+                            value = audioQualityShortLabel(audioQuality),
+                            onClick = { navController.navigate("settings") }
+                        )
+                        MatteGroupDivider()
+                        MattePreferenceRow(
+                            icon = Icons.Rounded.Equalizer,
+                            title = "Equalizer & effects",
+                            value = "EQ & spatializer",
+                            onClick = onEqualizerClick
+                        )
+                        MatteGroupDivider()
+                        MattePreferenceRow(
+                            icon = Icons.Rounded.Settings,
+                            title = "All settings",
+                            onClick = { navController.navigate("settings") }
+                        )
+                        MatteGroupDivider()
+                        MattePreferenceRow(
+                            icon = Icons.Rounded.NotificationsNone,
+                            title = "Notifications",
+                            onClick = {
+                                val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                }
+                                runCatching { context.startActivity(intent) }
+                            }
+                        )
+                    }
+                }
+
+                // ── 8. About & Account Actions (Quiet List Rows) ─────────────────
+                item(key = "about_and_reset", contentType = "about_group") {
+                    Spacer(modifier = Modifier.height(22.dp))
+                    ProfileSectionHeader(title = "About")
+                    Spacer(modifier = Modifier.height(10.dp))
+                    MatteListGroup {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 14.dp)
+                        ) {
+                            Text(
+                                text = "EcoDot Music",
+                                fontFamily = poppinsFamily,
+                                fontSize = 14.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "Made by Debug01-dEoW aka Deep",
+                                fontFamily = poppinsFamily,
+                                fontSize = 12.sp,
+                                color = Color.White.copy(alpha = 0.52f)
+                            )
+                        }
+                        MatteGroupDivider()
+                        MattePreferenceRow(
+                            icon = Icons.Rounded.Person,
+                            title = "GitHub profile",
+                            value = "@Debug01-dEoW",
+                            onClick = {
+                                runCatching {
                                     context.startActivity(
                                         Intent(
                                             Intent.ACTION_VIEW,
@@ -728,11 +750,14 @@ fun ProfileScreen(
                                         )
                                     )
                                 }
-                            )
-                            DevLinkChip(
-                                label = "Source Repo",
-                                modifier = Modifier.weight(1f),
-                                onClick = {
+                            }
+                        )
+                        MatteGroupDivider()
+                        MattePreferenceRow(
+                            icon = Icons.Rounded.Code,
+                            title = "Source repository",
+                            onClick = {
+                                runCatching {
                                     context.startActivity(
                                         Intent(
                                             Intent.ACTION_VIEW,
@@ -740,11 +765,14 @@ fun ProfileScreen(
                                         )
                                     )
                                 }
-                            )
-                            DevLinkChip(
-                                label = "Releases",
-                                modifier = Modifier.weight(1f),
-                                onClick = {
+                            }
+                        )
+                        MatteGroupDivider()
+                        MattePreferenceRow(
+                            icon = Icons.Rounded.NewReleases,
+                            title = "Releases & updates",
+                            onClick = {
+                                runCatching {
                                     context.startActivity(
                                         Intent(
                                             Intent.ACTION_VIEW,
@@ -752,69 +780,53 @@ fun ProfileScreen(
                                         )
                                     )
                                 }
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            DevLinkChip(
-                                label = "WhatsApp Support",
-                                modifier = Modifier.weight(1f),
-                                onClick = {
+                            }
+                        )
+                        MatteGroupDivider()
+                        MattePreferenceRow(
+                            icon = Icons.Rounded.SupportAgent,
+                            title = "WhatsApp support",
+                            onClick = {
+                                runCatching {
                                     context.startActivity(
                                         Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/918799114016"))
                                     )
                                 }
-                            )
-                            DevLinkChip(
-                                label = "Email Developer",
-                                modifier = Modifier.weight(1f),
-                                onClick = {
-                                    val intent = Intent(Intent.ACTION_SENDTO).apply {
-                                        data = Uri.parse("mailto:deep082008.patel@gmail.com")
-                                    }
-                                    runCatching { context.startActivity(intent) }
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            // ── 9. Reset Profile & Preferences ────────────────────────────────
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-                Surface(
-                    shape = RoundedCornerShape(18.dp),
-                    color = Color(0xFFFF453A).copy(alpha = 0.12f),
-                    border = BorderStroke(1.dp, Color(0xFFFF453A).copy(alpha = 0.35f)),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .clickable { showResetProfileDialog = true }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.RestartAlt,
-                            contentDescription = null,
-                            tint = Color(0xFFFF6961),
-                            modifier = Modifier.size(20.dp)
+                            }
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        MatteGroupDivider()
+                        MattePreferenceRow(
+                            icon = Icons.Rounded.Email,
+                            title = "Email developer",
+                            onClick = {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(Intent.ACTION_SENDTO).apply {
+                                            data = Uri.parse("mailto:deep082008.patel@gmail.com")
+                                        }
+                                    )
+                                }
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable { showResetProfileDialog = true }
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
-                            text = "Reset Profile & Preferences",
+                            text = "Reset profile & preferences",
                             fontFamily = poppinsFamily,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFFFF6961)
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFFE5534B)
                         )
                     }
                 }
@@ -823,7 +835,7 @@ fun ProfileScreen(
 
         if (showEditProfile) {
             EditProfileSheet(
-                currentName = userProfile?.name ?: "EcoDot User",
+                currentName = userProfile?.name ?: "EcoDot Listener",
                 currentGenres = userProfile?.favoriteGenres ?: "",
                 currentAvatarUri = userProfile?.avatarUri,
                 currentIsPro = userProfile?.isPro ?: true,
@@ -856,7 +868,7 @@ fun ProfileScreen(
                 onDismissRequest = { showResetProfileDialog = false },
                 title = {
                     Text(
-                        text = "Reset Profile & Preferences?",
+                        text = "Reset profile & preferences?",
                         fontFamily = poppinsFamily,
                         fontWeight = FontWeight.Bold
                     )
@@ -871,14 +883,14 @@ fun ProfileScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            viewModel.updateProfile("EcoDot User", "", null, false)
+                            viewModel.updateProfile("EcoDot Listener", "", null, false)
                             viewModel.setOfflineMode(false)
                             viewModel.setDataSaver(false)
                             viewModel.setKillServiceOnExit(false)
                             viewModel.setAudioQuality(AudioQuality.HIGH)
                             showResetProfileDialog = false
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF453A))
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE5534B))
                     ) {
                         Text("Reset", color = Color.White, fontWeight = FontWeight.SemiBold)
                     }
@@ -888,7 +900,7 @@ fun ProfileScreen(
                         Text("Cancel", color = Color.White.copy(alpha = 0.7f))
                     }
                 },
-                containerColor = Color(0xFF1C1C1E),
+                containerColor = Color(0xFF1A1B22),
                 titleContentColor = Color.White
             )
         }
@@ -898,7 +910,7 @@ fun ProfileScreen(
 private fun audioQualityShortLabel(quality: AudioQuality): String = when (quality) {
     AudioQuality.LOW -> "Low · 48 kbps"
     AudioQuality.NORMAL -> "Normal · 128 kbps"
-    AudioQuality.HIGH -> "High · 256 kbps Opus"
+    AudioQuality.HIGH -> "High · 256 kbps"
     AudioQuality.HIGH_AAC -> "High AAC · 256 kbps"
 }
 
@@ -909,145 +921,201 @@ private fun profileStyleDisplayName(style: PlayerStyle): String = when (style) {
     PlayerStyle.VINYL -> "Vinyl Turntable"
 }
 
+private fun profileStyleShortName(style: PlayerStyle): String = when (style) {
+    PlayerStyle.ECODOT -> "Classic"
+    PlayerStyle.APPLE_MUSIC -> "Apple Music"
+    PlayerStyle.SPOTIFY -> "Spotify"
+    PlayerStyle.VINYL -> "Vinyl"
+}
+
 @Composable
-private fun SectionTitleRow(title: String, subtitle: String) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+private fun ProfileSectionHeader(
+    title: String,
+    trailingText: String? = null,
+    actionLabel: String? = null,
+    onActionClick: (() -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
         Text(
             text = title,
+            fontFamily = poppinsFamily,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+        )
+        when {
+            actionLabel != null && onActionClick != null -> {
+                Text(
+                    text = actionLabel,
+                    fontFamily = poppinsFamily,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White.copy(alpha = 0.64f),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable(onClick = onActionClick)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+            trailingText != null -> {
+                Text(
+                    text = trailingText,
+                    fontFamily = poppinsFamily,
+                    fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.45f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibrarySummaryStat(
+    count: Int,
+    label: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = modifier
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "$count",
             fontFamily = poppinsFamily,
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
-            text = subtitle,
+            text = label,
             fontFamily = poppinsFamily,
-            fontSize = 12.sp,
-            color = Color.White.copy(alpha = 0.55f)
+            fontSize = 11.5.sp,
+            color = Color.White.copy(alpha = 0.54f),
+            maxLines = 1,
+            textAlign = TextAlign.Center
         )
     }
 }
 
 @Composable
-private fun LibraryMetricTile(
-    icon: ImageVector,
-    count: Int,
+private fun ProfileMetricTile(
     label: String,
-    tint: Color,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
+    value: String,
+    detail: String,
+    modifier: Modifier = Modifier
 ) {
     Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = Color.White.copy(alpha = 0.055f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.09f)),
-        modifier = modifier.clickable(onClick = onClick)
+        shape = RoundedCornerShape(16.dp),
+        color = ProfileSurface,
+        modifier = modifier
     ) {
-        Column(
-            modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = label,
-                tint = tint,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "$count",
-                fontFamily = poppinsFamily,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
             Text(
                 text = label,
                 fontFamily = poppinsFamily,
-                fontSize = 11.sp,
-                color = Color.White.copy(alpha = 0.58f),
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White.copy(alpha = 0.50f),
                 maxLines = 1
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = value,
+                fontFamily = poppinsFamily,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = detail,
+                fontFamily = poppinsFamily,
+                fontSize = 11.5.sp,
+                color = Color.White.copy(alpha = 0.46f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
 }
 
 @Composable
-private fun TopTrackRow(
+private fun EditorialTopTrackRow(
     rank: Int,
     track: Track,
-    accentColor: Color,
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
     val artUrl = remember(track.id, track.albumArtUri) {
         YouTubeParser.getHighResUrl(track.albumArtUri, isWide = false) ?: track.albumArtUri
     }
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.045f),
-        border = BorderStroke(0.75.dp, Color.White.copy(alpha = 0.07f)),
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Text(
+            text = "$rank",
+            fontFamily = poppinsFamily,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White.copy(alpha = 0.46f),
+            modifier = Modifier.width(24.dp)
+        )
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(artUrl)
+                .size(160, 160)
+                .crossfade(160)
+                .build(),
+            contentDescription = track.title,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(ProfileTonalButton)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "$rank",
+                text = track.title,
                 fontFamily = poppinsFamily,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (rank == 1) accentColor else Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.width(24.dp)
+                fontSize = 14.5.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(artUrl)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = track.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(RoundedCornerShape(10.dp))
+            Spacer(modifier = Modifier.height(1.dp))
+            Text(
+                text = "${track.artist} · ${track.playCount} plays",
+                fontFamily = poppinsFamily,
+                fontSize = 12.sp,
+                color = Color.White.copy(alpha = 0.54f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = track.title,
-                    fontFamily = poppinsFamily,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = track.artist,
-                    fontFamily = poppinsFamily,
-                    fontSize = 12.sp,
-                    color = Color.White.copy(alpha = 0.58f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Surface(
-                shape = RoundedCornerShape(50),
-                color = accentColor.copy(alpha = 0.16f)
-            ) {
-                Text(
-                    text = "${track.playCount}x",
-                    fontFamily = poppinsFamily,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = accentColor,
-                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
-                )
-            }
         }
+        Icon(
+            imageVector = Icons.Rounded.PlayArrow,
+            contentDescription = "Play",
+            tint = Color.White.copy(alpha = 0.34f),
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 
@@ -1062,48 +1130,28 @@ private fun RecentTrackCard(
     }
     Column(
         modifier = Modifier
-            .width(124.dp)
+            .width(132.dp)
             .clickable(onClick = onClick)
     ) {
-        Box(
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(artUrl)
+                .size(360, 360)
+                .crossfade(160)
+                .build(),
+            contentDescription = track.title,
+            contentScale = ContentScale.Crop,
             modifier = Modifier
-                .size(124.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(EcoDotCard)
-                .border(0.75.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(16.dp))
-        ) {
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(artUrl)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = track.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(8.dp)
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.65f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
-                    contentDescription = "Play",
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(6.dp))
+                .size(132.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(ProfileSurface)
+        )
+        Spacer(modifier = Modifier.height(7.dp))
         Text(
             text = track.title,
             fontFamily = poppinsFamily,
-            fontSize = 12.5.sp,
-            fontWeight = FontWeight.SemiBold,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
             color = Color.White,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -1111,8 +1159,8 @@ private fun RecentTrackCard(
         Text(
             text = track.artist,
             fontFamily = poppinsFamily,
-            fontSize = 11.sp,
-            color = Color.White.copy(alpha = 0.58f),
+            fontSize = 11.5.sp,
+            color = Color.White.copy(alpha = 0.54f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -1120,26 +1168,75 @@ private fun RecentTrackCard(
 }
 
 @Composable
-private fun DevLinkChip(
-    label: String,
-    modifier: Modifier = Modifier,
+private fun MatteListGroup(content: @Composable ColumnScope.() -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = ProfileSurface,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth(), content = content)
+    }
+}
+
+@Composable
+private fun MatteGroupDivider() {
+    HorizontalDivider(
+        color = ProfileHairline,
+        thickness = 0.5.dp,
+        modifier = Modifier.padding(start = 50.dp)
+    )
+}
+
+@Composable
+private fun MattePreferenceRow(
+    icon: ImageVector,
+    title: String,
+    value: String? = null,
     onClick: () -> Unit
 ) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = Color.White.copy(alpha = 0.08f),
-        border = BorderStroke(0.75.dp, Color.White.copy(alpha = 0.12f)),
-        modifier = modifier.clickable(onClick = onClick)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.72f),
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(14.dp))
         Text(
-            text = label,
+            text = title,
             fontFamily = poppinsFamily,
-            fontSize = 11.5.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color.White.copy(alpha = 0.88f),
+            fontSize = 14.5.sp,
+            fontWeight = FontWeight.Normal,
+            color = Color.White,
+            modifier = Modifier.weight(1f),
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp)
+            overflow = TextOverflow.Ellipsis
+        )
+        if (!value.isNullOrBlank()) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = value,
+                fontFamily = poppinsFamily,
+                fontSize = 12.5.sp,
+                color = Color.White.copy(alpha = 0.48f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Spacer(modifier = Modifier.width(6.dp))
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.30f),
+            modifier = Modifier.size(18.dp)
         )
     }
 }
@@ -1173,7 +1270,7 @@ private fun EditProfileSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Color(0xFF14151A),
+        containerColor = Color(0xFF14151B),
         dragHandle = {
             Box(
                 modifier = Modifier
@@ -1194,7 +1291,7 @@ private fun EditProfileSheet(
                 .padding(bottom = 32.dp)
         ) {
             Text(
-                text = "Edit Profile",
+                text = "Edit profile",
                 fontFamily = poppinsFamily,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
@@ -1207,8 +1304,7 @@ private fun EditProfileSheet(
                     modifier = Modifier
                         .size(60.dp)
                         .clip(CircleShape)
-                        .background(EcoDotCard)
-                        .border(1.5.dp, accentColor, CircleShape)
+                        .background(ProfileTonalButton)
                         .clickable(onClick = onPickAvatar),
                     contentAlignment = Alignment.Center
                 ) {
@@ -1220,23 +1316,23 @@ private fun EditProfileSheet(
                             modifier = Modifier.fillMaxSize()
                         )
                     } else {
-                        Icon(Icons.Rounded.Person, contentDescription = null, tint = Color.White)
+                        Icon(Icons.Rounded.Person, contentDescription = null, tint = Color.White.copy(alpha = 0.78f))
                     }
                 }
                 Spacer(modifier = Modifier.width(14.dp))
                 Column {
                     Text(
-                        text = "Profile Photo",
+                        text = "Profile photo",
                         fontFamily = poppinsFamily,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White
                     )
                     Text(
-                        text = "Tap photo to pick from gallery",
+                        text = "Choose from gallery",
                         fontFamily = poppinsFamily,
                         fontSize = 12.sp,
-                        color = accentColor,
+                        color = Color.White.copy(alpha = 0.58f),
                         modifier = Modifier.clickable(onClick = onPickAvatar)
                     )
                 }
@@ -1247,15 +1343,15 @@ private fun EditProfileSheet(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Display Name", fontFamily = poppinsFamily) },
+                label = { Text("Display name", fontFamily = poppinsFamily) },
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = accentColor,
-                    unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                    focusedBorderColor = Color.White.copy(alpha = 0.55f),
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.16f),
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    focusedLabelColor = accentColor,
-                    unfocusedLabelColor = Color.White.copy(alpha = 0.6f)
+                    focusedLabelColor = Color.White.copy(alpha = 0.78f),
+                    unfocusedLabelColor = Color.White.copy(alpha = 0.55f)
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -1263,7 +1359,7 @@ private fun EditProfileSheet(
             Spacer(modifier = Modifier.height(14.dp))
 
             Text(
-                text = "Favorite Genres",
+                text = "Favorite genres",
                 fontFamily = poppinsFamily,
                 fontSize = 13.5.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -1304,17 +1400,12 @@ private fun EditProfileSheet(
                                     )
                                 },
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = accentColor.copy(alpha = 0.25f),
-                                    selectedLabelColor = Color.White,
-                                    containerColor = Color.White.copy(alpha = 0.06f),
-                                    labelColor = Color.White.copy(alpha = 0.72f)
+                                    selectedContainerColor = Color.White,
+                                    selectedLabelColor = Color.Black,
+                                    containerColor = ProfileTonalButton,
+                                    labelColor = Color.White.copy(alpha = 0.76f)
                                 ),
-                                border = FilterChipDefaults.filterChipBorder(
-                                    enabled = true,
-                                    selected = isSelected,
-                                    borderColor = Color.White.copy(alpha = 0.14f),
-                                    selectedBorderColor = accentColor
-                                ),
+                                border = null,
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -1337,8 +1428,8 @@ private fun EditProfileSheet(
                     placeholder = { Text("Add custom genre...", fontSize = 12.5.sp) },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = accentColor,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.18f),
+                        focusedBorderColor = Color.White.copy(alpha = 0.55f),
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.14f),
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White
                     ),
@@ -1354,7 +1445,7 @@ private fun EditProfileSheet(
                         }
                     }
                 ) {
-                    Text("Add", color = accentColor, fontWeight = FontWeight.Bold)
+                    Text("Add", color = Color.White, fontWeight = FontWeight.SemiBold)
                 }
             }
 
@@ -1367,25 +1458,25 @@ private fun EditProfileSheet(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Hi-Fi Pro Badge",
+                        text = "Verified listener badge",
                         fontFamily = poppinsFamily,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White
                     )
                     Text(
-                        text = "Display verified listener badge on profile",
+                        text = "Show verified checkmark beside your name",
                         fontFamily = poppinsFamily,
                         fontSize = 11.5.sp,
-                        color = Color.White.copy(alpha = 0.55f)
+                        color = Color.White.copy(alpha = 0.52f)
                     )
                 }
                 Switch(
                     checked = isPro,
                     onCheckedChange = { isPro = it },
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
-                        checkedTrackColor = accentColor
+                        checkedThumbColor = Color.Black,
+                        checkedTrackColor = Color.White
                     )
                 )
             }
@@ -1395,104 +1486,23 @@ private fun EditProfileSheet(
             Button(
                 onClick = {
                     onSave(
-                        name.trim().ifBlank { "EcoDot User" },
+                        name.trim().ifBlank { "EcoDot Listener" },
                         selectedGenres.joinToString(", "),
                         isPro
                     )
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = accentColor),
-                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+                shape = CircleShape,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp)
+                    .height(46.dp)
             ) {
                 Text(
-                    text = "Save Profile",
+                    text = "Save",
                     fontFamily = poppinsFamily,
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = Color.Black
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
-    IOSSettingsGroup(title = title, content = content)
-}
-
-@Composable
-fun SettingsRow(
-    icon: ImageVector,
-    title: String,
-    subtitle: String? = null,
-    onClick: () -> Unit
-) {
-    val tint = when {
-        title.contains("Settings", ignoreCase = true) -> Color(0xFF8E8E93)
-        title.contains("Equalizer", ignoreCase = true) -> Color(0xFF5E5CE6)
-        title.contains("Style", ignoreCase = true) -> Color(0xFFFF375F)
-        else -> Color(0xFF30D158)
-    }
-    IOSSettingsRow(
-        icon = icon,
-        iconBackgroundColor = tint,
-        title = title,
-        subtitle = subtitle,
-        onClick = onClick
-    )
-}
-
-@Composable
-fun StatCard(
-    label: String,
-    value: String,
-    subtitle: String,
-    gradient: Brush,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = Color.Transparent,
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
-        modifier = modifier
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(gradient)
-                .padding(16.dp)
-        ) {
-            Column {
-                Text(
-                    text = label.uppercase(),
-                    fontFamily = poppinsFamily,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.8.sp,
-                    color = Color.White.copy(alpha = 0.65f),
-                    maxLines = 1
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = value,
-                    fontFamily = poppinsFamily,
-                    fontSize = 19.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = subtitle,
-                    fontFamily = poppinsFamily,
-                    fontSize = 11.sp,
-                    color = Color.White.copy(alpha = 0.62f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
