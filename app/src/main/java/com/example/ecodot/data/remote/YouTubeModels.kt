@@ -1,5 +1,6 @@
 package com.example.ecodot.data.remote
 
+import androidx.compose.runtime.Immutable
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
@@ -355,6 +356,7 @@ enum class MediaType {
     TRACK, PLAYLIST, ALBUM, ARTIST, UNKNOWN
 }
 
+@Immutable
 data class HomeMediaItem(
     val id: String,
     val title: String,
@@ -369,6 +371,7 @@ data class HomeMediaItem(
     val playlistId: String? = null
 )
 
+@Immutable
 data class HomeSection(
     val title: String,
     val items: List<HomeMediaItem>,
@@ -381,6 +384,7 @@ data class HomeSection(
     val playAllVideoId: String? = null
 )
 
+@Immutable
 data class HomeFeedPage(
     val sections: List<HomeSection>,
     val continuation: String? = null,
@@ -388,6 +392,7 @@ data class HomeFeedPage(
     val visitorData: String? = null
 )
 
+@Immutable
 data class MoodCategoryItem(
     val title: String,
     val params: String,
@@ -395,11 +400,13 @@ data class MoodCategoryItem(
     val stripeColor: Long
 )
 
+@Immutable
 data class HomeMoodsData(
     val moodsAndMoments: List<MoodCategoryItem> = emptyList(),
     val genres: List<MoodCategoryItem> = emptyList()
 )
 
+@Immutable
 data class HomeChartArtist(
     val rank: String,
     val title: String,
@@ -408,6 +415,7 @@ data class HomeChartArtist(
     val browseId: String
 )
 
+@Immutable
 data class HomeChartPodcast(
     val rank: String,
     val title: String,
@@ -416,6 +424,7 @@ data class HomeChartPodcast(
     val browseId: String
 )
 
+@Immutable
 data class HomeChartData(
     val countryName: String,
     val videoCharts: List<HomeMediaItem> = emptyList(),

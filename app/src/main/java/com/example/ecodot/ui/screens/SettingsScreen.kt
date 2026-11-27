@@ -694,8 +694,8 @@ fun SettingsScreen(
                         style = HazeStyle(
                             backgroundColor = settingBarTint.copy(alpha = 0.78f),
                             tint = HazeDefaults.tint(settingBarTint.copy(alpha = 0.62f)),
-                            blurRadius = 22.dp,
-                            noiseFactor = 0.02f
+                            blurRadius = 16.dp,
+                            noiseFactor = 0f
                         )
                     )
             } else {

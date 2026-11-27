@@ -108,6 +108,103 @@ import androidx.compose.foundation.gestures.drag
 @OptIn(ExperimentalMaterial3Api::class)
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
+private fun NowPlayingAmbientBreathingBackdrop(
+    isVinyl: Boolean,
+    dominantColor: Color,
+    accentColor: Color,
+    ambientGlowAlpha: Float
+) {
+    val ambientTransition = rememberInfiniteTransition(label = "ambient_drift")
+    val ambientDriftX = ambientTransition.animateFloat(
+        initialValue = -50f,
+        targetValue = 50f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 9000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "ambient_drift_x"
+    )
+    val ambientAlpha = ambientTransition.animateFloat(
+        initialValue = 0.72f,
+        targetValue = 0.96f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 5500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "ambient_alpha"
+    )
+
+    if (!isVinyl) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .drawBehind {
+                    val alphaMul = ambientAlpha.value
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            0.0f to dominantColor.copy(alpha = 0.80f * alphaMul),
+                            0.36f to dominantColor.copy(alpha = 0.48f * alphaMul),
+                            0.72f to Color(0xFF10111A),
+                            1.0f to Color(0xFF08090E)
+                        )
+                    )
+                    if (ambientGlowAlpha > 0.01f) {
+                        drawRect(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    accentColor.copy(alpha = 0.40f * alphaMul * ambientGlowAlpha),
+                                    dominantColor.copy(alpha = 0.25f * alphaMul * ambientGlowAlpha),
+                                    Color.Transparent
+                                ),
+                                center = Offset(540f + ambientDriftX.value, 360f),
+                                radius = 1200f
+                            )
+                        )
+                    }
+                }
+        )
+    } else {
+        val staticVinylBg = remember(dominantColor) {
+            Brush.verticalGradient(
+                0.0f to Color(0xFF191716),
+                0.45f to dominantColor.copy(alpha = 0.35f),
+                0.85f to Color(0xFF0D0D10),
+                1.0f to Color(0xFF070708)
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(staticVinylBg)
+        ) {
+            if (ambientGlowAlpha > 0.01f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(480.dp)
+                        .drawBehind {
+                            val glowAlpha = ambientAlpha.value * ambientGlowAlpha * 0.85f
+                            drawRect(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        dominantColor.copy(alpha = 0.45f * glowAlpha),
+                                        accentColor.copy(alpha = 0.20f * glowAlpha),
+                                        Color.Transparent
+                                    ),
+                                    center = Offset(540f + ambientDriftX.value, 320f),
+                                    radius = 1100f
+                                )
+                            )
+                        }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+@Composable
 fun NowPlayingScreen(
     viewModel: MusicViewModel,
     navController: NavController? = null,
@@ -119,7 +216,8 @@ fun NowPlayingScreen(
 ) {
     val currentTrack by viewModel.currentTrack.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
-    val position by viewModel.position.collectAsState()
+    val positionState = viewModel.position.collectAsState()
+    val positionProvider: () -> Long = remember(positionState) { { positionState.value } }
     val duration by viewModel.duration.collectAsState()
     val shuffleMode by viewModel.shuffleMode.collectAsState()
     val repeatMode by viewModel.repeatMode.collectAsState()
@@ -343,33 +441,12 @@ fun NowPlayingScreen(
 
     val isTrackAVideo = isVideoMode || viewModel.isTrackVideo(currentTrack)
 
-    // Ambient glow — static scale (no breathing/pulsing), only alpha drifts for subtlety
-    val ambientTransition = rememberInfiniteTransition(label = "ambient_drift")
-    val ambientDriftX by ambientTransition.animateFloat(
-        initialValue = -50f,
-        targetValue = 50f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 9000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "ambient_drift_x"
-    )
-    val ambientPulseScale = 1.0f  // Static — no breathing/pulsing animation
-    val ambientAlpha by ambientTransition.animateFloat(
-        initialValue = 0.72f,
-        targetValue = 0.96f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 5500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "ambient_alpha"
-    )
-
     if (isVideoFullscreen && isTrackAVideo && currentTrack != null) {
         FullscreenVideoPlayer(
             track = currentTrack!!,
             controller = controller,
-            position = position,
+            position = 0L,
+            positionProvider = positionProvider,
             duration = duration,
             isPlaying = isPlaying,
             syncedLyrics = syncedLyrics,
@@ -426,8 +503,8 @@ fun NowPlayingScreen(
                 } ?: false
             )
         }
-        val safeSeekBackward5s: () -> Unit = { viewModel.seekTo((position - 5000L).coerceAtLeast(0L)) }
-        val safeSeekForward5s: () -> Unit = { viewModel.seekTo((position + 5000L).coerceAtMost(duration.coerceAtLeast(1L))) }
+        val safeSeekBackward5s: () -> Unit = { viewModel.seekRelative(-5000L) }
+        val safeSeekForward5s: () -> Unit = { viewModel.seekRelative(5000L) }
         val toggleVideoResizeMode: () -> Unit = {
             videoResizeMode = if (videoResizeMode == androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
                 androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
@@ -454,7 +531,8 @@ fun NowPlayingScreen(
                 shuffleMode = shuffleMode,
                 repeatMode = repeatMode,
                 endlessMode = endlessMode,
-                position = position,
+                position = 0L,
+                positionProvider = positionProvider,
                 duration = duration,
                 dominantColor = dominantColor,
                 accentColor = accentColor,
@@ -501,7 +579,8 @@ fun NowPlayingScreen(
                 shuffleMode = shuffleMode,
                 repeatMode = repeatMode,
                 sleepTimerRemaining = sleepTimerRemaining,
-                position = position,
+                position = 0L,
+                positionProvider = positionProvider,
                 duration = duration,
                 dominantColor = dominantColor,
                 accentColor = accentColor,
@@ -555,7 +634,8 @@ fun NowPlayingScreen(
                 isLiked = isLiked,
                 shuffleMode = shuffleMode,
                 repeatMode = repeatMode,
-                position = position,
+                position = 0L,
+                positionProvider = positionProvider,
                 duration = duration,
                 dominantColor = dominantColor,
                 accentColor = accentColor,
@@ -647,7 +727,10 @@ fun NowPlayingScreen(
 
         when (playerStyle) {
             com.example.ecodot.data.local.prefs.PlayerStyle.APPLE_MUSIC -> {
-                // Dynamic Apple Music fluid mesh gradient
+                // Smooth fallback Apple gradient (uses 18dp lightweight blur instead of 90dp full-screen stall)
+                val blurMod = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    Modifier.blur(18.dp)
+                } else Modifier
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -657,11 +740,12 @@ fun NowPlayingScreen(
                                     dominantColor.copy(alpha = 0.85f),
                                     accentColor.copy(alpha = 0.65f),
                                     Color(0xFF1E1035),
+                                    accentColor.copy(alpha = 0.65f),
                                     dominantColor.copy(alpha = 0.85f)
                                 )
                             )
                         )
-                        .blur(90.dp)
+                        .then(blurMod)
                 )
                 Box(
                     modifier = Modifier
@@ -692,69 +776,21 @@ fun NowPlayingScreen(
                 )
             }
             com.example.ecodot.data.local.prefs.PlayerStyle.ECODOT -> {
-                // SimpMusic-exact vibrant radiant palette gradient fading seamlessly into OLED dark
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                0.0f to dominantColor.copy(alpha = 0.80f * ambientAlpha),
-                                0.36f to dominantColor.copy(alpha = 0.48f * ambientAlpha),
-                                0.72f to Color(0xFF10111A),
-                                1.0f to Color(0xFF08090E)
-                            )
-                        )
-                )
-
-                // Radiant breathing ambient light centered behind artwork/video
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .alpha(ambientGlowAlpha)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    accentColor.copy(alpha = 0.40f * ambientAlpha),
-                                    dominantColor.copy(alpha = 0.25f * ambientAlpha),
-                                    Color.Transparent
-                                ),
-                                center = Offset(540f + ambientDriftX, 360f),
-                                radius = 1200f
-                            )
-                        )
+                // Isolated drawBehind ambient breathing glow (0 parent recompositions at 120Hz)
+                NowPlayingAmbientBreathingBackdrop(
+                    isVinyl = false,
+                    dominantColor = dominantColor,
+                    accentColor = accentColor,
+                    ambientGlowAlpha = ambientGlowAlpha
                 )
             }
             com.example.ecodot.data.local.prefs.PlayerStyle.VINYL -> {
                 // Vintage vinyl turntable ambiance with warm radial glow
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                0.0f to Color(0xFF191716),
-                                0.45f to dominantColor.copy(alpha = 0.35f),
-                                0.85f to Color(0xFF0D0D10),
-                                1.0f to Color(0xFF070708)
-                            )
-                        )
-                )
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(480.dp)
-                        .alpha(ambientGlowAlpha * 0.85f)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    dominantColor.copy(alpha = 0.45f),
-                                    accentColor.copy(alpha = 0.20f),
-                                    Color.Transparent
-                                ),
-                                center = Offset(540f + ambientDriftX, 320f),
-                                radius = 1100f * ambientPulseScale
-                            )
-                        )
+                NowPlayingAmbientBreathingBackdrop(
+                    isVinyl = true,
+                    dominantColor = dominantColor,
+                    accentColor = accentColor,
+                    ambientGlowAlpha = ambientGlowAlpha
                 )
             }
         }
@@ -1029,29 +1065,25 @@ fun NowPlayingScreen(
                                         .padding(top = if (isVideo) 2.dp else 10.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    // Ambient Light Aura directly behind 16:9 Video Card
+                            // Ambient Light Aura directly behind 16:9 Video Card (soft radial gradient — zero per-frame RenderEffect blur)
                                     if (isVideo) {
                                         Box(
                                             modifier = Modifier
-                                                .fillMaxWidth(widthFraction)
-                                                .height(estimatedHeight)
+                                                .fillMaxWidth((widthFraction + 0.08f).coerceAtMost(1f))
+                                                .height(estimatedHeight + 36.dp)
                                                 .offset { IntOffset(artworkOffsetX.value.roundToInt(), 0) }
-                                                .graphicsLayer {
-                                                    scaleX = ambientPulseScale * 1.08f
-                                                    scaleY = ambientPulseScale * 1.08f
-                                                    alpha = ambientAlpha * 0.85f
+                                                .drawBehind {
+                                                    drawRoundRect(
+                                                        brush = Brush.radialGradient(
+                                                            colors = listOf(
+                                                                dominantColor.copy(alpha = 0.42f),
+                                                                accentColor.copy(alpha = 0.18f),
+                                                                Color.Transparent
+                                                            )
+                                                        ),
+                                                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(32.dp.toPx(), 32.dp.toPx())
+                                                    )
                                                 }
-                                                .blur(48.dp)
-                                                .background(
-                                                    Brush.radialGradient(
-                                                        colors = listOf(
-                                                            dominantColor.copy(alpha = 0.85f),
-                                                            accentColor.copy(alpha = 0.50f),
-                                                            Color.Transparent
-                                                        )
-                                                    ),
-                                                    shape = cardShape
-                                                )
                                         )
                                     }
 
@@ -1177,7 +1209,7 @@ fun NowPlayingScreen(
                                         AsyncImage(
                                             model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
                                                 .data(currentArtworkUrl)
-                                                .size(1440, 1440)
+                                                .size(960, 960)
                                                 .crossfade(true)
                                                 .build(),
                                             contentDescription = track.title,
@@ -1315,9 +1347,10 @@ fun NowPlayingScreen(
 
                                         // Live Synced Subtitles/Captions pill on video when enabled
                                         if (showCaptions) {
-                                            val currentCapLine by remember(syncedLyrics, position) {
+                                            val currentCapLine by remember(syncedLyrics, positionProvider) {
                                                 derivedStateOf {
-                                                    syncedLyrics.lastOrNull { it.timeMs <= position }?.text.orEmpty()
+                                                    val pos = positionProvider()
+                                                    syncedLyrics.lastOrNull { it.timeMs <= pos }?.text.orEmpty()
                                                 }
                                             }
                                             if (currentCapLine.isNotBlank()) {
@@ -1350,9 +1383,10 @@ fun NowPlayingScreen(
                         // 2. Inline Lyric Line (SimpMusic: Only when NOT in video mode)
                         if (!isTrackAVideo) {
                             item {
-                                val activeLyricLine by remember(syncedLyrics, position) {
+                                val activeLyricLine by remember(syncedLyrics, positionProvider) {
                                     derivedStateOf {
-                                        syncedLyrics.lastOrNull { it.timeMs <= position }?.text.orEmpty()
+                                        val pos = positionProvider()
+                                        syncedLyrics.lastOrNull { it.timeMs <= pos }?.text.orEmpty()
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(10.dp))
@@ -1461,7 +1495,8 @@ fun NowPlayingScreen(
                         item {
                             Spacer(modifier = Modifier.height(18.dp))
                             ContinuousSeekBar(
-                                position = position,
+                                position = 0L,
+                                positionProvider = positionProvider,
                                 duration = duration,
                                 accentColor = accentColor,
                                 onSeek = { viewModel.seekTo(it) },
@@ -1721,7 +1756,8 @@ fun NowPlayingScreen(
                                     ) {
                                         LyricsPanel(
                                             syncedLyrics = syncedLyrics,
-                                            currentPosition = position,
+                                            currentPosition = 0L,
+                                            positionProvider = positionProvider,
                                             plainLyrics = rawLyrics?.plainLyrics,
                                             isLyricsLoading = isLyricsLoading,
                                             onSeek = { viewModel.seekTo(it) },
@@ -2022,7 +2058,8 @@ fun NowPlayingScreen(
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     SlickSeekBar(
-                        position = position,
+                        position = 0L,
+                        positionProvider = positionProvider,
                         duration = duration,
                         accentColor = Color.White,
                         isPlaying = isPlaying,
@@ -2346,7 +2383,8 @@ fun NowPlayingScreen(
             syncedLyrics = syncedLyrics,
             plainLyrics = rawLyrics?.plainLyrics,
             isLyricsLoading = isLyricsLoading,
-            currentPosition = position,
+            currentPosition = 0L,
+            positionProvider = positionProvider,
             onClose = { showFullScreenLyrics = false }
         )
     }

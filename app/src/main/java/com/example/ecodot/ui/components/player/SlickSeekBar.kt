@@ -26,15 +26,14 @@ fun SlickSeekBar(
     onSeek: (Long) -> Unit,
     formatDuration: (Long) -> String,
     modifier: Modifier = Modifier,
-    isVideo: Boolean = false
+    isVideo: Boolean = false,
+    positionProvider: (() -> Long)? = null
 ) {
     val safeDuration = duration.coerceAtLeast(1L)
-    val fraction = (position.toFloat() / safeDuration.toFloat()).coerceIn(0f, 1f)
+    val readPosition = positionProvider ?: { position }
 
     var isDragging by remember { mutableStateOf(false) }
-    var dragFraction by remember { mutableFloatStateOf(fraction) }
-
-    val displayFraction = if (isDragging) dragFraction else fraction
+    var dragFraction by remember { mutableFloatStateOf(0f) }
 
     // Spring animation scale for visualizer bars on drag
     val dragScale by animateFloatAsState(
@@ -43,9 +42,9 @@ fun SlickSeekBar(
         label = "drag_scale"
     )
 
-    // Waveform breath amplitude animation when playing
-    val infiniteTransition = rememberInfiniteTransition(label = "waveform_breathe")
-    val waveOscillation by infiniteTransition.animateFloat(
+    // Waveform breath amplitude animation only when playing
+    val infiniteTransition = if (isPlaying) rememberInfiniteTransition(label = "waveform_breathe") else null
+    val waveOscillationState = infiniteTransition?.animateFloat(
         initialValue = 0.85f,
         targetValue = 1.15f,
         animationSpec = infiniteRepeatable(
@@ -53,10 +52,10 @@ fun SlickSeekBar(
             repeatMode = RepeatMode.Reverse
         ),
         label = "waveform_amplitude"
-    )
+    ) ?: remember { mutableFloatStateOf(1f) }
 
-    // Animated running wave phase angle
-    val phaseAngle by infiniteTransition.animateFloat(
+    // Animated running wave phase angle only when playing
+    val phaseAngleState = infiniteTransition?.animateFloat(
         initialValue = 0f,
         targetValue = (2 * kotlin.math.PI).toFloat(),
         animationSpec = infiniteRepeatable(
@@ -64,7 +63,7 @@ fun SlickSeekBar(
             repeatMode = RepeatMode.Restart
         ),
         label = "ripple_phase"
-    )
+    ) ?: remember { mutableFloatStateOf(0f) }
 
     // Deterministic seeded height multipliers for the 42 waveform bars
     val totalBars = 42
@@ -72,8 +71,6 @@ fun SlickSeekBar(
         val rand = java.util.Random(trackTitle.hashCode().toLong())
         List(totalBars) { 0.15f + rand.nextFloat() * 0.85f }
     }
-
-    val cursorIndex = displayFraction * totalBars
 
     Column(modifier = modifier.fillMaxWidth()) {
         Box(
@@ -104,7 +101,15 @@ fun SlickSeekBar(
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val cy = size.height / 2f
-                val filledW = displayFraction * size.width
+                val liveFraction = if (isDragging) {
+                    dragFraction
+                } else {
+                    (readPosition().toFloat() / safeDuration.toFloat()).coerceIn(0f, 1f)
+                }
+                val cursorIndex = liveFraction * totalBars
+                val waveOscillation = waveOscillationState.value
+                val phaseAngle = phaseAngleState.value
+                val filledW = liveFraction * size.width
 
                 // 42 vertical bars visualizer layout details
                 val spacingRatio = 0.4f
@@ -200,8 +205,14 @@ fun SlickSeekBar(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            val elapsedSec by remember(safeDuration, readPosition) {
+                derivedStateOf {
+                    val ms = if (isDragging) (dragFraction * safeDuration).toLong() else readPosition()
+                    (ms.coerceAtLeast(0L) / 1000L) * 1000L
+                }
+            }
             Text(
-                formatDuration(if (isDragging) (dragFraction * safeDuration).toLong() else position),
+                formatDuration(elapsedSec),
                 color = Color.White.copy(0.55f),
                 fontSize = 12.sp
             )

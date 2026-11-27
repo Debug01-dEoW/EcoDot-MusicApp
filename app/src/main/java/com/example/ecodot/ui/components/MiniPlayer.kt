@@ -89,50 +89,62 @@ fun MiniPlayer(
     val tilt = LocalTiltState.current
 
     // Authentic SimpMusic Liquid Glass Capsule Shape (RoundedCornerShape 26dp)
-    val miniPlayerShape = RoundedCornerShape(26.dp)
+    val miniPlayerShape = remember { RoundedCornerShape(26.dp) }
+    val rimBrush = remember(tilt.tiltX, tilt.tiltY) {
+        createSpecularRimBrush(
+            tiltX = tilt.tiltX,
+            tiltY = tilt.tiltY,
+            baseAlpha = 0.55f,
+            secondaryAlpha = 0.25f
+        )
+    }
+
+    val activeHazeState = hazeState ?: LocalHazeState.current
 
     // Crystal-Clear Liquid Glass Modifier with pristine optical refraction and zero hazy fog
-    val glassModifier = if (backdrop != null) {
-        Modifier.drawBackdrop(
-            backdrop = backdrop,
-            shape = { miniPlayerShape },
-            highlight = {
-                Highlight(
-                    style = com.kyant.backdrop.highlight.HighlightStyle.Default(
-                        angle = 45f + (tilt.tiltX * 35f) + (tilt.tiltY * 20f),
-                        falloff = 1.0f
-                    ),
-                    alpha = 0.88f
-                )
-            },
-            shadow = { Shadow(radius = 8.dp, color = Color.Black.copy(alpha = 0.22f)) },
-            innerShadow = { InnerShadow(radius = 6.dp, alpha = 0.25f, color = Color.White) },
-            effects = {
-                blur(2.dp.toPx())
-                colorControls(
-                    brightness = 0.04f,
-                    contrast = 1.05f,
-                    saturation = 1.25f
-                )
-            },
-            onDrawSurface = {
-                // Ultra-clean transparent glass: subtle darkening keeps text readable with zero blur fog
-                drawRect(Color.Black.copy(alpha = 0.14f))
-                drawRect(Color.White.copy(alpha = 0.05f))
-            }
-        )
-    } else {
-        Modifier
-            .hazeEffect(
-                state = hazeState ?: LocalHazeState.current,
-                style = HazeStyle(
-                    backgroundColor = Color.Transparent,
-                    tint = HazeDefaults.tint(Color.White.copy(alpha = 0.03f)),
-                    blurRadius = 4.dp,
-                    noiseFactor = 0f
-                )
+    val glassModifier = remember(backdrop, activeHazeState, tilt.tiltX, tilt.tiltY) {
+        if (backdrop != null) {
+            Modifier.drawBackdrop(
+                backdrop = backdrop,
+                shape = { miniPlayerShape },
+                highlight = {
+                    Highlight(
+                        style = com.kyant.backdrop.highlight.HighlightStyle.Default(
+                            angle = 45f + (tilt.tiltX * 35f) + (tilt.tiltY * 20f),
+                            falloff = 1.0f
+                        ),
+                        alpha = 0.88f
+                    )
+                },
+                shadow = { Shadow(radius = 8.dp, color = Color.Black.copy(alpha = 0.22f)) },
+                innerShadow = { InnerShadow(radius = 6.dp, alpha = 0.25f, color = Color.White) },
+                effects = {
+                    blur(2.dp.toPx())
+                    colorControls(
+                        brightness = 0.04f,
+                        contrast = 1.05f,
+                        saturation = 1.25f
+                    )
+                },
+                onDrawSurface = {
+                    // Ultra-clean transparent glass: subtle darkening keeps text readable with zero blur fog
+                    drawRect(Color.Black.copy(alpha = 0.14f))
+                    drawRect(Color.White.copy(alpha = 0.05f))
+                }
             )
-            .background(Color.Black.copy(alpha = 0.20f))
+        } else {
+            Modifier
+                .hazeEffect(
+                    state = activeHazeState,
+                    style = HazeStyle(
+                        backgroundColor = Color.Transparent,
+                        tint = HazeDefaults.tint(Color.White.copy(alpha = 0.03f)),
+                        blurRadius = 4.dp,
+                        noiseFactor = 0f
+                    )
+                )
+                .background(Color.Black.copy(alpha = 0.20f))
+        }
     }
 
     Box(
@@ -141,12 +153,7 @@ fun MiniPlayer(
             .then(glassModifier)
             .border(
                 width = 0.85.dp,
-                brush = createSpecularRimBrush(
-                    tiltX = tilt.tiltX,
-                    tiltY = tilt.tiltY,
-                    baseAlpha = 0.55f,
-                    secondaryAlpha = 0.25f
-                ),
+                brush = rimBrush,
                 shape = miniPlayerShape
             )
             .clip(miniPlayerShape)
@@ -233,6 +240,7 @@ fun MiniPlayer(
                         AsyncImage(
                             model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
                                 .data(miniArtworkUrl)
+                                .size(160, 160)
                                 .crossfade(true)
                                 .build(),
                             contentDescription = null,

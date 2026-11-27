@@ -380,7 +380,7 @@ fun ProfileScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                items(favoriteGenreList) { genre ->
+                                items(favoriteGenreList, key = { it }) { genre ->
                                     Surface(
                                         shape = RoundedCornerShape(50),
                                         color = Color.White.copy(alpha = 0.08f),
@@ -636,7 +636,10 @@ fun ProfileScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        itemsIndexed(recentlyPlayed.take(12)) { idx, track ->
+                        itemsIndexed(
+                            items = recentlyPlayed.take(12),
+                            key = { idx, track -> "prof_rec_${idx}_${track.id}" }
+                        ) { idx, track ->
                             RecentTrackCard(
                                 track = track,
                                 onClick = { viewModel.playTracks(recentlyPlayed, startIndex = idx) }

@@ -197,36 +197,51 @@ fun ArtistProfileScreen(
                         )
                 )
 
-                // Parallax Zoom and Dynamic Blur Header
-                val pullDownScale = if (scrollState.value < 0) {
-                    1f + (-scrollState.value / 350f).coerceIn(0f, 0.5f)
-                } else {
-                    1f
-                }
-                val dynamicBlur = if (scrollState.value > 0) {
-                    (scrollState.value / 35f).coerceIn(0f, 20f).dp
-                } else {
-                    0.dp
-                }
-
+                // Parallax Zoom and fixed-kernel Scroll Blur crossfade (0 RenderEffect rebuilds during scroll)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(headerHeight)
                         .graphicsLayer {
-                            translationY = -scrollState.value * 0.45f
-                            alpha = 1f - (scrollState.value / headerHeight.toPx()).coerceIn(0f, 1f)
+                            val sy = scrollState.value
+                            val pullDownScale = if (sy < 0) {
+                                1f + (-sy / 350f).coerceIn(0f, 0.5f)
+                            } else {
+                                1f
+                            }
+                            scaleX = pullDownScale
+                            scaleY = pullDownScale
+                            translationY = -sy * 0.45f
+                            alpha = 1f - (sy / headerHeight.toPx()).coerceIn(0f, 1f)
                         }
                 ) {
                     AsyncImage(
                         model = uiState.headerImageUrl,
                         contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .scale(pullDownScale)
-                            .then(if (dynamicBlur > 0.dp) Modifier.blur(dynamicBlur) else Modifier),
+                        modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                        val artistCtx = androidx.compose.ui.platform.LocalContext.current
+                        AsyncImage(
+                            model = coil.request.ImageRequest.Builder(artistCtx)
+                                .data(uiState.headerImageUrl)
+                                .size(240, 240)
+                                .build(),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .blur(16.dp)
+                                .graphicsLayer {
+                                    alpha = if (scrollState.value > 0) {
+                                        (scrollState.value / 700f).coerceIn(0f, 1f)
+                                    } else {
+                                        0f
+                                    }
+                                },
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                     // Edge Darkening/Vignette overlay
                     Box(
                         modifier = Modifier

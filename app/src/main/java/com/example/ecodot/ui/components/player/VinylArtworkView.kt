@@ -12,7 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
@@ -31,35 +31,39 @@ fun VinylArtworkView(
     isPlaying: Boolean,
     modifier: Modifier = Modifier,
     dominantColor: Color = Color.DarkGray,
-    playbackProgress: Float = 0.25f
+    playbackProgress: Float = 0.25f,
+    playbackProgressProvider: (() -> Float)? = null
 ) {
-    // Continuous 33 RPM rotation when playing
-    val infiniteTransition = rememberInfiniteTransition(label = "vinyl_rotation")
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 3600, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "vinyl_angle"
-    )
-
-    var currentAngle by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(isPlaying, rotation) {
+    // GPU-only continuous 33 1/3 RPM rotation without per-frame coroutine relaunches or recomposition
+    val rotationAnim = remember { Animatable(0f) }
+    LaunchedEffect(isPlaying) {
         if (isPlaying) {
-            currentAngle = rotation
+            val start = rotationAnim.value % 360f
+            rotationAnim.snapTo(start)
+            rotationAnim.animateTo(
+                targetValue = start + 360f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 3600, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart
+                )
+            )
+        } else {
+            rotationAnim.stop()
         }
     }
 
-    val targetTonearm = remember(isPlaying, playbackProgress) {
-        PlayerStyleMath.computeVinylTonearmAngle(
-            isPlaying = isPlaying,
-            playbackFraction = playbackProgress,
-            restAngle = -24f,
-            startPlayAngle = 14f,
-            endPlayAngle = 29f
-        )
+    val targetTonearm by remember(isPlaying, playbackProgressProvider, playbackProgress) {
+        derivedStateOf {
+            val raw = (playbackProgressProvider?.invoke() ?: playbackProgress).coerceIn(0f, 1f)
+            val quantized = (raw * 40f).toInt() / 40f
+            PlayerStyleMath.computeVinylTonearmAngle(
+                isPlaying = isPlaying,
+                playbackFraction = quantized,
+                restAngle = -24f,
+                startPlayAngle = 14f,
+                endPlayAngle = 29f
+            )
+        }
     }
 
     // Tonearm swing animation: lifts off when paused (-24 deg), tracks across grooves while playing
@@ -101,39 +105,42 @@ fun VinylArtworkView(
                 .shadow(elevation = 16.dp, shape = CircleShape, spotColor = Color.Black.copy(alpha = 0.7f))
                 .clip(CircleShape)
                 .background(Color(0xFF0E0E12))
-                .rotate(if (isPlaying) rotation else currentAngle),
+                .graphicsLayer { rotationZ = rotationAnim.value },
             contentAlignment = Alignment.Center
         ) {
-            // Vinyl grooves texture with radial specular lighting
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val center = this.center
-                val maxRadius = size.minDimension / 2f
-
-                // Concentric micro-grooves
-                val grooveSteps = 22
-                for (i in 1..grooveSteps) {
-                    val radius = maxRadius * (0.42f + (i / grooveSteps.toFloat()) * 0.54f)
-                    drawCircle(
-                        color = Color.White.copy(alpha = if (i % 3 == 0) 0.05f else 0.02f),
-                        radius = radius,
-                        center = center,
-                        style = Stroke(width = 1f)
-                    )
-                }
-
-                // Dual light sheen reflection (diagonal bowtie effect on vinyl)
-                val sheenBrush = Brush.sweepGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.08f),
-                        Color.Transparent,
-                        Color.White.copy(alpha = 0.08f),
-                        Color.Transparent,
-                        Color.White.copy(alpha = 0.08f)
-                    ),
-                    center = center
-                )
-                drawCircle(brush = sheenBrush, radius = maxRadius, center = center)
-            }
+            // Cached vinyl grooves texture with radial specular lighting
+            Spacer(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .drawWithCache {
+                        val center = Offset(size.width / 2f, size.height / 2f)
+                        val maxRadius = size.minDimension / 2f
+                        val grooveStroke = Stroke(width = 1f)
+                        val sheenBrush = Brush.sweepGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.08f),
+                                Color.Transparent,
+                                Color.White.copy(alpha = 0.08f),
+                                Color.Transparent,
+                                Color.White.copy(alpha = 0.08f)
+                            ),
+                            center = center
+                        )
+                        onDrawBehind {
+                            val grooveSteps = 22
+                            for (i in 1..grooveSteps) {
+                                val radius = maxRadius * (0.42f + (i / grooveSteps.toFloat()) * 0.54f)
+                                drawCircle(
+                                    color = Color.White.copy(alpha = if (i % 3 == 0) 0.05f else 0.02f),
+                                    radius = radius,
+                                    center = center,
+                                    style = grooveStroke
+                                )
+                            }
+                            drawCircle(brush = sheenBrush, radius = maxRadius, center = center)
+                        }
+                    }
+            )
 
             // ── 2. Center Album Art Label ────────────────────────────────────
             Box(
@@ -152,7 +159,7 @@ fun VinylArtworkView(
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(resolvedUrl)
-                        .size(1080, 1080)
+                        .size(512, 512)
                         .crossfade(true)
                         .build(),
                     contentDescription = null,

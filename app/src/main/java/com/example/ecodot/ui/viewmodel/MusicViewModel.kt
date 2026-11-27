@@ -1320,6 +1320,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private val _homeHeroColor = MutableStateFlow(Color(0xFFD69A32))
     val homeHeroColor: StateFlow<Color> = _homeHeroColor.asStateFlow()
 
+    @androidx.compose.runtime.Immutable
     data class BrowseSheetUiState(
         val isVisible: Boolean = false,
         val title: String = "",
@@ -1331,6 +1332,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private val _browseSheetState = MutableStateFlow(BrowseSheetUiState())
     val browseSheetState: StateFlow<BrowseSheetUiState> = _browseSheetState.asStateFlow()
 
+    @androidx.compose.runtime.Immutable
     data class BrowsePageUiState(
         val title: String = "",
         val strapline: String? = null,
@@ -1986,9 +1988,10 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val context = getApplication<Application>()
-                val loader = coil.ImageLoader(context)
+                val loader = coil.Coil.imageLoader(context)
                 val req = coil.request.ImageRequest.Builder(context)
                     .data(imageUrl)
+                    .size(128, 128)
                     .allowHardware(false)
                     .build()
                 val res = loader.execute(req)
@@ -2394,6 +2397,15 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun seekTo(position: Long) {
         _controller.value?.seekTo(position)
         _position.value = position
+    }
+
+    fun seekRelative(deltaMs: Long) {
+        val controller = _controller.value ?: return
+        val dur = controller.duration.takeIf { it != androidx.media3.common.C.TIME_UNSET && it > 0L }
+            ?: _duration.value.coerceAtLeast(1L)
+        val cur = controller.currentPosition.coerceAtLeast(0L)
+        val target = (cur + deltaMs).coerceIn(0L, dur)
+        seekTo(target)
     }
 
     fun toggleShuffle() {
@@ -3313,6 +3325,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                     val loader = coil.Coil.imageLoader(getApplication())
                     val request = coil.request.ImageRequest.Builder(getApplication())
                         .data(artUri)
+                        .size(128, 128)
                         .allowHardware(false) // Required for Palette
                         .build()
                     

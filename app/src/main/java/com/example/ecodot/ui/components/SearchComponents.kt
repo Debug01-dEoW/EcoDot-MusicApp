@@ -223,6 +223,7 @@ fun SimpMoodCategoryCard(
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(artworkUrl)
+                    .size(240, 240)
                     .diskCachePolicy(CachePolicy.ENABLED)
                     .crossfade(true)
                     .build(),
@@ -347,6 +348,7 @@ fun SimpSearchSongRow(
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(track.albumArtUri)
+                            .size(240, 200)
                             .crossfade(400)
                             .build(),
                         contentDescription = null,
@@ -397,9 +399,10 @@ fun SimpSearchSongRow(
                     fontWeight = if (isPlaying) FontWeight.Bold else FontWeight.SemiBold,
                     fontSize = 14.5.sp,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .basicMarquee(iterations = Int.MAX_VALUE)
+                        .then(if (isPlaying) Modifier.basicMarquee(iterations = Int.MAX_VALUE) else Modifier)
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -427,6 +430,7 @@ fun SimpSearchSongRow(
                         color = Color(0xC4FFFFFF),
                         fontSize = 12.5.sp,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
                             .weight(1f, fill = false)
                             .then(
@@ -434,7 +438,7 @@ fun SimpSearchSongRow(
                                     Modifier.clickable(onClick = onArtistClick)
                                 } else Modifier
                             )
-                            .basicMarquee(iterations = Int.MAX_VALUE)
+                            .then(if (isPlaying) Modifier.basicMarquee(iterations = Int.MAX_VALUE) else Modifier)
                     )
                 }
             }
@@ -492,6 +496,7 @@ fun SimpSearchCollectionRow(
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(thumbnailUrl)
+                .size(200, 200)
                 .crossfade(true)
                 .build(),
             contentDescription = title,
@@ -512,9 +517,8 @@ fun SimpSearchCollectionRow(
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.5.sp,
                 maxLines = 1,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .basicMarquee(iterations = Int.MAX_VALUE)
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
@@ -553,6 +557,7 @@ fun SimpSearchArtistRow(
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(artist.imageUrl)
+                .size(200, 200)
                 .crossfade(true)
                 .build(),
             contentDescription = artist.name,
@@ -573,9 +578,8 @@ fun SimpSearchArtistRow(
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 15.sp,
                 maxLines = 1,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .basicMarquee(iterations = Int.MAX_VALUE)
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(

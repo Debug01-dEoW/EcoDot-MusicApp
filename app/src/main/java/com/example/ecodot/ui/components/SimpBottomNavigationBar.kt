@@ -13,6 +13,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.CornerRadius
@@ -20,10 +21,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.example.ecodot.LocalHazeState
 import com.example.ecodot.ui.theme.Home
@@ -104,23 +107,73 @@ fun SimpBottomNavigationBar(
         spring<Float>(dampingRatio = 0.72f, stiffness = 280f)
     }
 
-    val animatedLeft by animateFloatAsState(
+    val animatedLeftState = animateFloatAsState(
         targetValue = targetLeft,
         animationSpec = leftSpec,
         label = "drop_left"
     )
-    val animatedRight by animateFloatAsState(
+    val animatedRightState = animateFloatAsState(
         targetValue = targetRight,
         animationSpec = rightSpec,
         label = "drop_right"
     )
 
-    // Fluid volume preservation (squash & stretch)
-    val dropWidth = (animatedRight - animatedLeft).coerceAtLeast(58f)
-    val stretch = ((dropWidth - 58f) / 60f).coerceIn(0f, 1f)
-    val dropHeight = 58f - (stretch * 6f) // Compresses from 58dp down to 52dp at peak flight
-    val cornerRadius = (20f - stretch * 2f).dp
-    val dropShape = RoundedCornerShape(cornerRadius)
+    val baseShape = remember { RoundedCornerShape(20.dp) }
+    val slotRimBrush = remember(tilt.tiltX, tilt.tiltY) {
+        createSpecularRimBrush(
+            tiltX = tilt.tiltX,
+            tiltY = tilt.tiltY,
+            baseAlpha = 0.35f,
+            secondaryAlpha = 0.15f
+        )
+    }
+    val activeRimBrush = remember(tilt.tiltX, tilt.tiltY) {
+        createSpecularRimBrush(
+            tiltX = tilt.tiltX,
+            tiltY = tilt.tiltY,
+            baseAlpha = 0.75f,
+            secondaryAlpha = 0.40f
+        )
+    }
+    val restingSlotGlass = remember(backdrop, hazeState, tilt.tiltX, tilt.tiltY) {
+        if (backdrop != null) {
+            Modifier.drawBackdrop(
+                backdrop = backdrop,
+                shape = { baseShape },
+                highlight = {
+                    Highlight(
+                        style = HighlightStyle.Default(
+                            angle = 45f + (tilt.tiltX * 30f) + (tilt.tiltY * 15f)
+                        ),
+                        alpha = 0.40f
+                    )
+                },
+                shadow = {
+                    Shadow(radius = 4.dp, color = Color.Black.copy(alpha = 0.12f))
+                },
+                innerShadow = {
+                    InnerShadow(radius = 5.dp, alpha = 0.16f, color = Color.White)
+                },
+                effects = {},
+                onDrawSurface = {
+                    drawRect(Color.Black.copy(alpha = 0.04f))
+                    drawRect(Color.White.copy(alpha = 0.02f))
+                }
+            )
+        } else {
+            Modifier
+                .hazeEffect(
+                    state = hazeState,
+                    style = HazeStyle(
+                        backgroundColor = Color.Transparent,
+                        tint = HazeDefaults.tint(Color.White.copy(alpha = 0.02f)),
+                        blurRadius = 4.dp,
+                        noiseFactor = 0f
+                    )
+                )
+                .background(Color.Black.copy(alpha = 0.05f))
+        }
+    }
 
     Row(
         modifier = modifier
@@ -137,31 +190,50 @@ fun SimpBottomNavigationBar(
             // ── 1. Base Glass Squircles (3 unselected resting slots) ──────────
             for (i in 0..2) {
                 val slotX = (i * 74).dp
-                val baseShape = RoundedCornerShape(20.dp)
-                val baseGlassModifier = if (backdrop != null) {
+                Box(
+                    modifier = Modifier
+                        .offset(x = slotX, y = 0.dp)
+                        .size(58.dp)
+                        .then(restingSlotGlass)
+                        .border(
+                            width = 0.75.dp,
+                            brush = slotRimBrush,
+                            shape = baseShape
+                        )
+                )
+            }
+
+            // ── 2. Active Liquid Morphing Droplet ─────────────────────────────
+            val liquidGlassModifier = remember(backdrop, hazeState, tilt.tiltX, tilt.tiltY) {
+                if (backdrop != null) {
                     Modifier.drawBackdrop(
                         backdrop = backdrop,
                         shape = { baseShape },
                         highlight = {
                             Highlight(
                                 style = HighlightStyle.Default(
-                                    angle = 45f + (tilt.tiltX * 30f) + (tilt.tiltY * 15f)
+                                    angle = 45f + (tilt.tiltX * 35f) + (tilt.tiltY * 20f)
                                 ),
-                                alpha = 0.40f
+                                alpha = 0.92f
                             )
                         },
                         shadow = {
-                            Shadow(radius = 4.dp, color = Color.Black.copy(alpha = 0.12f))
+                            Shadow(radius = 10.dp, color = Color.Black.copy(alpha = 0.30f))
                         },
                         innerShadow = {
-                            InnerShadow(radius = 5.dp, alpha = 0.16f, color = Color.White)
+                            InnerShadow(radius = 7.dp, alpha = 0.42f, color = Color.White)
                         },
                         effects = {
                             blur(2.dp.toPx())
+                            colorControls(
+                                brightness = 0.05f,
+                                contrast = 1.08f,
+                                saturation = 1.25f
+                            )
                         },
                         onDrawSurface = {
-                            drawRect(Color.Black.copy(alpha = 0.04f))
-                            drawRect(Color.White.copy(alpha = 0.02f))
+                            drawRect(Color.Black.copy(alpha = 0.07f))
+                            drawRect(Color.White.copy(alpha = 0.09f))
                         }
                     )
                 } else {
@@ -170,109 +242,52 @@ fun SimpBottomNavigationBar(
                             state = hazeState,
                             style = HazeStyle(
                                 backgroundColor = Color.Transparent,
-                                tint = HazeDefaults.tint(Color.White.copy(alpha = 0.02f)),
+                                tint = HazeDefaults.tint(Color(0xFFE7D7FD).copy(alpha = 0.08f)),
                                 blurRadius = 4.dp,
                                 noiseFactor = 0f
                             )
                         )
-                        .background(Color.Black.copy(alpha = 0.05f))
+                        .background(Color.Black.copy(alpha = 0.10f))
                 }
-
-                Box(
-                    modifier = Modifier
-                        .offset(x = slotX, y = 0.dp)
-                        .size(58.dp)
-                        .then(baseGlassModifier)
-                        .border(
-                            width = 0.75.dp,
-                            brush = createSpecularRimBrush(
-                                tiltX = tilt.tiltX,
-                                tiltY = tilt.tiltY,
-                                baseAlpha = 0.35f,
-                                secondaryAlpha = 0.15f
-                            ),
-                            shape = baseShape
-                        )
-                )
-            }
-
-            // ── 2. Active Liquid Morphing Droplet ─────────────────────────────
-            val dropOffsetY = ((58f - dropHeight) / 2f).dp
-            val liquidGlassModifier = if (backdrop != null) {
-                Modifier.drawBackdrop(
-                    backdrop = backdrop,
-                    shape = { dropShape },
-                    highlight = {
-                        Highlight(
-                            style = HighlightStyle.Default(
-                                angle = 45f + (tilt.tiltX * 35f) + (tilt.tiltY * 20f)
-                            ),
-                            alpha = 0.92f
-                        )
-                    },
-                    shadow = {
-                        Shadow(radius = 10.dp, color = Color.Black.copy(alpha = 0.30f))
-                    },
-                    innerShadow = {
-                        InnerShadow(radius = 7.dp, alpha = 0.42f, color = Color.White)
-                    },
-                    effects = {
-                        blur(2.dp.toPx())
-                        colorControls(
-                            brightness = 0.05f,
-                            contrast = 1.08f,
-                            saturation = 1.25f
-                        )
-                    },
-                    onDrawSurface = {
-                        drawRect(Color.Black.copy(alpha = 0.07f))
-                        drawRect(Color.White.copy(alpha = 0.09f))
-                    }
-                )
-            } else {
-                Modifier
-                    .hazeEffect(
-                        state = hazeState,
-                        style = HazeStyle(
-                            backgroundColor = Color.Transparent,
-                            tint = HazeDefaults.tint(Color(0xFFE7D7FD).copy(alpha = 0.08f)),
-                            blurRadius = 4.dp,
-                            noiseFactor = 0f
-                        )
-                    )
-                    .background(Color.Black.copy(alpha = 0.10f))
             }
 
             Box(
                 modifier = Modifier
-                    .offset(x = animatedLeft.dp, y = dropOffsetY)
-                    .size(width = dropWidth.dp, height = dropHeight.dp)
+                    .offset {
+                        IntOffset(animatedLeftState.value.dp.roundToPx(), 0)
+                    }
+                    .size(width = 58.dp, height = 58.dp)
+                    .graphicsLayer {
+                        val dropWidth = (animatedRightState.value - animatedLeftState.value).coerceAtLeast(58f)
+                        val stretch = ((dropWidth - 58f) / 60f).coerceIn(0f, 1f)
+                        scaleX = dropWidth / 58f
+                        scaleY = (58f - (stretch * 6f)) / 58f
+                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
+                    }
                     .then(liquidGlassModifier)
                     .border(
                         width = 0.95.dp,
-                        brush = createSpecularRimBrush(
-                            tiltX = tilt.tiltX,
-                            tiltY = tilt.tiltY,
-                            baseAlpha = 0.75f,
-                            secondaryAlpha = 0.40f
-                        ),
-                        shape = dropShape
+                        brush = activeRimBrush,
+                        shape = baseShape
                     )
-                    .drawWithContent {
-                        drawContent()
-                        // Fluid droplet glow accent
-                        drawRoundRect(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    Color(0xFFE7D7FD).copy(alpha = 0.15f),
-                                    Color.Transparent
-                                ),
-                                center = Offset(size.width / 2f, size.height / 2f),
-                                radius = size.width * 0.75f
+                    .drawWithCache {
+                        val cr = 20.dp.toPx()
+                        val glowBrush = Brush.radialGradient(
+                            colors = listOf(
+                                Color(0xFFE7D7FD).copy(alpha = 0.15f),
+                                Color.Transparent
                             ),
-                            cornerRadius = CornerRadius(cornerRadius.toPx(), cornerRadius.toPx()),
-                            blendMode = BlendMode.Plus
+                            center = Offset(size.width / 2f, size.height / 2f),
+                            radius = size.width * 0.75f
                         )
+                        onDrawWithContent {
+                            drawContent()
+                            drawRoundRect(
+                                brush = glowBrush,
+                                cornerRadius = CornerRadius(cr, cr),
+                                blendMode = BlendMode.Plus
+                            )
+                        }
                     }
             )
 

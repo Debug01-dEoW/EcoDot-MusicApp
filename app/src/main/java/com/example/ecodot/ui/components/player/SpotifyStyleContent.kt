@@ -146,8 +146,10 @@ fun SpotifyStyleContent(
     onOpenArtist: () -> Unit,
     onOpenOutputSheet: () -> Unit,
     formatDuration: (Long) -> String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    positionProvider: (() -> Long)? = null
 ) {
+    val readPosition = positionProvider ?: { position }
     val context = LocalContext.current
     val view = LocalView.current
     val topPalette = if (dominantColor == Color.Black) Color(0xFF1F3B2C) else dominantColor
@@ -293,12 +295,13 @@ fun SpotifyStyleContent(
                                 showCaptions = showCaptions,
                                 syncedLyrics = syncedLyrics,
                                 positionMs = position,
+                                positionProvider = readPosition,
                                 onToggleControls = { showVideoOverlay = !showVideoOverlay },
                                 onToggleCaptions = { showCaptions = !showCaptions },
                                 onToggleResizeMode = onToggleVideoResizeMode,
                                 onEnterFullscreen = onEnterVideoFullscreen,
-                                onSeekBackward5s = { onSeekTo((position - 5000L).coerceAtLeast(0L)) },
-                                onSeekForward5s = { onSeekTo((position + 5000L).coerceAtMost(duration.coerceAtLeast(1L))) },
+                                onSeekBackward5s = { onSeekTo((readPosition() - 5000L).coerceAtLeast(0L)) },
+                                onSeekForward5s = { onSeekTo((readPosition() + 5000L).coerceAtMost(duration.coerceAtLeast(1L))) },
                                 fallbackArtUrl = track.albumArtUri,
                                 modifier = Modifier.fillMaxSize()
                             )
@@ -344,6 +347,7 @@ fun SpotifyStyleContent(
                                 AsyncImage(
                                     model = ImageRequest.Builder(context)
                                         .data(activeUrl)
+                                        .size(720, 720)
                                         .crossfade(350)
                                         .build(),
                                     contentDescription = pageTrack.title,
@@ -435,6 +439,7 @@ fun SpotifyStyleContent(
                     onSeek = onSeekTo,
                     formatDuration = formatDuration,
                     isCrossfading = isCrossfading,
+                    positionProvider = readPosition,
                     modifier = Modifier.padding(horizontal = 24.dp)
                 )
 
@@ -625,7 +630,8 @@ fun SpotifyStyleContent(
                                 onSeek = onSeekTo,
                                 isFullScreen = false,
                                 backgroundColor = Color.Transparent,
-                                accentColor = Color.White
+                                accentColor = Color.White,
+                                positionProvider = readPosition
                             )
                         }
                     }
@@ -709,6 +715,7 @@ fun SpotifyStyleContent(
                         AsyncImage(
                             model = ImageRequest.Builder(context)
                                 .data(artistHeaderImageUrl)
+                                .size(640, 420)
                                 .crossfade(true)
                                 .build(),
                             contentDescription = track.artist,

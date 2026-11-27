@@ -117,8 +117,8 @@ cd EcoDot-MusicApp
 # Run unit test suite
 ./gradlew testDebugUnitTest
 
-# Build EcoDot 1.26v APK
-./gradlew assembleDebug
+# Build R8-optimized 120Hz EcoDot 1.26v release APK (or assembleDebug for development)
+./gradlew assembleRelease
 ```
 
 ---

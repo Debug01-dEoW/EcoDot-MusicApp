@@ -42,6 +42,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -94,6 +95,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -145,11 +147,9 @@ import com.example.ecodot.ui.viewmodel.InstantSearchItem
 import com.example.ecodot.ui.viewmodel.MusicViewModel
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
-import dev.chrisbanes.haze.HazeDefaults
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.colorControls
 import kotlinx.coroutines.delay
 
 /**
@@ -382,7 +382,6 @@ fun SearchScreen(
     val chipRowScrollState = rememberScrollState()
 
     val searchChipBackdrop = rememberLayerBackdrop()
-    val searchHazeState = remember { HazeState() }
     val density = LocalDensity.current
     var searchBarHeightPx by remember { mutableIntStateOf(0) }
     val searchBarHeight = with(density) { searchBarHeightPx.toDp() }.coerceAtLeast(68.dp)
@@ -409,12 +408,11 @@ fun SearchScreen(
             .fillMaxSize()
             .background(Color(0xFF070709))
     ) {
-        // ── 1. Scrollable Body (Sibling source for Haze & Kyant Backdrop) ──────
+        // ── 1. Scrollable Body (Single Kyant Backdrop source) ──────
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .layerBackdrop(searchChipBackdrop)
-                .hazeSource(searchHazeState)
         ) {
             // Subtle SimpMusic violet/crimson ambient glow at the top
             Box(
@@ -675,14 +673,20 @@ fun SearchScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .hazeEffect(
-                            state = searchHazeState,
-                            style = HazeStyle(
-                                backgroundColor = Color(0xFF0A0B10).copy(alpha = 0.74f),
-                                tint = HazeDefaults.tint(Color(0xFF0A0B10).copy(alpha = 0.45f)),
-                                blurRadius = 22.dp,
-                                noiseFactor = 0.02f
-                            )
+                        .drawBackdrop(
+                            backdrop = searchChipBackdrop,
+                            shape = { RectangleShape },
+                            effects = {
+                                colorControls(
+                                    brightness = -0.16f,
+                                    contrast = 1.04f,
+                                    saturation = 1.15f
+                                )
+                                blur(14.dp.toPx())
+                            },
+                            onDrawSurface = {
+                                drawRect(Color(0xFF0A0B10).copy(alpha = 0.68f))
+                            }
                         )
                         .background(
                             Brush.verticalGradient(
@@ -890,7 +894,7 @@ fun SearchScreen(
                             .fillMaxWidth()
                             .padding(top = 10.dp)
                             .homeChipStripEdgeFades(
-                                width = 20.dp,
+                                width = 22.dp,
                                 start = { if (chipRowScrollState.canScrollBackward) 1f else 0f },
                                 end = { if (chipRowScrollState.canScrollForward) 1f else 0f }
                             )
@@ -1446,7 +1450,17 @@ private fun SimpSuggestionsBody(
             }
         }
 
-        items(instantItems) { item ->
+        itemsIndexed(
+            items = instantItems,
+            key = { idx, item ->
+                when (item) {
+                    is InstantSearchItem.ArtistMatch -> "inst_art_${item.id}_$idx"
+                    is InstantSearchItem.SongMatch -> "inst_song_${item.track.id}_$idx"
+                    is InstantSearchItem.AlbumMatch -> "inst_alb_${item.id ?: item.title}_$idx"
+                    is InstantSearchItem.PlaylistMatch -> "inst_pl_${item.id}_$idx"
+                }
+            }
+        ) { _, item ->
             when (item) {
                 is InstantSearchItem.ArtistMatch -> {
                     InstantMediaRow(

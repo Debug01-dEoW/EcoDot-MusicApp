@@ -35,6 +35,7 @@ import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
@@ -237,25 +238,29 @@ fun AnimatedLyricsGradientBackground(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(
-                        startColor.value,
-                        midColor1.value,
-                        midColor2.value,
-                        endColor.value.copy(alpha = 0.9f),
-                        endColor.value
-                    ),
-                    start = Offset(
-                        x = animatedOffsetX + (cos(animatedAngle * PI.toFloat() / 180f) * 800f),
-                        y = animatedOffsetY + (sin(animatedAngle * PI.toFloat() / 180f) * 800f)
-                    ),
-                    end = Offset(
-                        x = animatedOffsetX + 2500f + (cos((animatedAngle + 180f) * PI.toFloat() / 180f) * 800f),
-                        y = animatedOffsetY + 2500f + (sin((animatedAngle + 180f) * PI.toFloat() / 180f) * 800f)
+            .drawBehind {
+                val radAngle = animatedAngle * PI.toFloat() / 180f
+                val radOpp = (animatedAngle + 180f) * PI.toFloat() / 180f
+                drawRect(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            startColor.value,
+                            midColor1.value,
+                            midColor2.value,
+                            endColor.value.copy(alpha = 0.9f),
+                            endColor.value
+                        ),
+                        start = Offset(
+                            x = animatedOffsetX + (cos(radAngle) * 800f),
+                            y = animatedOffsetY + (sin(radAngle) * 800f)
+                        ),
+                        end = Offset(
+                            x = animatedOffsetX + 2500f + (cos(radOpp) * 800f),
+                            y = animatedOffsetY + 2500f + (sin(radOpp) * 800f)
+                        )
                     )
                 )
-            )
+            }
     )
 }
 
@@ -272,14 +277,16 @@ fun LyricsPanel(
     onSeek: (Long) -> Unit,
     isFullScreen: Boolean = false,
     backgroundColor: Color = Color.Transparent,
-    accentColor: Color = Color(0xFF79DA9F)
+    accentColor: Color = Color(0xFF79DA9F),
+    positionProvider: (() -> Long)? = null
 ) {
     val listState = rememberLazyListState()
     val isDragging by listState.interactionSource.collectIsDraggedAsState()
     val currentPositionState = rememberUpdatedState(currentPosition)
-    val currentLineIndex by remember(syncedLyrics) {
+    val currentLineIndex by remember(syncedLyrics, positionProvider) {
         derivedStateOf {
-            syncedLyrics.indexOfLast { it.timeMs <= currentPositionState.value }
+            val pos = positionProvider?.invoke() ?: currentPositionState.value
+            syncedLyrics.indexOfLast { it.timeMs <= pos }
         }
     }
 
@@ -507,7 +514,8 @@ fun FullScreenLyricsView(
     plainLyrics: String?,
     isLyricsLoading: Boolean,
     currentPosition: Long,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    positionProvider: (() -> Long)? = null
 ) {
     val accentColor by viewModel.accentColor.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
@@ -551,9 +559,10 @@ fun FullScreenLyricsView(
     val listState = rememberLazyListState()
     val isDragging by listState.interactionSource.collectIsDraggedAsState()
     val currentPositionState = rememberUpdatedState(currentPosition)
-    val currentLineIndex by remember(syncedLyrics) {
+    val readPosition = positionProvider ?: { currentPositionState.value }
+    val currentLineIndex by remember(syncedLyrics, positionProvider) {
         derivedStateOf {
-            syncedLyrics.indexOfLast { it.timeMs <= currentPositionState.value }
+            syncedLyrics.indexOfLast { it.timeMs <= readPosition() }
         }
     }
 
@@ -894,8 +903,13 @@ fun FullScreenLyricsView(
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp)
                 ) {
+                    val liveProgress by remember(duration, readPosition) {
+                        derivedStateOf {
+                            if (duration > 0L) (readPosition().toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
+                        }
+                    }
                     AudioWaveformSeekBar(
-                        progress = if (duration > 0L) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f,
+                        progress = liveProgress,
                         onSeek = { fraction ->
                             interactionTick++
                             showControlButtons = true
@@ -919,8 +933,11 @@ fun FullScreenLyricsView(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        val elapsedSec by remember(readPosition) {
+                            derivedStateOf { (readPosition().coerceAtLeast(0L) / 1000L) * 1000L }
+                        }
                         Text(
-                            text = viewModel.formatDuration(currentPosition),
+                            text = viewModel.formatDuration(elapsedSec),
                             style = MaterialTheme.typography.bodySmall.copy(
                                 fontWeight = FontWeight.Medium,
                                 fontSize = 12.sp

@@ -79,6 +79,7 @@ fun QueueTrackRow(
         AsyncImage(
             model = ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
                 .data(track.albumArtUri)
+                .size(200, 200)
                 .crossfade(true)
                 .build(),
             contentDescription = null,

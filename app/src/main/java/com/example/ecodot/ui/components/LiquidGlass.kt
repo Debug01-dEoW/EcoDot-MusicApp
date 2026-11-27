@@ -361,7 +361,7 @@ fun Modifier.liquidGlass(
             backgroundColor = tintColor.copy(alpha = 0.48f),
             tint = HazeDefaults.tint(tintColor.copy(alpha = 0.28f)),
             blurRadius = blurRadius,
-            noiseFactor = 0.06f
+            noiseFactor = 0f
         )
         base.hazeEffect(state = hazeState, style = glassStyle)
     } else {

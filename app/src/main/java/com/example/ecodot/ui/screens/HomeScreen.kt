@@ -4,6 +4,7 @@ package com.example.ecodot.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -76,6 +77,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
@@ -125,11 +127,9 @@ import com.example.ecodot.ui.viewmodel.Album
 import com.example.ecodot.ui.viewmodel.MusicViewModel
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
-import dev.chrisbanes.haze.HazeDefaults
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.colorControls
 
 @Composable
 fun SimpLazyRow(
@@ -213,9 +213,8 @@ fun HomeScreen(
     val chipScrollState = rememberScrollState()
     val pullToRefreshState = rememberPullToRefreshState()
 
-    // Dedicated sibling backdrop + Haze state so top Liquid Glass controls refract scrolling content without feedback loops
+    // Dedicated sibling backdrop so top Liquid Glass controls refract scrolling content in a single pass
     val homeFeedBackdrop = rememberLayerBackdrop()
-    val homeHazeState = remember { HazeState() }
     var topAppBarHeightPx by remember { mutableIntStateOf(0) }
 
     val atTop by remember {
@@ -302,8 +301,6 @@ fun HomeScreen(
         listOf("Relax", "Sleep", "Energize", "Sad", "Romance", "Feel good", "Workout", "Party", "Commute", "Focus")
     }
 
-    val chipHeadFade = if (chipScrollState.canScrollBackward) 1f else 0f
-    val chipTailFade = if (chipScrollState.canScrollForward) 1f else 0f
     val gridRowWidth = (configuration.screenWidthDp.dp - 44.dp).coerceAtLeast(280.dp)
 
     Box(
@@ -316,7 +313,6 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .layerBackdrop(homeFeedBackdrop)
-                .hazeSource(homeHazeState)
         ) {
             HomeAmbientBackground(
                 activeMood = selectedMood,
@@ -363,7 +359,7 @@ fun HomeScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(bottom = 128.dp)
                         ) {
-                            item(key = "header_spacer") {
+                            item(key = "header_spacer", contentType = "spacer") {
                                 Spacer(
                                     modifier = Modifier.height(
                                         with(density) { topAppBarHeightPx.toDp() }.coerceAtLeast(96.dp) + 4.dp
@@ -428,7 +424,7 @@ fun HomeScreen(
                                 }
 
                                 // 1. Featured Top Shelf (with header avatar, strapline & More / Play all)
-                                item(key = "featured_top_shelf") {
+                                item(key = "featured_top_shelf", contentType = "shelf_row") {
                                     val eyebrow = topShelf?.strapline ?: "A BACKGROUND SCORE TO YOUR LOVE STORY"
                                     val title = topShelf?.title ?: "Romance Right Now"
                                     val shelfItems = topShelf?.items ?: getDefaultRomanceItems()
@@ -486,7 +482,7 @@ fun HomeScreen(
 
                                 // 2. Quick Picks (4-Row Column-Snapping Grid with Play All & Track Options)
                                 if (suggestedTracks.isNotEmpty()) {
-                                    item(key = "quick_picks_section") {
+                                    item(key = "quick_picks_section", contentType = "quick_picks_grid") {
                                         val qpGridState = rememberLazyGridState()
                                         val qpSnapFling = rememberSnapFlingBehavior(
                                             SnapLayoutInfoProvider(
@@ -525,7 +521,7 @@ fun HomeScreen(
                                 }
 
                                 // 3. Centered Hero Discover Carousel (SimpMusic HomeDiscoverSection)
-                                item(key = "discover_hero_carousel") {
+                                item(key = "discover_hero_carousel", contentType = "hero_carousel") {
                                     val discoverTitle = discoverShelf?.title ?: "Your daily discover"
                                     val discoverEyebrow = discoverShelf?.strapline ?: "HANDPICKED RADIO FOR YOU"
                                     val discoverItems = remember(discoverShelf, historyRecommendations, suggestedTracks) {
@@ -559,7 +555,7 @@ fun HomeScreen(
                                 }
 
                                 // 4. Trending Music Videos (16:9 Widescreen Carousel with LIVE & MV Badges)
-                                item(key = "music_video_section") {
+                                item(key = "music_video_section", contentType = "video_row") {
                                     SimpSectionHeader(
                                         eyebrow = "WATCH IN FULLSCREEN",
                                         title = "Music video",
@@ -596,7 +592,7 @@ fun HomeScreen(
 
                                 // 5. Dynamic Remote YouTube Music Shelves (Listen Again, New Releases, Mixes, Artists)
                                 remainingShelves.forEachIndexed { secIdx, section ->
-                                    item(key = "home_real_sec_${section.title}_$secIdx") {
+                                    item(key = "home_real_sec_${section.title}_$secIdx", contentType = "shelf_row") {
                                         val moreBrowseId = section.moreBrowseId
                                         val showMore = moreBrowseId != null || section.items.any { it.type != MediaType.TRACK }
                                         val actionLabel = when {
@@ -656,7 +652,7 @@ fun HomeScreen(
                                 }
 
                                 // 6. Moods & Moments (3-Row Horizontal Grid matching SimpMusic)
-                                item(key = "moods_moments_grid") {
+                                item(key = "moods_moments_grid", contentType = "mood_grid") {
                                     val moodGridState = rememberLazyGridState()
                                     val moodSnap = rememberSnapFlingBehavior(SnapLayoutInfoProvider(moodGridState))
                                     val moodCards = remember(homeMoodsData) {
@@ -708,7 +704,7 @@ fun HomeScreen(
                                 }
 
                                 // 7. Genres (3-Row Horizontal Grid matching SimpMusic)
-                                item(key = "genres_grid") {
+                                item(key = "genres_grid", contentType = "mood_grid") {
                                     val genreGridState = rememberLazyGridState()
                                     val genreSnap = rememberSnapFlingBehavior(SnapLayoutInfoProvider(genreGridState))
                                     val genreCards = remember(homeMoodsData) {
@@ -762,7 +758,7 @@ fun HomeScreen(
                                 }
 
                                 // 8. Chart Header & Liquid Glass Country Dropdown
-                                item(key = "chart_section") {
+                                item(key = "chart_section", contentType = "chart_header") {
                                     SimpSectionHeader(
                                         eyebrow = "WHAT IS BEST CHOICE TODAY",
                                         title = "Chart"
@@ -843,7 +839,7 @@ fun HomeScreen(
                                 }
 
                                 // 9. Ranked Video Charts (1, 2, 3...)
-                                item(key = "video_charts") {
+                                item(key = "video_charts", contentType = "video_row") {
                                     SimpSectionHeader(title = "Video charts")
                                     SimpLazyRow(
                                         contentPadding = PaddingValues(horizontal = 16.dp),
@@ -864,7 +860,7 @@ fun HomeScreen(
                                 }
 
                                 // 10. Top Artists (3-Row Horizontal Ranked Grid matching ItemArtistChart)
-                                item(key = "top_artists_section") {
+                                item(key = "top_artists_section", contentType = "ranked_grid") {
                                     val artistGridState = rememberLazyGridState()
                                     val artistSnap = rememberSnapFlingBehavior(
                                         SnapLayoutInfoProvider(artistGridState, SnapPosition.Start)
@@ -908,7 +904,7 @@ fun HomeScreen(
 
                                 // 11. Weekly Top Podcast Shows (3-Row Horizontal Ranked Grid)
                                 if (chartPodcasts.isNotEmpty()) {
-                                    item(key = "weekly_top_podcasts") {
+                                    item(key = "weekly_top_podcasts", contentType = "ranked_grid") {
                                         val podGridState = rememberLazyGridState()
                                         val podSnap = rememberSnapFlingBehavior(
                                             SnapLayoutInfoProvider(podGridState, SnapPosition.Start)
@@ -955,7 +951,7 @@ fun HomeScreen(
 
                                 // 12. Local Library Personal Shelves (Recently Played, On Repeat, Saved Albums)
                                 if (recentlyPlayed.isNotEmpty()) {
-                                    item(key = "recently_played_shelf") {
+                                    item(key = "recently_played_shelf", contentType = "local_shelf") {
                                         SimpSectionHeader(
                                             eyebrow = "LISTEN AGAIN",
                                             title = "Recently Played",
@@ -963,9 +959,10 @@ fun HomeScreen(
                                             onActionClick = { viewModel.playQueue(recentlyPlayed, startIndex = 0) }
                                         )
                                         SimpLazyRow {
-                                            items(recentlyPlayed.take(15), key = { "rec_${it.id}" }) { track ->
+                                            items(recentlyPlayed.take(15), key = { "rec_${it.id}" }, contentType = { "track_card" }) { track ->
                                                 HomeTrackCard(
                                                     track = track,
+                                                    isPlaying = isPlaying && currentTrack?.id == track.id,
                                                     onClick = { viewModel.playTrack(track) },
                                                     onLongClick = { longPressedTrack = track }
                                                 )
@@ -976,7 +973,7 @@ fun HomeScreen(
                                 }
 
                                 if (onRepeatTracks.isNotEmpty()) {
-                                    item(key = "on_repeat_shelf") {
+                                    item(key = "on_repeat_shelf", contentType = "local_shelf") {
                                         SimpSectionHeader(
                                             eyebrow = "HEAVY ROTATION",
                                             title = "Your On Repeat Mix",
@@ -984,9 +981,10 @@ fun HomeScreen(
                                             onActionClick = { viewModel.playQueue(onRepeatTracks, startIndex = 0) }
                                         )
                                         SimpLazyRow {
-                                            items(onRepeatTracks.take(15), key = { "repeat_${it.id}" }) { track ->
+                                            items(onRepeatTracks.take(15), key = { "repeat_${it.id}" }, contentType = { "track_card" }) { track ->
                                                 HomeTrackCard(
                                                     track = track,
+                                                    isPlaying = isPlaying && currentTrack?.id == track.id,
                                                     onClick = { viewModel.playTrack(track) },
                                                     onLongClick = { longPressedTrack = track }
                                                 )
@@ -997,10 +995,10 @@ fun HomeScreen(
                                 }
 
                                 if (albums.isNotEmpty()) {
-                                    item(key = "albums_shelf") {
+                                    item(key = "albums_shelf", contentType = "local_shelf") {
                                         SimpSectionHeader(title = "Albums in Library")
                                         SimpLazyRow {
-                                            items(albums.take(15), key = { "album_${it.id}_${it.title}" }) { album ->
+                                            items(albums.take(15), key = { "album_${it.id}_${it.title}" }, contentType = { "album_card" }) { album ->
                                                 HomeAlbumCard(
                                                     album = album,
                                                     onClick = { album.id?.let { id -> navController.navigate("album/$id") } },
@@ -1058,43 +1056,53 @@ fun HomeScreen(
             }
         }
 
-        // ── 2. Floating Liquid Glass Top Header (Sibling of homeFeedBackdrop — zero feedback loop) ──
-        AnimatedContent(
-            targetState = atTop,
-            transitionSpec = { fadeIn(tween(260)).togetherWith(fadeOut(tween(260))) },
-            modifier = Modifier.align(Alignment.TopCenter),
-            label = "home_header_sticky_blur"
-        ) { isAtVeryTop ->
+        // ── 2. Floating Liquid Glass Top Header (Stable chips + crossfading frosted backdrop behind) ──
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .onGloballyPositioned { coords ->
+                    topAppBarHeightPx = coords.size.height
+                }
+        ) {
+            AnimatedVisibility(
+                visible = !atTop,
+                modifier = Modifier.matchParentSize(),
+                enter = fadeIn(tween(220)),
+                exit = fadeOut(tween(180)),
+                label = "home_header_sticky_blur"
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .drawBackdrop(
+                            backdrop = homeFeedBackdrop,
+                            shape = { RectangleShape },
+                            effects = {
+                                colorControls(
+                                    brightness = -0.16f,
+                                    contrast = 1.04f,
+                                    saturation = 1.15f
+                                )
+                                blur(14.dp.toPx())
+                            },
+                            onDrawSurface = {
+                                drawRect(Color(0xFF0A0B10).copy(alpha = 0.68f))
+                            }
+                        )
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color(0xFF070709).copy(alpha = 0.55f),
+                                    Color(0xFF070709).copy(alpha = 0.12f)
+                                )
+                            )
+                        )
+                )
+            }
+
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                        if (isAtVeryTop) {
-                            Modifier.background(Color.Transparent)
-                        } else {
-                            Modifier
-                                .hazeEffect(
-                                    state = homeHazeState,
-                                    style = HazeStyle(
-                                        backgroundColor = Color(0xFF0A0B10).copy(alpha = 0.72f),
-                                        tint = HazeDefaults.tint(Color(0xFF0A0B10).copy(alpha = 0.45f)),
-                                        blurRadius = 22.dp,
-                                        noiseFactor = 0.02f
-                                    )
-                                )
-                                .background(
-                                    Brush.verticalGradient(
-                                        listOf(
-                                            Color(0xFF070709).copy(alpha = 0.55f),
-                                            Color(0xFF070709).copy(alpha = 0.12f)
-                                        )
-                                    )
-                                )
-                        }
-                    )
-                    .onGloballyPositioned { coords ->
-                        topAppBarHeightPx = coords.size.height
-                    }
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Spacer(
                     modifier = Modifier
@@ -1126,8 +1134,8 @@ fun HomeScreen(
                             .weight(1f)
                             .homeChipStripEdgeFades(
                                 width = 26.dp,
-                                start = { chipHeadFade },
-                                end = { chipTailFade }
+                                start = { if (chipScrollState.canScrollBackward) 1f else 0f },
+                                end = { if (chipScrollState.canScrollForward) 1f else 0f }
                             )
                             .horizontalScroll(chipScrollState),
                         verticalAlignment = Alignment.CenterVertically,
@@ -1551,7 +1559,8 @@ fun SimpMusicCard(
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(item.thumbnailUrl)
-                    .crossfade(500)
+                    .size(450, 450)
+                    .crossfade(160)
                     .build(),
                 contentDescription = item.title,
                 modifier = Modifier.fillMaxSize(),
@@ -1611,6 +1620,7 @@ fun MusicVideoCard(
     video: HomeMediaItem,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
+    isPlaying: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -1633,7 +1643,8 @@ fun MusicVideoCard(
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(video.thumbnailUrl)
-                    .crossfade(500)
+                    .size(640, 360)
+                    .crossfade(160)
                     .build(),
                 contentDescription = video.title,
                 modifier = Modifier.fillMaxSize(),
@@ -1705,11 +1716,15 @@ fun MusicVideoCard(
             color = Color(0xFFA8A8A8),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.basicMarquee(
-                initialDelayMillis = 2000,
-                repeatDelayMillis = 2000,
-                velocity = 25.dp
-            )
+            modifier = if (isPlaying) {
+                Modifier.basicMarquee(
+                    initialDelayMillis = 2000,
+                    repeatDelayMillis = 2000,
+                    velocity = 25.dp
+                )
+            } else {
+                Modifier
+            }
         )
     }
 }
@@ -1755,7 +1770,8 @@ fun MoodPillCard(
 fun HomeTrackCard(
     track: Track,
     onClick: () -> Unit,
-    onLongClick: () -> Unit
+    onLongClick: () -> Unit,
+    isPlaying: Boolean = false
 ) {
     Column(
         modifier = Modifier
@@ -1772,7 +1788,8 @@ fun HomeTrackCard(
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(track.albumArtUri)
-                    .crossfade(500)
+                    .size(450, 450)
+                    .crossfade(160)
                     .build(),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
@@ -1787,7 +1804,7 @@ fun HomeTrackCard(
                 fontWeight = FontWeight.SemiBold,
                 lineHeight = 18.sp
             ),
-            color = Color.White,
+            color = if (isPlaying) EcoDotRed else Color.White,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
@@ -1802,11 +1819,15 @@ fun HomeTrackCard(
                 color = Color(0xFFA8A8A8),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.basicMarquee(
-                    initialDelayMillis = 2000,
-                    repeatDelayMillis = 2000,
-                    velocity = 25.dp
-                )
+                modifier = if (isPlaying) {
+                    Modifier.basicMarquee(
+                        initialDelayMillis = 2000,
+                        repeatDelayMillis = 2000,
+                        velocity = 25.dp
+                    )
+                } else {
+                    Modifier
+                }
             )
         }
     }
@@ -1833,7 +1854,8 @@ fun HomeAlbumCard(
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(album.artUri)
-                    .crossfade(500)
+                    .size(450, 450)
+                    .crossfade(160)
                     .build(),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),

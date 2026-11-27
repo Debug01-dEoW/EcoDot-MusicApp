@@ -1,21 +1,57 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Keep stack trace line numbers legible for release crash reports
+-keepattributes SourceFile,LineNumberTable,*Annotation*,Signature,InnerClasses,EnclosingMethod
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Reflection-serialized remote, UI, and persistence models (Moshi / Gson / Room)
+-keep class com.example.ecodot.data.remote.** { *; }
+-keep class com.example.ecodot.data.local.entities.** { *; }
+-keep class com.example.ecodot.util.CustomCover { *; }
+-keep class com.example.ecodot.ui.viewmodel.Album { *; }
+-keep class com.example.ecodot.ui.viewmodel.Artist { *; }
+-keep class com.example.ecodot.ui.viewmodel.InstantSearchItem { *; }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Moshi & Gson
+-keepclassmembers class * {
+    @com.squareup.moshi.Json *;
+}
+-keep class * extends com.squareup.moshi.JsonAdapter { *; }
+-keepclassmembers class * extends com.squareup.moshi.JsonAdapter { *; }
+-dontwarn com.squareup.moshi.**
+-keepclassmembers class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Room & SQLite
+-keep class * extends androidx.room.RoomDatabase { *; }
+-keep @androidx.room.Entity class * { *; }
+-keep @androidx.room.Dao interface * { *; }
+
+# Retrofit & OkHttp
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-dontwarn retrofit2.**
+-keepattributes Exceptions
+-keepclassmembers interface * {
+    @retrofit2.http.* <methods>;
+}
+
+# NewPipeExtractor & Rhino JS engine
+-keep class org.schabi.newpipe.extractor.** { *; }
+-dontwarn org.schabi.newpipe.**
+-dontwarn org.mozilla.javascript.**
+-dontwarn org.jsoup.**
+-dontwarn org.w3c.**
+-dontwarn javax.naming.**
+
+# Koin dependency injection
+-keep class org.koin.** { *; }
+-keep class com.example.ecodot.di.** { *; }
+
+# Media3 ExoPlayer & Notification session
+-keep class androidx.media3.** { *; }
+-dontwarn androidx.media3.**
+
+# Kyant Backdrop / Haze GPU shaders
+-keep class com.kyant.backdrop.** { *; }
+-keep class dev.chrisbanes.haze.** { *; }
+-dontwarn com.kyant.backdrop.**
+-dontwarn dev.chrisbanes.haze.**

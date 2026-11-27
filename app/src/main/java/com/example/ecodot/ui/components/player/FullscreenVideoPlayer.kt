@@ -74,7 +74,8 @@ fun FullscreenVideoPlayer(
     onPlayPause: () -> Unit,
     onSeek: (Long) -> Unit,
     formatDuration: (Long) -> String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    positionProvider: (() -> Long)? = null
 ) {
     BackHandler(enabled = true) {
         onExitFullscreen()
@@ -116,16 +117,12 @@ fun FullscreenVideoPlayer(
         }
     }
 
-    val displayPosition = if (isSliding) {
-        (sliderFraction * duration).toLong()
-    } else {
-        position
-    }
-
-    val currentSubtitleLine by remember(syncedLyrics, displayPosition) {
+    val readPosition = positionProvider ?: { position }
+    val currentSubtitleLine by remember(syncedLyrics, positionProvider) {
         derivedStateOf {
+            val activePos = if (isSliding) (sliderFraction * duration).toLong() else readPosition()
             if (syncedLyrics.isNotEmpty()) {
-                syncedLyrics.lastOrNull { it.timeMs <= displayPosition }?.text.orEmpty()
+                syncedLyrics.lastOrNull { it.timeMs <= activePos }?.text.orEmpty()
             } else {
                 ""
             }
@@ -510,19 +507,14 @@ fun FullscreenVideoPlayer(
                         .padding(horizontal = 24.dp, vertical = 6.dp)
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        val progressFraction = if (duration > 0) {
-                            (displayPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
-                        } else {
-                            0f
-                        }
-
                         // Sleek continuous scrub bar matching SimpMusic
                         ContinuousSeekBar(
-                            position = displayPosition,
+                            position = position,
                             duration = duration,
                             accentColor = Color.White,
                             onSeek = onSeek,
-                            formatDuration = formatDuration
+                            formatDuration = formatDuration,
+                            positionProvider = positionProvider
                         )
 
                         Spacer(Modifier.height(4.dp))
@@ -533,8 +525,14 @@ fun FullscreenVideoPlayer(
                                 .fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            val elapsedSec by remember(duration, positionProvider) {
+                                derivedStateOf {
+                                    val ms = if (isSliding) (sliderFraction * duration).toLong() else readPosition()
+                                    (ms.coerceAtLeast(0L) / 1000L) * 1000L
+                                }
+                            }
                             Text(
-                                text = "${formatDuration(displayPosition)} / ${formatDuration(duration)}",
+                                text = "${formatDuration(elapsedSec)} / ${formatDuration(duration)}",
                                 color = Color.White.copy(alpha = 0.90f),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Normal

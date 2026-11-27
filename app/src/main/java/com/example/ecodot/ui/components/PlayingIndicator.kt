@@ -10,6 +10,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.example.ecodot.ui.theme.EcoDotRed
 import com.example.ecodot.ui.theme.SimpIcons
@@ -39,7 +41,11 @@ fun PlayingIndicator(modifier: Modifier = Modifier, color: Color = EcoDotRed) {
             Box(
                 modifier = Modifier
                     .width(3.dp)
-                    .fillMaxHeight(height.value)
+                    .fillMaxHeight()
+                    .graphicsLayer {
+                        transformOrigin = TransformOrigin(0.5f, 1f)
+                        scaleY = height.value
+                    }
                     .clip(RoundedCornerShape(topStart = 2.dp, topEnd = 2.dp))
                     .background(color)
             )

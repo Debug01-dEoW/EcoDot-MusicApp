@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -62,11 +63,6 @@ fun AlbumDetailScreen(
     val listState = rememberLazyListState()
     var optionsMenuTrack by remember { mutableStateOf<com.example.ecodot.data.local.entities.Track?>(null) }
     var showPlaylistPicker by remember { mutableStateOf<com.example.ecodot.data.local.entities.Track?>(null) }
-
-    // Calculate scroll progress for fading the top bar and parallax
-    val scrollOffset = listState.firstVisibleItemScrollOffset
-    val firstItemIndex = listState.firstVisibleItemIndex
-    val progress = min(1f, if (firstItemIndex > 0) 1f else scrollOffset / 600f)
 
     LaunchedEffect(albumId) {
         viewModel.loadAlbum(albumId)
@@ -103,8 +99,11 @@ fun AlbumDetailScreen(
                         .fillMaxWidth()
                         .height(450.dp)
                         .graphicsLayer {
+                            val offset = listState.firstVisibleItemScrollOffset
+                            val idx = listState.firstVisibleItemIndex
+                            val progress = min(1f, if (idx > 0) 1f else offset / 600f)
                             alpha = 1f - (progress * 0.8f)
-                            translationY = -(scrollOffset * 0.4f)
+                            translationY = -(offset * 0.4f)
                         }
                 ) {
                     AsyncImage(
@@ -329,12 +328,17 @@ fun AlbumDetailScreen(
                 }
             }
 
-            // Glassmorphic Top App Bar
+            // Glassmorphic Top App Bar (deferred draw/graphicsLayer scroll fade — 0 recompositions)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(90.dp)
-                    .background(Color(0xFF101010).copy(alpha = progress * 0.85f))
+                    .drawBehind {
+                        val offset = listState.firstVisibleItemScrollOffset
+                        val idx = listState.firstVisibleItemIndex
+                        val progress = min(1f, if (idx > 0) 1f else offset / 600f)
+                        drawRect(Color(0xFF101010).copy(alpha = progress * 0.85f))
+                    }
                     .padding(top = 36.dp, start = 8.dp, end = 8.dp)
             ) {
                 Row(
@@ -356,12 +360,18 @@ fun AlbumDetailScreen(
                     
                     Text(
                         text = uiState.title,
-                        color = Color.White.copy(alpha = progress),
+                        color = Color.White,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .graphicsLayer {
+                                val offset = listState.firstVisibleItemScrollOffset
+                                val idx = listState.firstVisibleItemIndex
+                                alpha = min(1f, if (idx > 0) 1f else offset / 600f)
+                            }
                     )
                 }
             }

@@ -79,6 +79,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -196,11 +197,13 @@ fun AppleMusicStyleContent(
     onOpenArtist: () -> Unit,
     onOpenOutputSheet: () -> Unit,
     formatDuration: (Long) -> String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    positionProvider: (() -> Long)? = null
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
     val view = LocalView.current
+    val readPosition = positionProvider ?: { position }
 
     var activeTab by rememberSaveable { mutableStateOf(AppleMusicTab.MAIN) }
     var showVideoOverlay by rememberSaveable { mutableStateOf(false) }
@@ -224,7 +227,7 @@ fun AppleMusicStyleContent(
     // Build smoothstepped 32x32 mesh ImageBitmap off UI thread when coverBitmap changes
     val meshBitmap by produceState<ImageBitmap?>(initialValue = null, coverBitmap, track.id) {
         val bmp = coverBitmap
-        if (bmp == null) {
+        if (bmp == null || bmp.isRecycled) {
             value = null
             return@produceState
         }
@@ -234,7 +237,6 @@ fun AppleMusicStyleContent(
                 val scaled = Bitmap.createScaledBitmap(bmp, srcPx, srcPx, true)
                 val pixels = IntArray(srcPx * srcPx)
                 scaled.getPixels(pixels, 0, srcPx, 0, 0, srcPx, srcPx)
-                if (scaled != bmp) scaled.recycle()
                 val outPixels = PlayerStyleMath.buildSmoothedMeshPixels(pixels, srcPx, srcPx, gridSize = 6, outSize = 32)
                 val mesh = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888)
                 mesh.setPixels(outPixels, 0, 32, 0, 0, 32, 32)
@@ -263,12 +265,14 @@ fun AppleMusicStyleContent(
         Box(modifier = Modifier.fillMaxSize()) {
             var currentBackdropUrl by remember(backdropArtUrl) { mutableStateOf(backdropArtUrl) }
             if (!currentBackdropUrl.isNullOrBlank()) {
+                // Downsampled 128x128 art with lightweight 14.dp blur scales cleanly for GPU 120Hz bokeh wash
                 val blurMod = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    Modifier.blur(80.dp)
+                    Modifier.blur(14.dp)
                 } else Modifier
                 AsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(currentBackdropUrl)
+                        .size(128, 128)
                         .allowHardware(false)
                         .crossfade(450)
                         .build(),
@@ -292,7 +296,7 @@ fun AppleMusicStyleContent(
             Crossfade(targetState = meshBitmap, animationSpec = tween(750), label = "meshFade") { bmp ->
                 if (bmp != null) {
                     val meshMod = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        Modifier.blur(44.dp)
+                        Modifier.blur(10.dp)
                     } else Modifier
                     Image(
                         bitmap = bmp,
@@ -350,6 +354,7 @@ fun AppleMusicStyleContent(
                             showCaptions = showCaptions,
                             syncedLyrics = syncedLyrics,
                             position = position,
+                            positionProvider = readPosition,
                             statusBarHeight = statusBarHeight,
                             bottomClusterHeightDp = bottomClusterHeightDp,
                             onSelectQueueIndex = onSelectQueueIndex,
@@ -357,8 +362,8 @@ fun AppleMusicStyleContent(
                             onToggleCaptions = { showCaptions = !showCaptions },
                             onToggleVideoResizeMode = onToggleVideoResizeMode,
                             onEnterVideoFullscreen = onEnterVideoFullscreen,
-                            onSeekBackward5s = { onSeekTo((position - 5000L).coerceAtLeast(0L)) },
-                            onSeekForward5s = { onSeekTo((position + 5000L).coerceAtMost(duration.coerceAtLeast(1L))) }
+                            onSeekBackward5s = { onSeekTo((readPosition() - 5000L).coerceAtLeast(0L)) },
+                            onSeekForward5s = { onSeekTo((readPosition() + 5000L).coerceAtMost(duration.coerceAtLeast(1L))) }
                         )
                     }
 
@@ -370,6 +375,7 @@ fun AppleMusicStyleContent(
                             plainLyrics = plainLyrics,
                             isLyricsLoading = isLyricsLoading,
                             position = position,
+                            positionProvider = readPosition,
                             accentColor = accentColor,
                             bottomPaddingDp = bottomClusterHeightDp,
                             onToggleLike = onToggleLike,
@@ -447,13 +453,13 @@ fun AppleMusicStyleContent(
                     Spacer(modifier = Modifier.height(10.dp))
                     AppleMusicInlineLyricStrip(
                         syncedLyrics = syncedLyrics,
-                        position = position,
+                        positionProvider = readPosition,
                         onClick = { if (syncedLyrics.isNotEmpty()) activeTab = AppleMusicTab.LYRICS }
                     )
                 }
 
                 AppleMusicBottomControlsCluster(
-                    position = position,
+                    positionProvider = readPosition,
                     duration = duration,
                     isPlaying = isPlaying,
                     isCrossfading = isCrossfading,
@@ -492,6 +498,7 @@ private fun AppleMusicMainArtworkOrVideoLayer(
     showCaptions: Boolean,
     syncedLyrics: List<LyricLine>,
     position: Long,
+    positionProvider: (() -> Long)? = null,
     statusBarHeight: Dp,
     bottomClusterHeightDp: Int,
     onSelectQueueIndex: (Int) -> Unit,
@@ -530,6 +537,7 @@ private fun AppleMusicMainArtworkOrVideoLayer(
                     showCaptions = showCaptions,
                     syncedLyrics = syncedLyrics,
                     positionMs = position,
+                    positionProvider = positionProvider ?: { position },
                     onToggleControls = onToggleVideoOverlay,
                     onToggleCaptions = onToggleCaptions,
                     onToggleResizeMode = onToggleVideoResizeMode,
@@ -586,6 +594,7 @@ private fun AppleMusicMainArtworkOrVideoLayer(
                     AsyncImage(
                         model = ImageRequest.Builder(context)
                             .data(activeUrl)
+                            .size(720, 720)
                             .crossfade(400)
                             .build(),
                         contentDescription = pageTrack.title,
@@ -741,12 +750,15 @@ private fun AppleMusicTitleAndActionsRow(
 @Composable
 private fun AppleMusicInlineLyricStrip(
     syncedLyrics: List<LyricLine>,
-    position: Long,
+    positionProvider: () -> Long,
     onClick: () -> Unit
 ) {
-    val activeLine = remember(syncedLyrics, position) {
-        if (syncedLyrics.isEmpty()) null
-        else syncedLyrics.lastOrNull { it.timeMs <= position }?.text
+    val activeLine by remember(syncedLyrics, positionProvider) {
+        derivedStateOf {
+            val pos = positionProvider()
+            if (syncedLyrics.isEmpty()) null
+            else syncedLyrics.lastOrNull { it.timeMs <= pos }?.text
+        }
     }
     Box(
         modifier = Modifier
@@ -791,7 +803,7 @@ private fun AppleMusicInlineLyricStrip(
 
 @Composable
 private fun AppleMusicBottomControlsCluster(
-    position: Long,
+    positionProvider: () -> Long,
     duration: Long,
     isPlaying: Boolean,
     isCrossfading: Boolean,
@@ -809,86 +821,21 @@ private fun AppleMusicBottomControlsCluster(
     onOpenTrackInfo: () -> Unit,
     formatDuration: (Long) -> String
 ) {
-    val safeDuration = duration.coerceAtLeast(1L)
-    var isScrubbing by remember { mutableStateOf(false) }
-    var scrubFraction by remember { mutableFloatStateOf(0f) }
-    val liveFraction = if (isScrubbing) scrubFraction else (position.toFloat() / safeDuration.toFloat()).coerceIn(0f, 1f)
-    val displayPos = if (isScrubbing) (scrubFraction * safeDuration).toLong() else position
-    val remainingMs = (safeDuration - displayPos).coerceAtLeast(0L)
-
     val (volumeFraction, setVolumeFraction) = rememberSystemMediaVolumeController()
-    val (_, shimmerSweep) = rememberCrossfadeVisuals(isCrossfading)
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
     ) {
-        AppleMusicThinSlider(
-            value = liveFraction,
-            activeColor = Color.White,
-            onValueChange = {
-                isScrubbing = true
-                scrubFraction = it
-            },
-            onValueChangeFinished = {
-                onSeekTo((scrubFraction * safeDuration).toLong())
-                isScrubbing = false
-            }
+        AppleMusicScrubberSection(
+            positionProvider = positionProvider,
+            duration = duration,
+            isCrossfading = isCrossfading,
+            streamBadgeLabel = streamBadgeLabel,
+            onSeekTo = onSeekTo,
+            formatDuration = formatDuration
         )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // Elapsed | Real-time Headphones + 140 kbps · 48 kHz (no pill box!) | -Remaining
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = formatDuration(displayPos),
-                fontFamily = poppinsFamily,
-                fontSize = 11.5.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.White.copy(alpha = 0.65f)
-            )
-
-            Box(contentAlignment = Alignment.Center) {
-                if (isCrossfading) {
-                    CrossfadingShimmerLabel(
-                        isCrossfading = true,
-                        shimmerSweep = shimmerSweep,
-                        fontSize = 11.5.sp
-                    )
-                } else if (!streamBadgeLabel.isNullOrBlank()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = SimpIcons.Headphones,
-                            contentDescription = null,
-                            tint = Color.White.copy(alpha = 0.60f),
-                            modifier = Modifier.size(12.dp)
-                        )
-                        Spacer(modifier = Modifier.width(5.dp))
-                        Text(
-                            text = streamBadgeLabel,
-                            fontFamily = poppinsFamily,
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.White.copy(alpha = 0.68f),
-                            maxLines = 1
-                        )
-                    }
-                }
-            }
-
-            Text(
-                text = "-${formatDuration(remainingMs)}",
-                fontFamily = poppinsFamily,
-                fontSize = 11.5.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.White.copy(alpha = 0.65f)
-            )
-        }
 
         Spacer(modifier = Modifier.height(14.dp))
 
@@ -1209,6 +1156,7 @@ private fun AppleMusicCompactTrackHeader(
         AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(thumbUrl)
+                .size(160, 160)
                 .crossfade(true)
                 .build(),
             contentDescription = track.title,
@@ -1280,7 +1228,8 @@ private fun AppleMusicLyricsBody(
     onOpenArtist: () -> Unit,
     onSeekTo: (Long) -> Unit,
     onOpenFullLyrics: () -> Unit,
-    onOpenShareLyrics: () -> Unit
+    onOpenShareLyrics: () -> Unit,
+    positionProvider: (() -> Long)? = null
 ) {
     Column(
         modifier = Modifier
@@ -1309,7 +1258,8 @@ private fun AppleMusicLyricsBody(
                 onSeek = onSeekTo,
                 isFullScreen = false,
                 backgroundColor = Color.Transparent,
-                accentColor = if (accentColor == Color.Black) Color.White else accentColor
+                accentColor = if (accentColor == Color.Black) Color.White else accentColor,
+                positionProvider = positionProvider
             )
 
             Row(
@@ -1351,6 +1301,100 @@ private fun AppleMusicLyricsBody(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AppleMusicScrubberSection(
+    positionProvider: () -> Long,
+    duration: Long,
+    isCrossfading: Boolean,
+    streamBadgeLabel: String?,
+    onSeekTo: (Long) -> Unit,
+    formatDuration: (Long) -> String
+) {
+    val safeDuration = duration.coerceAtLeast(1L)
+    var isScrubbing by remember { mutableStateOf(false) }
+    var scrubFraction by remember { mutableFloatStateOf(0f) }
+    val liveFraction by remember(safeDuration, positionProvider) {
+        derivedStateOf {
+            if (isScrubbing) scrubFraction else (positionProvider().toFloat() / safeDuration.toFloat()).coerceIn(0f, 1f)
+        }
+    }
+    val displaySec by remember(safeDuration, positionProvider) {
+        derivedStateOf {
+            val ms = if (isScrubbing) (scrubFraction * safeDuration).toLong() else positionProvider()
+            (ms.coerceAtLeast(0L) / 1000L) * 1000L
+        }
+    }
+    val remainingSec = (safeDuration - displaySec).coerceAtLeast(0L)
+    val (_, shimmerSweep) = rememberCrossfadeVisuals(isCrossfading)
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        AppleMusicThinSlider(
+            value = liveFraction,
+            activeColor = Color.White,
+            onValueChange = {
+                isScrubbing = true
+                scrubFraction = it
+            },
+            onValueChangeFinished = {
+                onSeekTo((scrubFraction * safeDuration).toLong())
+                isScrubbing = false
+            }
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = formatDuration(displaySec),
+                fontFamily = poppinsFamily,
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White.copy(alpha = 0.65f)
+            )
+
+            Box(contentAlignment = Alignment.Center) {
+                if (isCrossfading) {
+                    CrossfadingShimmerLabel(
+                        isCrossfading = true,
+                        shimmerSweep = shimmerSweep,
+                        fontSize = 11.5.sp
+                    )
+                } else if (!streamBadgeLabel.isNullOrBlank()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = SimpIcons.Headphones,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.60f),
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text(
+                            text = streamBadgeLabel,
+                            fontFamily = poppinsFamily,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White.copy(alpha = 0.68f),
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+
+            Text(
+                text = "-${formatDuration(remainingSec)}",
+                fontFamily = poppinsFamily,
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White.copy(alpha = 0.65f)
+            )
         }
     }
 }
@@ -1513,6 +1557,7 @@ private fun AppleMusicQueueBody(
                         AsyncImage(
                             model = ImageRequest.Builder(context)
                                 .data(YouTubeParser.getHighResUrl(qTrack.albumArtUri, isWide = false) ?: qTrack.albumArtUri)
+                                .size(160, 160)
                                 .crossfade(true)
                                 .build(),
                             contentDescription = qTrack.title,

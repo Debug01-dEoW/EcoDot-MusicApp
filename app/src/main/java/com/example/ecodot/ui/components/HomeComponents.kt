@@ -86,6 +86,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
@@ -96,6 +97,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -154,7 +156,7 @@ fun Modifier.homeLiquidGlass(
     surfaceAlpha: Float = 0.52f,
     specularAlpha: Float = 0.86f,
     frostSheenAlpha: Float = 0.22f,
-    blurDp: Dp = 12.dp,
+    blurDp: Dp = 8.dp,
     pressedScaleTarget: Float = 0.96f,
     isPressed: Boolean = false
 ): Modifier {
@@ -172,6 +174,15 @@ fun Modifier.homeLiquidGlass(
             tiltY = tilt.tiltY,
             baseAlpha = specularAlpha * 0.62f,
             secondaryAlpha = 0.16f
+        )
+    }
+    val frostSheenBrush = remember(frostSheenAlpha) {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.White.copy(alpha = frostSheenAlpha),
+                Color.White.copy(alpha = frostSheenAlpha * 0.30f),
+                Color.Black.copy(alpha = 0.16f)
+            )
         )
     }
 
@@ -205,11 +216,6 @@ fun Modifier.homeLiquidGlass(
             },
             effects = {
                 vibrancy()
-                colorControls(
-                    brightness = 0.08f,
-                    contrast = 1.12f,
-                    saturation = 1.42f
-                )
                 blur(blurDp.toPx())
                 if (size.minDimension > 2f) {
                     lens(
@@ -221,15 +227,7 @@ fun Modifier.homeLiquidGlass(
             },
             onDrawSurface = {
                 drawRect(surfaceTint.copy(alpha = surfaceAlpha))
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = frostSheenAlpha),
-                            Color.White.copy(alpha = frostSheenAlpha * 0.30f),
-                            Color.Black.copy(alpha = 0.16f)
-                        )
-                    )
-                )
+                drawRect(brush = frostSheenBrush)
             }
         )
         .border(0.85.dp, rimBrush, shape)
@@ -368,7 +366,11 @@ fun LiquidGlassProfileButton(
         ) {
             if (!userProfile?.avatarUri.isNullOrEmpty()) {
                 AsyncImage(
-                    model = userProfile?.avatarUri,
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(userProfile?.avatarUri)
+                        .size(160, 160)
+                        .crossfade(true)
+                        .build(),
                     contentDescription = "Profile",
                     modifier = Modifier
                         .fillMaxSize()
@@ -413,7 +415,11 @@ fun LiquidGlassProfileButton(
                 ) {
                     if (!userProfile?.avatarUri.isNullOrEmpty()) {
                         AsyncImage(
-                            model = userProfile?.avatarUri,
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(userProfile?.avatarUri)
+                                .size(160, 160)
+                                .crossfade(true)
+                                .build(),
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -829,7 +835,8 @@ fun HomeAmbientBackground(
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(headerImageUrl)
-                    .crossfade(550)
+                    .size(480, 480)
+                    .crossfade(180)
                     .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
@@ -855,50 +862,56 @@ fun HomeAmbientBackground(
             )
         }
 
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val w = size.width
-            val h = size.height
+        Spacer(
+            modifier = Modifier
+                .fillMaxSize()
+                .drawWithCache {
+                    val w = size.width
+                    val h = size.height
+                    val c1 = Offset(w * 0.24f, h * 0.20f)
+                    val r1 = w * 0.48f
+                    val b1 = Brush.radialGradient(
+                        colors = listOf(color1.copy(alpha = 0.48f), Color.Transparent),
+                        center = c1,
+                        radius = r1
+                    )
+                    val c2 = Offset(w * 0.80f, h * 0.16f)
+                    val r2 = w * 0.42f
+                    val b2 = Brush.radialGradient(
+                        colors = listOf(color2.copy(alpha = 0.40f), Color.Transparent),
+                        center = c2,
+                        radius = r2
+                    )
+                    val c3 = Offset(w * 0.50f, h * 0.40f)
+                    val r3 = w * 0.40f
+                    val b3 = Brush.radialGradient(
+                        colors = listOf(color3.copy(alpha = 0.30f), Color.Transparent),
+                        center = c3,
+                        radius = r3
+                    )
+                    val showPalm = activeMood?.equals("relax", true) == true || activeMood?.equals("chill", true) == true
+                    val palmRight = if (showPalm) {
+                        Path().apply {
+                            moveTo(w * 0.75f, 0f)
+                            quadraticTo(w * 0.88f, h * 0.12f, w, h * 0.08f)
+                            quadraticTo(w * 0.90f, h * 0.22f, w, h * 0.25f)
+                            quadraticTo(w * 0.82f, h * 0.18f, w * 0.85f, h * 0.32f)
+                            quadraticTo(w * 0.75f, h * 0.16f, w * 0.70f, h * 0.24f)
+                            close()
+                        }
+                    } else null
+                    val palmTint = Color.Black.copy(alpha = 0.45f)
 
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(color1.copy(alpha = 0.48f), Color.Transparent),
-                    center = Offset(w * 0.24f, h * 0.20f),
-                    radius = w * 0.48f
-                ),
-                center = Offset(w * 0.24f, h * 0.20f),
-                radius = w * 0.48f
-            )
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(color2.copy(alpha = 0.40f), Color.Transparent),
-                    center = Offset(w * 0.80f, h * 0.16f),
-                    radius = w * 0.42f
-                ),
-                center = Offset(w * 0.80f, h * 0.16f),
-                radius = w * 0.42f
-            )
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(color3.copy(alpha = 0.30f), Color.Transparent),
-                    center = Offset(w * 0.50f, h * 0.40f),
-                    radius = w * 0.40f
-                ),
-                center = Offset(w * 0.50f, h * 0.40f),
-                radius = w * 0.40f
-            )
-
-            if (activeMood?.equals("relax", true) == true || activeMood?.equals("chill", true) == true) {
-                val palmRight = Path().apply {
-                    moveTo(w * 0.75f, 0f)
-                    quadraticTo(w * 0.88f, h * 0.12f, w, h * 0.08f)
-                    quadraticTo(w * 0.90f, h * 0.22f, w, h * 0.25f)
-                    quadraticTo(w * 0.82f, h * 0.18f, w * 0.85f, h * 0.32f)
-                    quadraticTo(w * 0.75f, h * 0.16f, w * 0.70f, h * 0.24f)
-                    close()
+                    onDrawBehind {
+                        drawCircle(brush = b1, center = c1, radius = r1)
+                        drawCircle(brush = b2, center = c2, radius = r2)
+                        drawCircle(brush = b3, center = c3, radius = r3)
+                        if (palmRight != null) {
+                            drawPath(palmRight, palmTint)
+                        }
+                    }
                 }
-                drawPath(palmRight, Color.Black.copy(alpha = 0.45f))
-            }
-        }
+        )
 
         Box(
             modifier = Modifier
@@ -940,7 +953,11 @@ fun SimpSectionHeader(
         ) {
             if (!avatarUrl.isNullOrBlank()) {
                 AsyncImage(
-                    model = avatarUrl,
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(avatarUrl)
+                        .size(144, 144)
+                        .crossfade(true)
+                        .build(),
                     contentDescription = null,
                     modifier = Modifier
                         .padding(end = 10.dp)
@@ -1064,8 +1081,9 @@ fun HomeDiscoverHeroCarousel(
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(item.thumbnailUrl)
+                        .size(720, 720)
                         .diskCachePolicy(CachePolicy.ENABLED)
-                        .crossfade(500)
+                        .crossfade(180)
                         .build(),
                     contentDescription = item.title,
                     contentScale = ContentScale.Crop,
@@ -1158,7 +1176,8 @@ fun HomeArtistCard(
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(item.thumbnailUrl)
-                .crossfade(500)
+                .size(420, 420)
+                .crossfade(180)
                 .build(),
             contentDescription = item.title,
             contentScale = ContentScale.Crop,
@@ -1188,12 +1207,7 @@ fun HomeArtistCard(
                 color = Color(0xFFA8A8A8),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.basicMarquee(
-                    initialDelayMillis = 2000,
-                    repeatDelayMillis = 2000,
-                    velocity = 25.dp
-                )
+                textAlign = TextAlign.Center
             )
         }
     }
@@ -1227,7 +1241,8 @@ fun RankedVideoChartCard(
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(video.thumbnailUrl)
-                    .crossfade(500)
+                    .size(640, 360)
+                    .crossfade(180)
                     .build(),
                 contentDescription = video.title,
                 modifier = Modifier.fillMaxSize(),
@@ -1285,12 +1300,7 @@ fun RankedVideoChartCard(
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                     color = Color(0xFFA8A8A8),
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.basicMarquee(
-                        initialDelayMillis = 2000,
-                        repeatDelayMillis = 2000,
-                        velocity = 25.dp
-                    )
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -1334,7 +1344,8 @@ fun RankedChartRow(
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(thumbnailUrl)
-                .crossfade(450)
+                .size(200, 200)
+                .crossfade(180)
                 .build(),
             contentDescription = title,
             contentScale = ContentScale.Crop,
@@ -1363,12 +1374,7 @@ fun RankedChartRow(
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                     color = Color(0xFFA8A8A8),
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.basicMarquee(
-                        initialDelayMillis = 2000,
-                        repeatDelayMillis = 2000,
-                        velocity = 25.dp
-                    )
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -1402,7 +1408,8 @@ fun SimpQuickPicksRowItem(
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(track.albumArtUri)
-                .crossfade(500)
+                .size(200, 200)
+                .crossfade(180)
                 .build(),
             contentDescription = null,
             modifier = Modifier
@@ -1427,10 +1434,14 @@ fun SimpQuickPicksRowItem(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .basicMarquee(
-                        initialDelayMillis = 2000,
-                        repeatDelayMillis = 2000,
-                        velocity = 25.dp
+                    .then(
+                        if (isPlaying) {
+                            Modifier.basicMarquee(
+                                initialDelayMillis = 2000,
+                                repeatDelayMillis = 2000,
+                                velocity = 25.dp
+                            )
+                        } else Modifier
                     )
             )
             Spacer(modifier = Modifier.height(2.dp))
@@ -1443,12 +1454,7 @@ fun SimpQuickPicksRowItem(
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                     color = Color(0xFFA8A8A8),
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.basicMarquee(
-                        initialDelayMillis = 2000,
-                        repeatDelayMillis = 2000,
-                        velocity = 25.dp
-                    )
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -1494,9 +1500,9 @@ private fun HomeMiniEqualizerBars(modifier: Modifier = Modifier, color: Color = 
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.Bottom
     ) {
-        Box(modifier = Modifier.weight(1f).fillMaxHeight(h1).clip(RoundedCornerShape(1.dp)).background(color))
-        Box(modifier = Modifier.weight(1f).fillMaxHeight(h2).clip(RoundedCornerShape(1.dp)).background(color))
-        Box(modifier = Modifier.weight(1f).fillMaxHeight(h3).clip(RoundedCornerShape(1.dp)).background(color))
+        Box(modifier = Modifier.weight(1f).fillMaxHeight().graphicsLayer { transformOrigin = TransformOrigin(0.5f, 1f); scaleY = h1 }.clip(RoundedCornerShape(1.dp)).background(color))
+        Box(modifier = Modifier.weight(1f).fillMaxHeight().graphicsLayer { transformOrigin = TransformOrigin(0.5f, 1f); scaleY = h2 }.clip(RoundedCornerShape(1.dp)).background(color))
+        Box(modifier = Modifier.weight(1f).fillMaxHeight().graphicsLayer { transformOrigin = TransformOrigin(0.5f, 1f); scaleY = h3 }.clip(RoundedCornerShape(1.dp)).background(color))
     }
 }
 
@@ -1840,7 +1846,11 @@ fun HomeBrowseSheet(
                                             )
                                     ) {
                                         AsyncImage(
-                                            model = item.thumbnailUrl,
+                                            model = ImageRequest.Builder(LocalContext.current)
+                                                .data(item.thumbnailUrl)
+                                                .size(480, 480)
+                                                .crossfade(true)
+                                                .build(),
                                             contentDescription = item.title,
                                             contentScale = ContentScale.Crop,
                                             modifier = Modifier

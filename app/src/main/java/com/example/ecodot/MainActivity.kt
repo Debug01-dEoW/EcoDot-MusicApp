@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -62,6 +63,7 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        enableHighestRefreshRate()
         setContent {
             val viewModel: MusicViewModel = viewModel()
             
@@ -190,24 +192,25 @@ class MainActivity : ComponentActivity() {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .layerBackdrop(appBackdrop)
-                                .hazeSource(appHazeState)
+                                .then(if (liquidGlassEnabled) Modifier.layerBackdrop(appBackdrop) else Modifier)
                         ) {
 
-                            // ── Global Ambient Haze (album art color bleeds into all screens) ──
+                            // ── Global Ambient Haze (draw-phase so transitions never recompose NavHost) ──
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(
-                                        Brush.radialGradient(
-                                            colors = listOf(
-                                                animatedAmbient,
-                                                Color.Transparent
-                                            ),
-                                            center = androidx.compose.ui.geometry.Offset(540f, -200f),
-                                            radius = 1400f
+                                    .drawBehind {
+                                        drawRect(
+                                            brush = Brush.radialGradient(
+                                                colors = listOf(
+                                                    animatedAmbient,
+                                                    Color.Transparent
+                                                ),
+                                                center = androidx.compose.ui.geometry.Offset(540f, -200f),
+                                                radius = 1400f
+                                            )
                                         )
-                                    )
+                                    }
                             )
 
                             // ── Page Content ──────────────────────────────────
@@ -545,6 +548,32 @@ class MainActivity : ComponentActivity() {
         } // end CompositionLocalProvider
             } // end EcoDotTheme
         } // end setContent
+    }
+
+    /**
+     * Unlocks 120Hz / highest native display refresh rate matching active panel resolution
+     * so LTPO / vendor ROMs do not clamp Compose frames to 60Hz.
+     */
+    @Suppress("DEPRECATION")
+    private fun enableHighestRefreshRate() {
+        runCatching {
+            val activeDisplay = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                display
+            } else {
+                windowManager.defaultDisplay
+            } ?: return
+            val currentMode = activeDisplay.mode
+            val bestMode = activeDisplay.supportedModes
+                .filter { it.physicalWidth == currentMode.physicalWidth && it.physicalHeight == currentMode.physicalHeight }
+                .maxByOrNull { it.refreshRate }
+                ?: activeDisplay.supportedModes.maxByOrNull { it.refreshRate }
+                ?: return
+
+            window.attributes = window.attributes.apply {
+                preferredDisplayModeId = bestMode.modeId
+                preferredRefreshRate = bestMode.refreshRate
+            }
+        }
     }
 }
 

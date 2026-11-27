@@ -119,7 +119,8 @@ fun ContinuousSeekBar(
     onSeek: (Long) -> Unit,
     formatDuration: (Long) -> String,
     modifier: Modifier = Modifier,
-    isCrossfading: Boolean = false
+    isCrossfading: Boolean = false,
+    positionProvider: (() -> Long)? = null
 ) {
     var isDragging by remember { mutableStateOf(false) }
     var dragProgress by remember { mutableFloatStateOf(0f) }
@@ -127,8 +128,7 @@ fun ContinuousSeekBar(
     val hapticFeedback = LocalHapticFeedback.current
     val density = LocalDensity.current
 
-    val currentProgress = if (duration > 0) (position.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
-    val displayProgress = if (isDragging) dragProgress else currentProgress
+    val readPosition = positionProvider ?: { position }
 
     // Smooth height expansion on touch (3.5dp -> 7.5dp)
     val trackHeight by animateDpAsState(
@@ -167,7 +167,10 @@ fun ContinuousSeekBar(
                     .height(24.dp)
             ) {
                 val tooltipOffset = with(density) {
-                    ((displayProgress * trackWidthPx) - 24.dp.toPx())
+                    val frac = if (isDragging) dragProgress else if (duration > 0) {
+                        (readPosition().toFloat() / duration.toFloat()).coerceIn(0f, 1f)
+                    } else 0f
+                    ((frac * trackWidthPx) - 24.dp.toPx())
                         .coerceIn(0f, (trackWidthPx - 48.dp.toPx()).coerceAtLeast(0f))
                 }
 
@@ -255,7 +258,14 @@ fun ContinuousSeekBar(
                 )
 
                 // 2. Active Track Fill with smooth rainbow sweep during crossfade
-                val activeWidth = (displayProgress * width).coerceIn(0f, width)
+                val liveProgress = if (isDragging) {
+                    dragProgress
+                } else if (duration > 0) {
+                    (readPosition().toFloat() / duration.toFloat()).coerceIn(0f, 1f)
+                } else {
+                    0f
+                }
+                val activeWidth = (liveProgress * width).coerceIn(0f, width)
                 if (activeWidth > 0f) {
                     drawRoundRect(
                         brush = Brush.horizontalGradient(
@@ -310,9 +320,14 @@ fun ContinuousSeekBar(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val displayPos = if (isDragging) (dragProgress * duration).toLong() else position
+                val displaySec by remember(duration, readPosition) {
+                    derivedStateOf {
+                        val ms = if (isDragging) (dragProgress * duration).toLong() else readPosition()
+                        (ms.coerceAtLeast(0L) / 1000L) * 1000L
+                    }
+                }
                 Text(
-                    text = formatDuration(displayPos.coerceAtLeast(0L)),
+                    text = formatDuration(displaySec),
                     fontSize = 11.5.sp,
                     color = Color.White.copy(alpha = 0.62f),
                     fontFamily = poppinsFamily,

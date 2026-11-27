@@ -34,6 +34,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,7 +90,8 @@ fun ResponsivePlayerVideoSurface(
     onSeekBackward5s: () -> Unit,
     onSeekForward5s: () -> Unit,
     modifier: Modifier = Modifier,
-    fallbackArtUrl: String? = null
+    fallbackArtUrl: String? = null,
+    positionProvider: (() -> Long)? = null
 ) {
     val view = LocalView.current
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -109,6 +112,7 @@ fun ResponsivePlayerVideoSurface(
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(highArt)
+                    .size(480, 480)
                     .crossfade(true)
                     .build(),
                 contentDescription = null,
@@ -150,15 +154,12 @@ fun ResponsivePlayerVideoSurface(
             }
         }
 
-        // Synced subtitle overlay directly inside the video container above controls
-        val activeLyricLine = remember(syncedLyrics, positionMs) {
-            if (syncedLyrics.isEmpty()) null
-            else syncedLyrics.lastOrNull { it.timeMs <= positionMs }?.text
-        }
-        AnimatedVisibility(
-            visible = showCaptions && !activeLyricLine.isNullOrBlank(),
-            enter = fadeIn(),
-            exit = fadeOut(),
+        // Synced subtitle overlay isolated in child scope so AndroidView PlayerView never recomposes on ticks
+        ResponsiveVideoSubtitleOverlay(
+            syncedLyrics = syncedLyrics,
+            showCaptions = showCaptions,
+            showControls = showControls,
+            positionProvider = positionProvider ?: { positionMs },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(
@@ -166,32 +167,7 @@ fun ResponsivePlayerVideoSurface(
                     end = 44.dp,
                     bottom = if (showControls) 16.dp else 10.dp
                 )
-        ) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.Black.copy(alpha = 0.62f))
-                    .padding(horizontal = 10.dp, vertical = 5.dp)
-            ) {
-                Text(
-                    text = activeLyricLine.orEmpty(),
-                    fontFamily = poppinsFamily,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    style = androidx.compose.ui.text.TextStyle(
-                        shadow = Shadow(
-                            color = Color.Black.copy(alpha = 0.85f),
-                            offset = Offset(0f, 1.5f),
-                            blurRadius = 4f
-                        )
-                    )
-                )
-            }
-        }
+        )
 
         // Over-video tap controls matching SimpMusic's Apple Music / M3E overlay
         Crossfade(
@@ -312,6 +288,54 @@ fun ResponsivePlayerVideoSurface(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ResponsiveVideoSubtitleOverlay(
+    syncedLyrics: List<LyricLine>,
+    showCaptions: Boolean,
+    showControls: Boolean,
+    positionProvider: () -> Long,
+    modifier: Modifier = Modifier
+) {
+    val activeLyricLine by remember(syncedLyrics, positionProvider) {
+        derivedStateOf {
+            val pos = positionProvider()
+            if (syncedLyrics.isEmpty()) null
+            else syncedLyrics.lastOrNull { it.timeMs <= pos }?.text
+        }
+    }
+    AnimatedVisibility(
+        visible = showCaptions && !activeLyricLine.isNullOrBlank(),
+        enter = fadeIn(),
+        exit = fadeOut(),
+        modifier = modifier
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.Black.copy(alpha = 0.62f))
+                .padding(horizontal = 10.dp, vertical = 5.dp)
+        ) {
+            Text(
+                text = activeLyricLine.orEmpty(),
+                fontFamily = poppinsFamily,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                style = androidx.compose.ui.text.TextStyle(
+                    shadow = Shadow(
+                        color = Color.Black.copy(alpha = 0.85f),
+                        offset = Offset(0f, 1.5f),
+                        blurRadius = 4f
+                    )
+                )
+            )
         }
     }
 }

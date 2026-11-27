@@ -41,6 +41,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -129,18 +130,23 @@ fun VinylStyleContent(
     onOpenArtist: () -> Unit,
     onOpenOutputSheet: () -> Unit,
     formatDuration: (Long) -> String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    positionProvider: (() -> Long)? = null
 ) {
     val view = LocalView.current
     val brassGold = Color(0xFFE5C07B)
     val studioAccent = if (accentColor == Color.Black) brassGold else accentColor
     val baseTint = if (dominantColor == Color.Black) Color(0xFF281F1A) else dominantColor
+    val readPosition = positionProvider ?: { position }
 
     var showVideoOverlay by rememberSaveable { mutableStateOf(false) }
     var showCaptions by rememberSaveable { mutableStateOf(true) }
     val outputDeviceName by rememberActiveAudioOutputName()
-    val activeLine = remember(syncedLyrics, position) {
-        syncedLyrics.lastOrNull { it.timeMs <= position }?.text
+    val activeLine by remember(syncedLyrics, positionProvider) {
+        derivedStateOf {
+            val pos = readPosition()
+            syncedLyrics.lastOrNull { it.timeMs <= pos }?.text
+        }
     }
 
     LaunchedEffect(showVideoOverlay, isPlaying, isTrackAVideo) {
@@ -151,7 +157,9 @@ fun VinylStyleContent(
     }
 
     val safeDuration = duration.coerceAtLeast(1L)
-    val playbackProgress = (position.toFloat() / safeDuration.toFloat()).coerceIn(0f, 1f)
+    val playbackProgressProvider = remember(safeDuration, readPosition) {
+        { (readPosition().toFloat() / safeDuration.toFloat()).coerceIn(0f, 1f) }
+    }
     val labelUrl = remember(track.id, track.albumArtUri) {
         YouTubeParser.getHighResUrl(track.albumArtUri, isWide = false) ?: track.albumArtUri
     }
@@ -297,12 +305,13 @@ fun VinylStyleContent(
                                 showCaptions = showCaptions,
                                 syncedLyrics = syncedLyrics,
                                 positionMs = position,
+                                positionProvider = readPosition,
                                 onToggleControls = { showVideoOverlay = !showVideoOverlay },
                                 onToggleCaptions = { showCaptions = !showCaptions },
                                 onToggleResizeMode = onToggleVideoResizeMode,
                                 onEnterFullscreen = onEnterVideoFullscreen,
-                                onSeekBackward5s = { onSeekTo((position - 5000L).coerceAtLeast(0L)) },
-                                onSeekForward5s = { onSeekTo((position + 5000L).coerceAtMost(safeDuration)) },
+                                onSeekBackward5s = { onSeekTo((readPosition() - 5000L).coerceAtLeast(0L)) },
+                                onSeekForward5s = { onSeekTo((readPosition() + 5000L).coerceAtMost(safeDuration)) },
                                 fallbackArtUrl = track.albumArtUri,
                                 modifier = Modifier.fillMaxSize()
                             )
@@ -325,7 +334,7 @@ fun VinylStyleContent(
                                         imageUrl = labelUrl,
                                         isPlaying = isPlaying,
                                         dominantColor = studioAccent,
-                                        playbackProgress = playbackProgress
+                                        playbackProgressProvider = playbackProgressProvider
                                     )
                                 }
                             }
@@ -399,7 +408,8 @@ fun VinylStyleContent(
             }
 
             // ── 5. Inline Synced Lyric Strip ──────────────────────────────────
-            if (!activeLine.isNullOrBlank()) {
+            val currentLyric = activeLine
+            if (!currentLyric.isNullOrBlank()) {
                 item {
                     Spacer(modifier = Modifier.height(10.dp))
                     Surface(
@@ -412,7 +422,7 @@ fun VinylStyleContent(
                             .clickable(onClick = onOpenFullLyrics)
                     ) {
                         Text(
-                            text = activeLine,
+                            text = currentLyric,
                             fontFamily = poppinsFamily,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
@@ -437,6 +447,7 @@ fun VinylStyleContent(
                     onSeek = onSeekTo,
                     formatDuration = formatDuration,
                     isCrossfading = isCrossfading,
+                    positionProvider = readPosition,
                     modifier = Modifier.padding(horizontal = 24.dp)
                 )
 
@@ -589,7 +600,8 @@ fun VinylStyleContent(
                                 onSeek = onSeekTo,
                                 isFullScreen = false,
                                 backgroundColor = Color.Transparent,
-                                accentColor = brassGold
+                                accentColor = brassGold,
+                                positionProvider = readPosition
                             )
                         }
                     }
