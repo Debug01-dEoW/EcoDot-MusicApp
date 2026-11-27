@@ -41,3 +41,8 @@ input_images/
 
 # Root screenshot and verification captures
 /*.png
+
+# Release signing keys & credentials (never commit secrets)
+*.keystore
+*.jks
+keystore.properties

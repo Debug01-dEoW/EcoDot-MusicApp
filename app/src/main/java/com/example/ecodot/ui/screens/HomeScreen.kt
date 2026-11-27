@@ -1034,7 +1034,7 @@ fun HomeScreen(
                                     }
                                 }
 
-                                // 14. End-of-page SimpMusic-style Credit Footer
+                                // 14. End-of-page Credit Footer
                                 item(key = "home_footer") {
                                     Column(
                                         modifier = Modifier
@@ -1046,12 +1046,6 @@ fun HomeScreen(
                                             text = "© 2026 EcoDot v$appVersionName",
                                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                                             color = Color.White.copy(alpha = 0.45f)
-                                        )
-                                        Spacer(modifier = Modifier.height(3.dp))
-                                        Text(
-                                            text = "SimpMusic UI • Liquid Glass • YouTube Music",
-                                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
-                                            color = Color.White.copy(alpha = 0.30f)
                                         )
                                         Spacer(modifier = Modifier.height(6.dp))
                                         Text(

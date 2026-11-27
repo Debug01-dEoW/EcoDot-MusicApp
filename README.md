@@ -107,9 +107,10 @@ EcoDot-MusicApp/
 ## 📥 Installation & Build
 
 ### Install the APK
-1. Download [**`EcoDot 1.27v.apk`**](releases/EcoDot%201.27v.apk) (or update in-app from `EcoDot 1.26v` via [**Releases**](https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases)).
+1. Download [**`EcoDot 1.27v.apk`**](releases/EcoDot%201.27v.apk) from [**Releases**](https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases).
 2. Enable **"Install from unknown sources"** on your Android device (**Android 7.0 / API 24+** required, targets API 37).
-3. Open the APK and enjoy!
+3. If Android Play Protect shows **"Scan app before install"**, tap **Scan app** → once it reports **No threats found**, tap **Install** (normal for sideloaded APKs until Google's cloud database builds enough install reputation for the signing certificate).
+4. **Upgrading from `EcoDot 1.26v`**: `EcoDot 1.27v` switches from a generic debug certificate to EcoDot's official release certificate (`SHA-256: 0B:8A:F1:49:63:A1:71:7E:F0:50:2A:CC:B1:6A:9E:80:50:F6:5D:11:11:0B:33:63:E5:9E:6A:5B:03:D4:9D:9E`). If Android blocks updating over `v1.26v` due to the key change, uninstall `v1.26v` once before installing `1.27v` — all future releases will update cleanly in-place.
 
 ### Build from Source
 ```bash
@@ -119,7 +120,7 @@ cd EcoDot-MusicApp
 # Run unit test suite
 ./gradlew testDebugUnitTest
 
-# Build R8-optimized 120Hz EcoDot 1.27v release APK (or assembleDebug for development)
+# Build R8-optimized 120Hz EcoDot 1.27v release APK (uses keystore.properties if present, else debug fallback)
 ./gradlew assembleRelease
 ```
 
