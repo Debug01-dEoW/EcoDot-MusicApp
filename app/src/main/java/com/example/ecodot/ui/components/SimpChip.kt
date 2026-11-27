@@ -70,11 +70,11 @@ fun SimpChip(
         Modifier.homeLiquidGlass(
             backdrop = backdrop,
             shape = chipShape,
-            surfaceTint = Color(0xFF1A1C28),
-            surfaceAlpha = 0.44f,
-            specularAlpha = 0.78f,
-            frostSheenAlpha = 0.16f,
-            blurDp = 10.dp,
+            surfaceTint = Color(0xFF0E1018),
+            surfaceAlpha = 0.14f,
+            specularAlpha = 0.84f,
+            frostSheenAlpha = 0.12f,
+            blurDp = 1.5.dp,
             pressedScaleTarget = 0.94f,
             isPressed = isPressed
         )

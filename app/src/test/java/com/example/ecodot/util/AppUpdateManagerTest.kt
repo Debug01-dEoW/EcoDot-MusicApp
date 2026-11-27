@@ -90,4 +90,23 @@ class AppUpdateManagerTest {
         )
         assertFalse(sections.any { it.items.isEmpty() })
     }
+
+    @Test
+    fun parseMarkdownSections_supportsNewsAndHighlightsSectionAndPreservesOrder() {
+        val markdown = """
+            ## News & Highlights
+            - **1.27v Update Notice**: Auto-notifies `v1.26v` users in-app.
+
+            ## New
+            - Spotify playlist layout and scrollable 3-dots actions.
+        """.trimIndent()
+
+        val sections = AppUpdateManager.parseMarkdownSections(markdown)
+
+        assertEquals(listOf("News & Highlights", "New"), sections.map { it.title })
+        assertEquals(
+            "**1.27v Update Notice**: Auto-notifies `v1.26v` users in-app.",
+            sections[0].items[0]
+        )
+    }
 }

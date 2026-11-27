@@ -171,6 +171,7 @@ fun SearchScreen(
     viewModel: MusicViewModel,
     navController: NavController,
     modifier: Modifier = Modifier,
+    onEqualizerClick: () -> Unit = {},
     onWatchVideo: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -188,6 +189,10 @@ fun SearchScreen(
     val searchError by viewModel.searchError.collectAsState()
     val currentTrack by viewModel.currentTrack.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
+    val isVideoMode by viewModel.isVideoMode.collectAsState()
+    val sleepTimerRemaining by viewModel.sleepTimerRemaining.collectAsState()
+    val playerStyle by viewModel.playerStyle.collectAsState()
+    val isCanvasEnabledByUser by viewModel.isCanvasEnabledByUser.collectAsState()
     val likedTrackIds by viewModel.likedTrackIds.collectAsState()
     val downloadedTracks by viewModel.downloadedTracks.collectAsState()
     val downloadProgressMap by viewModel.downloadProgress.collectAsState()
@@ -206,6 +211,8 @@ fun SearchScreen(
     var showPlaylistPicker by remember { mutableStateOf<Track?>(null) }
     var showBatchPlaylistPicker by remember { mutableStateOf(false) }
     var showRecognitionSheet by remember { mutableStateOf(false) }
+    var ringtoneClipperTrack by remember { mutableStateOf<Track?>(null) }
+    var showPlayerStyleSheet by remember { mutableStateOf(false) }
 
     // Multi-select song state (SimpMusic feature)
     var isSelectionMode by rememberSaveable { mutableStateOf(false) }
@@ -673,26 +680,12 @@ fun SearchScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .drawBackdrop(
-                            backdrop = searchChipBackdrop,
-                            shape = { RectangleShape },
-                            effects = {
-                                colorControls(
-                                    brightness = -0.16f,
-                                    contrast = 1.04f,
-                                    saturation = 1.15f
-                                )
-                                blur(14.dp.toPx())
-                            },
-                            onDrawSurface = {
-                                drawRect(Color(0xFF0A0B10).copy(alpha = 0.68f))
-                            }
-                        )
                         .background(
                             Brush.verticalGradient(
-                                listOf(
-                                    Color(0xFF070709).copy(alpha = 0.58f),
-                                    Color(0xFF070709).copy(alpha = 0.14f)
+                                colorStops = arrayOf(
+                                    0f to Color(0xFF070709).copy(alpha = 0.56f),
+                                    0.55f to Color(0xFF070709).copy(alpha = 0.22f),
+                                    1f to Color.Transparent
                                 )
                             )
                         )
@@ -737,11 +730,11 @@ fun SearchScreen(
                             .homeLiquidGlass(
                                 backdrop = searchChipBackdrop,
                                 shape = barShape,
-                                surfaceTint = if (isFocused) Color(0xFF1F1D2C) else Color(0xFF151622),
-                                surfaceAlpha = if (isFocused) 0.72f else 0.56f,
-                                specularAlpha = if (isFocused) 0.92f else 0.76f,
-                                frostSheenAlpha = 0.18f,
-                                blurDp = 12.dp,
+                                surfaceTint = if (isFocused) Color(0xFF181624) else Color(0xFF0E1018),
+                                surfaceAlpha = if (isFocused) 0.22f else 0.14f,
+                                specularAlpha = if (isFocused) 0.92f else 0.84f,
+                                frostSheenAlpha = 0.12f,
+                                blurDp = 1.5.dp,
                                 isPressed = false
                             )
                             .padding(horizontal = 10.dp),
@@ -986,10 +979,13 @@ fun SearchScreen(
         val isDownloaded = track.id in downloadedIds
         val downloadProgress = downloadProgressMap[track.id]
         val isLiked = track.id in likedTrackIds
+        val isActiveTrack = currentTrack?.id == track.id
+        val trackInVideoMode = isActiveTrack && (isVideoMode || viewModel.isTrackVideo(track))
 
         TrackOptionsBottomSheet(
             track = track,
             onDismiss = { optionsMenuTrack = null },
+            onPlayNow = { viewModel.playTrack(track) },
             onPlayNext = { viewModel.playNext(track) },
             onAddToQueue = { viewModel.addToQueue(track) },
             onGoToAlbum = {
@@ -1018,10 +1014,46 @@ fun SearchScreen(
                 optionsMenuTrack = null
                 showPlaylistPicker = track
             },
+            onSetSleepTimer = { viewModel.setSleepTimer(it) },
+            onSetSleepTimerAtEndOfTrack = { viewModel.setSleepTimerAtEndOfTrack() },
+            onCancelSleepTimer = { viewModel.cancelSleepTimer() },
+            sleepTimerRemaining = sleepTimerRemaining,
+            isVideoMode = trackInVideoMode,
+            onToggleVideoMode = {
+                if (isActiveTrack) {
+                    viewModel.setVideoMode(!trackInVideoMode)
+                } else {
+                    viewModel.playTrack(track, isVideo = true)
+                    viewModel.setVideoMode(true)
+                    onWatchVideo()
+                }
+            },
+            onSwitchPlayerStyle = { showPlayerStyleSheet = true },
+            onEqualizerClick = onEqualizerClick,
+            isCanvasActive = isCanvasEnabledByUser,
             onSetCanvasUrl = { url ->
-                if (url == "FETCH_CANVAS") viewModel.enableCanvasForTrack(track)
+                if (url == "DISABLED") viewModel.disableCanvas()
+                else if (url == "FETCH_CANVAS") viewModel.enableCanvasForTrack(track)
                 else viewModel.setCanvasUrl(track, url)
-            }
+            },
+            onSetAsRingtone = { ringtoneClipperTrack = track }
+        )
+    }
+
+    ringtoneClipperTrack?.let { track ->
+        com.example.ecodot.ui.components.RingtoneClipperBottomSheet(
+            track = track,
+            viewModel = viewModel,
+            onDismiss = { ringtoneClipperTrack = null }
+        )
+    }
+
+    if (showPlayerStyleSheet) {
+        com.example.ecodot.ui.components.player.PlayerStyleBottomSheet(
+            currentStyle = playerStyle,
+            accentColor = EcoDotRed,
+            onStyleSelected = { viewModel.setPlayerStyle(it) },
+            onDismiss = { showPlayerStyleSheet = false }
         )
     }
 
@@ -1215,11 +1247,10 @@ private fun SimpSearchHistoryBody(
         contentPadding = PaddingValues(top = searchBarHeight + 4.dp, bottom = 148.dp)
     ) {
         if (history.isNotEmpty()) {
-            stickyHeader(key = "clear_history_header") {
+            item(key = "clear_history_header") {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFF070709).copy(alpha = 0.90f))
                         .padding(vertical = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically

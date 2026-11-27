@@ -1,22 +1,28 @@
 package com.example.ecodot.ui.screens
 
-import android.content.Intent
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.graphics.RectF
+import android.media.ExifInterface
 import android.net.Uri
-import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,88 +31,96 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBackIos
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CameraAlt
-import androidx.compose.material.icons.rounded.Code
-import androidx.compose.material.icons.rounded.Email
-import androidx.compose.material.icons.rounded.Equalizer
-import androidx.compose.material.icons.rounded.GraphicEq
-import androidx.compose.material.icons.rounded.NewReleases
-import androidx.compose.material.icons.rounded.NotificationsNone
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Crop
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.PhotoLibrary
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.RotateRight
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Style
-import androidx.compose.material.icons.rounded.SupportAgent
 import androidx.compose.material.icons.rounded.Verified
+import androidx.compose.material.icons.rounded.ZoomIn
+import androidx.compose.material.icons.rounded.ZoomOut
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathOperation
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.example.ecodot.data.local.entities.Track
-import com.example.ecodot.data.local.prefs.AudioQuality
-import com.example.ecodot.data.local.prefs.PlayerStyle
-import com.example.ecodot.data.local.prefs.UserPreferencesManager
-import com.example.ecodot.data.remote.YouTubeParser
-import com.example.ecodot.ui.components.player.PlayerStyleBottomSheet
 import com.example.ecodot.ui.components.player.PlayerStyleMath
 import com.example.ecodot.ui.theme.poppinsFamily
 import com.example.ecodot.ui.viewmodel.MusicViewModel
+import com.example.ecodot.util.AvatarCropMath
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
+import kotlin.math.roundToInt
 
 private val CURATED_PROFILE_GENRES = listOf(
     "Pop", "Lo-Fi", "Hip-Hop", "Indie", "Electronic", "Rock",
@@ -118,7 +132,9 @@ private val ProfileSurface = Color(0xFF13141A)
 private val ProfileTonalButton = Color(0xFF1C1E26)
 private val ProfileHairline = Color.White.copy(alpha = 0.06f)
 
-@OptIn(ExperimentalMaterial3Api::class)
+private const val AVATAR_SOURCE_FILE = "profile_avatar_source.jpg"
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ProfileScreen(
     viewModel: MusicViewModel,
@@ -127,61 +143,39 @@ fun ProfileScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val userProfile by viewModel.userProfile.collectAsState()
-    val mostPlayed by viewModel.mostPlayed.collectAsState()
-    val recentlyPlayed by viewModel.recentlyPlayed.collectAsState()
-    val playbackHistory by viewModel.playbackHistory.collectAsState()
-    val totalMinutes by viewModel.totalMinutesListened.collectAsState()
-    val topGenre by viewModel.topGenre.collectAsState()
-    val likedTrackIds by viewModel.likedTrackIds.collectAsState()
-    val allPlaylists by viewModel.allPlaylists.collectAsState()
-    val followedArtists by viewModel.followedArtists.collectAsState()
-    val downloadedTracks by viewModel.downloadedTracks.collectAsState()
-    val cachedTracks by viewModel.cachedTracks.collectAsState()
-    val playerStyle by viewModel.playerStyle.collectAsState()
-    val audioQuality by viewModel.audioQuality.collectAsState()
-    val dominantColor by viewModel.dominantColor.collectAsState()
-    val accentColor by viewModel.accentColor.collectAsState()
 
     var showEditProfile by remember { mutableStateOf(false) }
+    var showPhotoActionSheet by remember { mutableStateOf(false) }
     var showResetProfileDialog by remember { mutableStateOf(false) }
-    var showPlayerStyleSheet by remember { mutableStateOf(false) }
+    var pendingCropUri by remember { mutableStateOf<Uri?>(null) }
 
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         if (uri != null) {
-            viewModel.updateProfile(
-                name = userProfile?.name ?: "EcoDot Listener",
-                genres = userProfile?.favoriteGenres ?: "",
-                avatarUrl = uri.toString(),
-                isPro = userProfile?.isPro ?: true
-            )
+            scope.launch {
+                val cachedSource = withContext(Dispatchers.IO) {
+                    copyUriToLocalSource(context, uri)
+                }
+                pendingCropUri = cachedSource ?: uri
+            }
         }
     }
 
-    val offlineUniqueCount = remember(downloadedTracks, cachedTracks) {
-        (downloadedTracks.map { it.id } + cachedTracks.map { it.id }).distinct().size
-    }
     val favoriteGenreList = remember(userProfile?.favoriteGenres) {
         PlayerStyleMath.parseFavoriteGenres(userProfile?.favoriteGenres.orEmpty())
     }
-    val resolvedAccent = if (accentColor == Color.Black) Color(0xFFEADBC8) else accentColor
-    val topTrack = mostPlayed.firstOrNull()
     val displayName = userProfile?.name?.ifBlank { "EcoDot Listener" } ?: "EcoDot Listener"
+    val avatarUri = userProfile?.avatarUri
 
-    // Quiet, natural header scrim like Spotify/YouTube Music — never a harsh neon glow
-    val headerWashBrush = remember(dominantColor) {
-        val mutedTop = lerp(Color(0xFF171922), dominantColor, 0.14f)
-        Brush.verticalGradient(
-            colors = listOf(mutedTop, ProfileBg)
-        )
-    }
-
-    val listState = rememberLazyListState()
-    val showCollapsedTitle by remember {
-        derivedStateOf {
-            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 140
+    val openAdjustCurrentPhoto: () -> Unit = {
+        val localSource = File(context.filesDir, AVATAR_SOURCE_FILE)
+        when {
+            localSource.exists() && localSource.length() > 0L -> pendingCropUri = Uri.fromFile(localSource)
+            !avatarUri.isNullOrBlank() -> pendingCropUri = Uri.parse(avatarUri)
+            else -> imagePicker.launch("image/*")
         }
     }
 
@@ -190,20 +184,12 @@ fun ProfileScreen(
             .fillMaxSize()
             .background(ProfileBg)
     ) {
-        // Subtle charcoal-to-black editorial wash anchored at top
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(230.dp)
-                .drawBehind { drawRect(headerWashBrush) }
-        )
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
         ) {
-            // ── 1. Clean Top Navigation Bar ───────────────────────────────────
+            // ── 1. Minimal Top Navigation Bar ─────────────────────────────────
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -212,10 +198,7 @@ fun ProfileScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.ArrowBackIos,
@@ -225,627 +208,333 @@ fun ProfileScreen(
                         )
                     }
                     Text(
-                        text = displayName,
+                        text = "Profile",
                         fontFamily = poppinsFamily,
-                        fontSize = 17.sp,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.graphicsLayer {
-                            alpha = if (showCollapsedTitle) 1f else 0f
-                        }
+                        color = Color.White
                     )
                 }
                 IconButton(onClick = { navController.navigate("settings") }) {
                     Icon(
                         imageVector = Icons.Rounded.Settings,
                         contentDescription = "Settings",
-                        tint = Color.White.copy(alpha = 0.88f),
+                        tint = Color.White.copy(alpha = 0.86f),
                         modifier = Modifier.size(21.dp)
                     )
                 }
             }
 
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 140.dp)
+            // ── 2. Clean Centered Profile Content (Essential Items Only) ─────
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp)
+                    .padding(top = 24.dp, bottom = 140.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // ── 2. Open-Canvas Profile Header (Spotify / Apple Music style) ──
-                item(key = "profile_header", contentType = "header") {
-                    Column(
+                // Adjustable Profile Avatar
+                Box(
+                    modifier = Modifier
+                        .size(120.dp)
+                        .clickable {
+                            if (!avatarUri.isNullOrBlank()) {
+                                showPhotoActionSheet = true
+                            } else {
+                                imagePicker.launch("image/*")
+                            }
+                        }
+                ) {
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp)
-                            .padding(top = 8.dp, bottom = 18.dp)
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .background(ProfileTonalButton),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
+                        if (!avatarUri.isNullOrBlank()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(avatarUri)
+                                    .size(320, 320)
+                                    .crossfade(160)
+                                    .build(),
+                                contentDescription = "Profile Picture",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            val initial = displayName.firstOrNull()?.uppercaseChar()
+                            if (initial != null && initial.isLetter()) {
+                                Text(
+                                    text = initial.toString(),
+                                    fontFamily = poppinsFamily,
+                                    fontSize = 42.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White.copy(alpha = 0.86f)
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Rounded.Person,
+                                    contentDescription = null,
+                                    tint = Color.White.copy(alpha = 0.72f),
+                                    modifier = Modifier.size(48.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF232530))
+                            .border(2.5.dp, ProfileBg, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.CameraAlt,
+                            contentDescription = "Adjust photo",
+                            tint = Color.White.copy(alpha = 0.9f),
+                            modifier = Modifier.size(15.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // Display Name & Optional Verified Check
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = displayName,
+                        fontFamily = poppinsFamily,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.3).sp,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (userProfile?.isPro == true) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            imageVector = Icons.Rounded.Verified,
+                            contentDescription = "Verified",
+                            tint = Color.White.copy(alpha = 0.78f),
+                            modifier = Modifier.size(17.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // Essential Profile Actions: Edit Profile + Add/Adjust Photo
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ProfilePillButton(
+                        icon = Icons.Rounded.Edit,
+                        label = "Edit profile",
+                        onClick = { showEditProfile = true }
+                    )
+                    if (!avatarUri.isNullOrBlank()) {
+                        ProfilePillButton(
+                            icon = Icons.Rounded.Crop,
+                            label = "Adjust photo",
+                            onClick = openAdjustCurrentPhoto
+                        )
+                    } else {
+                        ProfilePillButton(
+                            icon = Icons.Rounded.PhotoLibrary,
+                            label = "Add photo",
+                            onClick = { imagePicker.launch("image/*") }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                // Favorite Genres
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Favorite genres",
+                        fontFamily = poppinsFamily,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White.copy(alpha = 0.52f)
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    if (favoriteGenreList.isNotEmpty()) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(84.dp)
-                                    .clickable { imagePicker.launch("image/*") }
-                            ) {
-                                val avatarUri = userProfile?.avatarUri
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(CircleShape)
-                                        .background(ProfileTonalButton),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (!avatarUri.isNullOrBlank()) {
-                                        AsyncImage(
-                                            model = ImageRequest.Builder(context)
-                                                .data(avatarUri)
-                                                .size(256, 256)
-                                                .crossfade(160)
-                                                .build(),
-                                            contentDescription = "Profile Picture",
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    } else {
-                                        val initial = displayName.firstOrNull()?.uppercaseChar()
-                                        if (initial != null && initial.isLetter()) {
-                                            Text(
-                                                text = initial.toString(),
-                                                fontFamily = poppinsFamily,
-                                                fontSize = 30.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White.copy(alpha = 0.86f)
-                                            )
-                                        } else {
-                                            Icon(
-                                                imageVector = Icons.Rounded.Person,
-                                                contentDescription = null,
-                                                tint = Color.White.copy(alpha = 0.72f),
-                                                modifier = Modifier.size(36.dp)
-                                            )
-                                        }
-                                    }
-                                }
-
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.BottomEnd)
-                                        .size(26.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF232530))
-                                        .border(2.dp, ProfileBg, CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.CameraAlt,
-                                        contentDescription = "Change avatar",
-                                        tint = Color.White.copy(alpha = 0.86f),
-                                        modifier = Modifier.size(13.dp)
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(18.dp))
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
+                            favoriteGenreList.forEach { genre ->
+                                Surface(
+                                    shape = CircleShape,
+                                    color = ProfileSurface
                                 ) {
                                     Text(
-                                        text = displayName,
+                                        text = genre,
                                         fontFamily = poppinsFamily,
-                                        fontSize = 24.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        letterSpacing = (-0.3).sp,
-                                        color = Color.White,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f, fill = false)
+                                        fontSize = 12.5.sp,
+                                        color = Color.White.copy(alpha = 0.82f),
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
                                     )
-                                    if (userProfile?.isPro == true) {
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Icon(
-                                            imageVector = Icons.Rounded.Verified,
-                                            contentDescription = "Hi-Fi Pro",
-                                            tint = Color.White.copy(alpha = 0.78f),
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
                                 }
-
-                                Spacer(modifier = Modifier.height(4.dp))
-
-                                Text(
-                                    text = "${likedTrackIds.size} liked · ${allPlaylists.size} playlists · ${followedArtists.size} artists",
-                                    fontFamily = poppinsFamily,
-                                    fontSize = 12.5.sp,
-                                    color = Color.White.copy(alpha = 0.62f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-
-                                Spacer(modifier = Modifier.height(2.dp))
-
-                                Text(
-                                    text = "${audioQualityShortLabel(audioQuality)} · ${profileStyleDisplayName(playerStyle)}",
-                                    fontFamily = poppinsFamily,
-                                    fontSize = 11.5.sp,
-                                    color = Color.White.copy(alpha = 0.44f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
                             }
                         }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Clean borderless pill actions row (like Spotify's Edit / Style pills)
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    } else {
+                        Surface(
+                            shape = CircleShape,
+                            color = ProfileSurface,
+                            modifier = Modifier.clickable { showEditProfile = true }
                         ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = ProfileTonalButton,
-                                modifier = Modifier
-                                    .height(36.dp)
-                                    .clickable { showEditProfile = true }
-                            ) {
-                                Box(
-                                    modifier = Modifier.padding(horizontal = 18.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "Edit profile",
-                                        fontFamily = poppinsFamily,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Color.White
-                                    )
-                                }
-                            }
-
-                            Surface(
-                                shape = CircleShape,
-                                color = ProfileTonalButton,
-                                modifier = Modifier
-                                    .height(36.dp)
-                                    .clickable { showPlayerStyleSheet = true }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 14.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Style,
-                                        contentDescription = null,
-                                        tint = Color.White.copy(alpha = 0.80f),
-                                        modifier = Modifier.size(15.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = profileStyleShortName(playerStyle),
-                                        fontFamily = poppinsFamily,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Color.White
-                                    )
-                                }
-                            }
-
-                            Surface(
-                                shape = CircleShape,
-                                color = ProfileTonalButton,
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clickable(onClick = onEqualizerClick)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Equalizer,
-                                        contentDescription = "Equalizer",
-                                        tint = Color.White.copy(alpha = 0.82f),
-                                        modifier = Modifier.size(17.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        if (favoriteGenreList.isNotEmpty()) {
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                items(favoriteGenreList, key = { it }) { genre ->
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = Color(0xFF15171F)
-                                    ) {
-                                        Text(
-                                            text = genre,
-                                            fontFamily = poppinsFamily,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Normal,
-                                            color = Color.White.copy(alpha = 0.74f),
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        } else {
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable { showEditProfile = true }
-                                    .padding(vertical = 4.dp, horizontal = 2.dp)
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.Add,
                                     contentDescription = null,
-                                    tint = Color.White.copy(alpha = 0.56f),
-                                    modifier = Modifier.size(15.dp)
+                                    tint = Color.White.copy(alpha = 0.65f),
+                                    modifier = Modifier.size(16.dp)
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "Add favorite genres",
                                     fontFamily = poppinsFamily,
                                     fontSize = 12.5.sp,
-                                    color = Color.White.copy(alpha = 0.56f)
+                                    color = Color.White.copy(alpha = 0.68f)
                                 )
                             }
                         }
                     }
                 }
 
-                // ── 3. Clean Library Metrics Bar (Single flat surface, hairline dividers) ──
-                item(key = "library_metrics", contentType = "metrics_bar") {
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = ProfileSurface,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(IntrinsicSize.Min)
-                                .padding(vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            LibrarySummaryStat(
-                                count = likedTrackIds.size,
-                                label = "Liked",
-                                modifier = Modifier.weight(1f),
-                                onClick = { navController.navigate("library") }
-                            )
-                            VerticalDivider(
-                                color = ProfileHairline,
-                                thickness = 0.5.dp,
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .padding(vertical = 4.dp)
-                            )
-                            LibrarySummaryStat(
-                                count = allPlaylists.size,
-                                label = "Playlists",
-                                modifier = Modifier.weight(1f),
-                                onClick = { navController.navigate("library") }
-                            )
-                            VerticalDivider(
-                                color = ProfileHairline,
-                                thickness = 0.5.dp,
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .padding(vertical = 4.dp)
-                            )
-                            LibrarySummaryStat(
-                                count = followedArtists.size,
-                                label = "Artists",
-                                modifier = Modifier.weight(1f),
-                                onClick = { navController.navigate("library") }
-                            )
-                            VerticalDivider(
-                                color = ProfileHairline,
-                                thickness = 0.5.dp,
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .padding(vertical = 4.dp)
-                            )
-                            LibrarySummaryStat(
-                                count = offlineUniqueCount,
-                                label = "Offline",
-                                modifier = Modifier.weight(1f),
-                                onClick = { navController.navigate("library") }
-                            )
-                        }
-                    }
-                }
+                Spacer(modifier = Modifier.height(36.dp))
 
-                // ── 4. Listening Activity (Matte 2x2 Recap Grid) ─────────────────
-                item(key = "listening_activity", contentType = "stats_grid") {
-                    Spacer(modifier = Modifier.height(26.dp))
-                    ProfileSectionHeader(
-                        title = "Listening activity",
-                        trailingText = if (playbackHistory.isNotEmpty()) "${playbackHistory.size} plays" else null
+                // Minimal Account Reset Action
+                TextButton(onClick = { showResetProfileDialog = true }) {
+                    Text(
+                        text = "Reset profile",
+                        fontFamily = poppinsFamily,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFFE5534B)
                     )
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            ProfileMetricTile(
-                                label = "Time listened",
-                                value = PlayerStyleMath.formatListeningTime(totalMinutes),
-                                detail = if (totalMinutes > 0) "${playbackHistory.size} sessions" else "Start playing music",
-                                modifier = Modifier.weight(1f)
-                            )
-                            ProfileMetricTile(
-                                label = "Top vibe",
-                                value = topGenre.ifBlank { "Discovery" },
-                                detail = if (favoriteGenreList.isNotEmpty()) "Primary taste" else "Based on plays",
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            ProfileMetricTile(
-                                label = "Most replayed",
-                                value = topTrack?.title ?: "None yet",
-                                detail = if (topTrack != null) "${topTrack.playCount} plays · ${topTrack.artist}" else "Waiting for plays",
-                                modifier = Modifier.weight(1f)
-                            )
-                            ProfileMetricTile(
-                                label = "Unique tracks",
-                                value = "${mostPlayed.size}",
-                                detail = if (mostPlayed.isNotEmpty()) "Distinct songs heard" else "Explore catalog",
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                }
-
-                // ── 5. Top Tracks (Clean Borderless Track List) ──────────────────
-                if (mostPlayed.isNotEmpty()) {
-                    item(key = "top_tracks_section", contentType = "track_list") {
-                        Spacer(modifier = Modifier.height(26.dp))
-                        ProfileSectionHeader(
-                            title = "Top tracks",
-                            actionLabel = "Play all",
-                            onActionClick = { viewModel.playTracks(mostPlayed, startIndex = 0) }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            mostPlayed.take(5).forEachIndexed { idx, track ->
-                                EditorialTopTrackRow(
-                                    rank = idx + 1,
-                                    track = track,
-                                    onClick = { viewModel.playTracks(mostPlayed, startIndex = idx) }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // ── 6. Recently Played Shelf ─────────────────────────────────────
-                if (recentlyPlayed.isNotEmpty()) {
-                    item(key = "recently_played_section", contentType = "recent_shelf") {
-                        Spacer(modifier = Modifier.height(26.dp))
-                        ProfileSectionHeader(title = "Recently played")
-                        Spacer(modifier = Modifier.height(10.dp))
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            itemsIndexed(
-                                items = recentlyPlayed.take(12),
-                                key = { idx, track -> "prof_rec_${idx}_${track.id}" }
-                            ) { idx, track ->
-                                RecentTrackCard(
-                                    track = track,
-                                    onClick = { viewModel.playTracks(recentlyPlayed, startIndex = idx) }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // ── 7. Preferences & Playback Group (Borderless Matte Surface) ──
-                item(key = "preferences_group", contentType = "settings_group") {
-                    Spacer(modifier = Modifier.height(28.dp))
-                    ProfileSectionHeader(title = "Playback & preferences")
-                    Spacer(modifier = Modifier.height(10.dp))
-                    MatteListGroup {
-                        MattePreferenceRow(
-                            icon = Icons.Rounded.Style,
-                            title = "Now Playing style",
-                            value = profileStyleShortName(playerStyle),
-                            onClick = { showPlayerStyleSheet = true }
-                        )
-                        MatteGroupDivider()
-                        MattePreferenceRow(
-                            icon = Icons.Rounded.GraphicEq,
-                            title = "Audio quality",
-                            value = audioQualityShortLabel(audioQuality),
-                            onClick = { navController.navigate("settings") }
-                        )
-                        MatteGroupDivider()
-                        MattePreferenceRow(
-                            icon = Icons.Rounded.Equalizer,
-                            title = "Equalizer & effects",
-                            value = "EQ & spatializer",
-                            onClick = onEqualizerClick
-                        )
-                        MatteGroupDivider()
-                        MattePreferenceRow(
-                            icon = Icons.Rounded.Settings,
-                            title = "All settings",
-                            onClick = { navController.navigate("settings") }
-                        )
-                        MatteGroupDivider()
-                        MattePreferenceRow(
-                            icon = Icons.Rounded.NotificationsNone,
-                            title = "Notifications",
-                            onClick = {
-                                val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-                                }
-                                runCatching { context.startActivity(intent) }
-                            }
-                        )
-                    }
-                }
-
-                // ── 8. About & Account Actions (Quiet List Rows) ─────────────────
-                item(key = "about_and_reset", contentType = "about_group") {
-                    Spacer(modifier = Modifier.height(22.dp))
-                    ProfileSectionHeader(title = "About")
-                    Spacer(modifier = Modifier.height(10.dp))
-                    MatteListGroup {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 14.dp)
-                        ) {
-                            Text(
-                                text = "EcoDot Music",
-                                fontFamily = poppinsFamily,
-                                fontSize = 14.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color.White
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "Made by Debug01-dEoW aka Deep",
-                                fontFamily = poppinsFamily,
-                                fontSize = 12.sp,
-                                color = Color.White.copy(alpha = 0.52f)
-                            )
-                        }
-                        MatteGroupDivider()
-                        MattePreferenceRow(
-                            icon = Icons.Rounded.Person,
-                            title = "GitHub profile",
-                            value = "@Debug01-dEoW",
-                            onClick = {
-                                runCatching {
-                                    context.startActivity(
-                                        Intent(
-                                            Intent.ACTION_VIEW,
-                                            Uri.parse(UserPreferencesManager.DEFAULT_GITHUB_PROFILE_URL)
-                                        )
-                                    )
-                                }
-                            }
-                        )
-                        MatteGroupDivider()
-                        MattePreferenceRow(
-                            icon = Icons.Rounded.Code,
-                            title = "Source repository",
-                            onClick = {
-                                runCatching {
-                                    context.startActivity(
-                                        Intent(
-                                            Intent.ACTION_VIEW,
-                                            Uri.parse(UserPreferencesManager.DEFAULT_GITHUB_REPO_URL)
-                                        )
-                                    )
-                                }
-                            }
-                        )
-                        MatteGroupDivider()
-                        MattePreferenceRow(
-                            icon = Icons.Rounded.NewReleases,
-                            title = "Releases & updates",
-                            onClick = {
-                                runCatching {
-                                    context.startActivity(
-                                        Intent(
-                                            Intent.ACTION_VIEW,
-                                            Uri.parse(UserPreferencesManager.DEFAULT_GITHUB_RELEASES_URL)
-                                        )
-                                    )
-                                }
-                            }
-                        )
-                        MatteGroupDivider()
-                        MattePreferenceRow(
-                            icon = Icons.Rounded.SupportAgent,
-                            title = "WhatsApp support",
-                            onClick = {
-                                runCatching {
-                                    context.startActivity(
-                                        Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/918799114016"))
-                                    )
-                                }
-                            }
-                        )
-                        MatteGroupDivider()
-                        MattePreferenceRow(
-                            icon = Icons.Rounded.Email,
-                            title = "Email developer",
-                            onClick = {
-                                runCatching {
-                                    context.startActivity(
-                                        Intent(Intent.ACTION_SENDTO).apply {
-                                            data = Uri.parse("mailto:deep082008.patel@gmail.com")
-                                        }
-                                    )
-                                }
-                            }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .clickable { showResetProfileDialog = true }
-                            .padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Reset profile & preferences",
-                            fontFamily = poppinsFamily,
-                            fontSize = 13.5.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(0xFFE5534B)
-                        )
-                    }
                 }
             }
+        }
+
+        // Photo Action Menu when an avatar already exists
+        if (showPhotoActionSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showPhotoActionSheet = false },
+                containerColor = Color(0xFF14151B),
+                dragHandle = {
+                    Box(
+                        modifier = Modifier
+                            .padding(vertical = 12.dp)
+                            .width(36.dp)
+                            .height(4.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.2f))
+                    )
+                }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 28.dp)
+                ) {
+                    PhotoMenuRow(
+                        icon = Icons.Rounded.Crop,
+                        label = "Adjust picture",
+                        onClick = {
+                            showPhotoActionSheet = false
+                            openAdjustCurrentPhoto()
+                        }
+                    )
+                    HorizontalDivider(
+                        color = ProfileHairline,
+                        thickness = 0.5.dp,
+                        modifier = Modifier.padding(start = 52.dp)
+                    )
+                    PhotoMenuRow(
+                        icon = Icons.Rounded.PhotoLibrary,
+                        label = "Choose new photo",
+                        onClick = {
+                            showPhotoActionSheet = false
+                            imagePicker.launch("image/*")
+                        }
+                    )
+                    HorizontalDivider(
+                        color = ProfileHairline,
+                        thickness = 0.5.dp,
+                        modifier = Modifier.padding(start = 52.dp)
+                    )
+                    PhotoMenuRow(
+                        icon = Icons.Rounded.DeleteOutline,
+                        label = "Remove photo",
+                        tint = Color(0xFFE5534B),
+                        onClick = {
+                            showPhotoActionSheet = false
+                            deleteSavedAvatarFiles(context, includeSource = true)
+                            viewModel.updateProfile(
+                                name = displayName,
+                                genres = userProfile?.favoriteGenres.orEmpty(),
+                                avatarUrl = null,
+                                isPro = userProfile?.isPro ?: true
+                            )
+                        }
+                    )
+                }
+            }
+        }
+
+        // Interactive Circle Crop / Pan / Zoom Picture Adjuster
+        pendingCropUri?.let { uriToCrop ->
+            AdjustProfilePictureDialog(
+                sourceUri = uriToCrop,
+                onApply = { croppedFile ->
+                    pendingCropUri = null
+                    viewModel.updateProfile(
+                        name = displayName,
+                        genres = userProfile?.favoriteGenres.orEmpty(),
+                        avatarUrl = Uri.fromFile(croppedFile).toString(),
+                        isPro = userProfile?.isPro ?: true
+                    )
+                },
+                onDismiss = { pendingCropUri = null }
+            )
         }
 
         if (showEditProfile) {
             EditProfileSheet(
                 currentName = userProfile?.name ?: "EcoDot Listener",
                 currentGenres = userProfile?.favoriteGenres ?: "",
-                currentAvatarUri = userProfile?.avatarUri,
+                currentAvatarUri = avatarUri,
                 currentIsPro = userProfile?.isPro ?: true,
-                accentColor = resolvedAccent,
                 onPickAvatar = { imagePicker.launch("image/*") },
+                onAdjustAvatar = openAdjustCurrentPhoto,
                 onSave = { name, genres, isPro ->
                     viewModel.updateProfile(
                         name = name,
                         genres = genres,
-                        avatarUrl = userProfile?.avatarUri,
+                        avatarUrl = avatarUri,
                         isPro = isPro
                     )
                     showEditProfile = false
@@ -854,28 +543,19 @@ fun ProfileScreen(
             )
         }
 
-        if (showPlayerStyleSheet) {
-            PlayerStyleBottomSheet(
-                currentStyle = playerStyle,
-                accentColor = resolvedAccent,
-                onStyleSelected = { viewModel.setPlayerStyle(it) },
-                onDismiss = { showPlayerStyleSheet = false }
-            )
-        }
-
         if (showResetProfileDialog) {
             AlertDialog(
                 onDismissRequest = { showResetProfileDialog = false },
                 title = {
                     Text(
-                        text = "Reset profile & preferences?",
+                        text = "Reset profile?",
                         fontFamily = poppinsFamily,
                         fontWeight = FontWeight.Bold
                     )
                 },
                 text = {
                     Text(
-                        text = "This restores your default profile name, clears favorite genres & avatar, and resets audio/network preferences.",
+                        text = "This restores your default profile name and clears your profile photo and favorite genres.",
                         fontFamily = poppinsFamily,
                         color = Color.White.copy(alpha = 0.78f)
                     )
@@ -883,11 +563,8 @@ fun ProfileScreen(
                 confirmButton = {
                     Button(
                         onClick = {
+                            deleteSavedAvatarFiles(context, includeSource = true)
                             viewModel.updateProfile("EcoDot Listener", "", null, false)
-                            viewModel.setOfflineMode(false)
-                            viewModel.setDataSaver(false)
-                            viewModel.setKillServiceOnExit(false)
-                            viewModel.setAudioQuality(AudioQuality.HIGH)
                             showResetProfileDialog = false
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE5534B))
@@ -907,337 +584,436 @@ fun ProfileScreen(
     }
 }
 
-private fun audioQualityShortLabel(quality: AudioQuality): String = when (quality) {
-    AudioQuality.LOW -> "Low · 48 kbps"
-    AudioQuality.NORMAL -> "Normal · 128 kbps"
-    AudioQuality.HIGH -> "High · 256 kbps"
-    AudioQuality.HIGH_AAC -> "High AAC · 256 kbps"
-}
-
-private fun profileStyleDisplayName(style: PlayerStyle): String = when (style) {
-    PlayerStyle.ECODOT -> "EcoDot Classic"
-    PlayerStyle.APPLE_MUSIC -> "Apple Music"
-    PlayerStyle.SPOTIFY -> "Spotify"
-    PlayerStyle.VINYL -> "Vinyl Turntable"
-}
-
-private fun profileStyleShortName(style: PlayerStyle): String = when (style) {
-    PlayerStyle.ECODOT -> "Classic"
-    PlayerStyle.APPLE_MUSIC -> "Apple Music"
-    PlayerStyle.SPOTIFY -> "Spotify"
-    PlayerStyle.VINYL -> "Vinyl"
-}
-
 @Composable
-private fun ProfileSectionHeader(
-    title: String,
-    trailingText: String? = null,
-    actionLabel: String? = null,
-    onActionClick: (() -> Unit)? = null
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 18.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = title,
-            fontFamily = poppinsFamily,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
-        when {
-            actionLabel != null && onActionClick != null -> {
-                Text(
-                    text = actionLabel,
-                    fontFamily = poppinsFamily,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White.copy(alpha = 0.64f),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable(onClick = onActionClick)
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            }
-            trailingText != null -> {
-                Text(
-                    text = trailingText,
-                    fontFamily = poppinsFamily,
-                    fontSize = 12.sp,
-                    color = Color.White.copy(alpha = 0.45f)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun LibrarySummaryStat(
-    count: Int,
+private fun ProfilePillButton(
+    icon: ImageVector,
     label: String,
-    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    Column(
-        modifier = modifier
-            .clickable(onClick = onClick)
-            .padding(horizontal = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "$count",
-            fontFamily = poppinsFamily,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = label,
-            fontFamily = poppinsFamily,
-            fontSize = 11.5.sp,
-            color = Color.White.copy(alpha = 0.54f),
-            maxLines = 1,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-@Composable
-private fun ProfileMetricTile(
-    label: String,
-    value: String,
-    detail: String,
-    modifier: Modifier = Modifier
-) {
     Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = ProfileSurface,
-        modifier = modifier
+        shape = CircleShape,
+        color = ProfileTonalButton,
+        modifier = Modifier
+            .height(38.dp)
+            .clickable(onClick = onClick)
     ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.84f),
+                modifier = Modifier.size(15.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = label,
                 fontFamily = poppinsFamily,
-                fontSize = 11.5.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color.White.copy(alpha = 0.50f),
-                maxLines = 1
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = value,
-                fontFamily = poppinsFamily,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = detail,
-                fontFamily = poppinsFamily,
-                fontSize = 11.5.sp,
-                color = Color.White.copy(alpha = 0.46f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                color = Color.White
             )
         }
     }
 }
 
 @Composable
-private fun EditorialTopTrackRow(
-    rank: Int,
-    track: Track,
-    onClick: () -> Unit
-) {
-    val context = LocalContext.current
-    val artUrl = remember(track.id, track.albumArtUri) {
-        YouTubeParser.getHighResUrl(track.albumArtUri, isWide = false) ?: track.albumArtUri
-    }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = "$rank",
-            fontFamily = poppinsFamily,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White.copy(alpha = 0.46f),
-            modifier = Modifier.width(24.dp)
-        )
-        AsyncImage(
-            model = ImageRequest.Builder(context)
-                .data(artUrl)
-                .size(160, 160)
-                .crossfade(160)
-                .build(),
-            contentDescription = track.title,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(ProfileTonalButton)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = track.title,
-                fontFamily = poppinsFamily,
-                fontSize = 14.5.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(1.dp))
-            Text(
-                text = "${track.artist} · ${track.playCount} plays",
-                fontFamily = poppinsFamily,
-                fontSize = 12.sp,
-                color = Color.White.copy(alpha = 0.54f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Icon(
-            imageVector = Icons.Rounded.PlayArrow,
-            contentDescription = "Play",
-            tint = Color.White.copy(alpha = 0.34f),
-            modifier = Modifier.size(20.dp)
-        )
-    }
-}
-
-@Composable
-private fun RecentTrackCard(
-    track: Track,
-    onClick: () -> Unit
-) {
-    val context = LocalContext.current
-    val artUrl = remember(track.id, track.albumArtUri) {
-        YouTubeParser.getHighResUrl(track.albumArtUri, isWide = false) ?: track.albumArtUri
-    }
-    Column(
-        modifier = Modifier
-            .width(132.dp)
-            .clickable(onClick = onClick)
-    ) {
-        AsyncImage(
-            model = ImageRequest.Builder(context)
-                .data(artUrl)
-                .size(360, 360)
-                .crossfade(160)
-                .build(),
-            contentDescription = track.title,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(132.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(ProfileSurface)
-        )
-        Spacer(modifier = Modifier.height(7.dp))
-        Text(
-            text = track.title,
-            fontFamily = poppinsFamily,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color.White,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Text(
-            text = track.artist,
-            fontFamily = poppinsFamily,
-            fontSize = 11.5.sp,
-            color = Color.White.copy(alpha = 0.54f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
-
-@Composable
-private fun MatteListGroup(content: @Composable ColumnScope.() -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = ProfileSurface,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-    ) {
-        Column(modifier = Modifier.fillMaxWidth(), content = content)
-    }
-}
-
-@Composable
-private fun MatteGroupDivider() {
-    HorizontalDivider(
-        color = ProfileHairline,
-        thickness = 0.5.dp,
-        modifier = Modifier.padding(start = 50.dp)
-    )
-}
-
-@Composable
-private fun MattePreferenceRow(
+private fun PhotoMenuRow(
     icon: ImageVector,
-    title: String,
-    value: String? = null,
+    label: String,
+    tint: Color = Color.White,
     onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 20.dp, vertical = 15.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.72f),
+            tint = tint.copy(alpha = 0.85f),
             modifier = Modifier.size(20.dp)
         )
         Spacer(modifier = Modifier.width(14.dp))
         Text(
-            text = title,
+            text = label,
             fontFamily = poppinsFamily,
-            fontSize = 14.5.sp,
-            fontWeight = FontWeight.Normal,
-            color = Color.White,
-            modifier = Modifier.weight(1f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Medium,
+            color = tint
         )
-        if (!value.isNullOrBlank()) {
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = value,
-                fontFamily = poppinsFamily,
-                fontSize = 12.5.sp,
-                color = Color.White.copy(alpha = 0.48f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Interactive Circular Profile Picture Adjuster (Pan, Pinch-Zoom, Slider, Rotate)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun AdjustProfilePictureDialog(
+    sourceUri: Uri,
+    onApply: (File) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    var baseBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var loadError by remember { mutableStateOf(false) }
+    var quarterTurns by remember { mutableIntStateOf(0) }
+    var orientedBitmap by remember { mutableStateOf<Bitmap?>(null) }
+
+    var zoom by remember { mutableFloatStateOf(1f) }
+    var panOffset by remember { mutableStateOf(Offset.Zero) }
+    var boxWidth by remember { mutableFloatStateOf(0f) }
+    var boxHeight by remember { mutableFloatStateOf(0f) }
+    var isSaving by remember { mutableStateOf(false) }
+
+    LaunchedEffect(sourceUri) {
+        loadError = false
+        baseBitmap = null
+        val decoded = withContext(Dispatchers.IO) {
+            decodeOrientedBitmap(context, sourceUri, maxDimension = 1600)
         }
-        Spacer(modifier = Modifier.width(6.dp))
-        Icon(
-            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.30f),
-            modifier = Modifier.size(18.dp)
-        )
+        if (decoded == null) {
+            loadError = true
+        } else {
+            baseBitmap = decoded
+        }
+    }
+
+    LaunchedEffect(baseBitmap, quarterTurns) {
+        val base = baseBitmap ?: return@LaunchedEffect
+        orientedBitmap = withContext(Dispatchers.Default) {
+            rotateBitmapQuarterTurns(base, quarterTurns)
+        }
+    }
+
+    val previewImage = remember(orientedBitmap) {
+        orientedBitmap?.asImageBitmap()
+    }
+
+    Dialog(
+        onDismissRequest = { if (!isSaving) onDismiss() },
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(ProfileBg)
+                .statusBarsPadding()
+                .padding(bottom = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Top bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                IconButton(enabled = !isSaving, onClick = onDismiss) {
+                    Icon(
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = "Cancel",
+                        tint = Color.White
+                    )
+                }
+                Text(
+                    text = "Adjust picture",
+                    fontFamily = poppinsFamily,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                )
+                Button(
+                    enabled = orientedBitmap != null && !isSaving,
+                    onClick = {
+                        val bmp = orientedBitmap ?: return@Button
+                        if (boxWidth <= 0f || boxHeight <= 0f) return@Button
+                        isSaving = true
+                        scope.launch {
+                            val file = withContext(Dispatchers.IO) {
+                                saveCroppedAvatar(
+                                    context = context,
+                                    source = bmp,
+                                    containerWidth = boxWidth,
+                                    containerHeight = boxHeight,
+                                    zoom = zoom,
+                                    offsetX = panOffset.x,
+                                    offsetY = panOffset.y
+                                )
+                            }
+                            isSaving = false
+                            if (file != null) {
+                                onApply(file)
+                            }
+                        }
+                    },
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+                ) {
+                    if (isSaving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.Black
+                        )
+                    } else {
+                        Text(
+                            text = "Apply",
+                            fontFamily = poppinsFamily,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.Black
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.weight(0.5f))
+
+            // Square Gesture Crop Viewport
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF101116))
+                    .onSizeChanged { size ->
+                        boxWidth = size.width.toFloat()
+                        boxHeight = size.height.toFloat()
+                    }
+                    .pointerInput(orientedBitmap) {
+                        detectTransformGestures { _, pan, gestureZoom, _ ->
+                            val bmp = orientedBitmap ?: return@detectTransformGestures
+                            val newZoom = (zoom * gestureZoom).coerceIn(
+                                AvatarCropMath.MIN_ZOOM,
+                                AvatarCropMath.MAX_ZOOM
+                            )
+                            val layout = AvatarCropMath.computeLayout(
+                                sourceWidth = bmp.width,
+                                sourceHeight = bmp.height,
+                                containerWidth = size.width.toFloat(),
+                                containerHeight = size.height.toFloat(),
+                                zoom = newZoom,
+                                offsetX = panOffset.x + pan.x,
+                                offsetY = panOffset.y + pan.y
+                            )
+                            zoom = newZoom
+                            panOffset = Offset(layout.clampedOffsetX, layout.clampedOffsetY)
+                        }
+                    }
+                    .pointerInput(orientedBitmap) {
+                        detectTapGestures(
+                            onDoubleTap = {
+                                if (zoom > 1.2f) {
+                                    zoom = 1f
+                                    panOffset = Offset.Zero
+                                } else {
+                                    zoom = 2.2f
+                                }
+                            }
+                        )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                when {
+                    loadError -> {
+                        Text(
+                            text = "Unable to load selected photo",
+                            fontFamily = poppinsFamily,
+                            fontSize = 14.sp,
+                            color = Color.White.copy(alpha = 0.6f)
+                        )
+                    }
+                    previewImage == null || orientedBitmap == null -> {
+                        CircularProgressIndicator(color = Color.White.copy(alpha = 0.8f))
+                    }
+                    else -> {
+                        val bmp = orientedBitmap!!
+                        Canvas(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                        ) {
+                            val layout = AvatarCropMath.computeLayout(
+                                sourceWidth = bmp.width,
+                                sourceHeight = bmp.height,
+                                containerWidth = size.width,
+                                containerHeight = size.height,
+                                zoom = zoom,
+                                offsetX = panOffset.x,
+                                offsetY = panOffset.y
+                            )
+
+                            drawImage(
+                                image = previewImage,
+                                dstOffset = IntOffset(
+                                    layout.imageLeft.roundToInt(),
+                                    layout.imageTop.roundToInt()
+                                ),
+                                dstSize = IntSize(
+                                    layout.drawnWidth.roundToInt().coerceAtLeast(1),
+                                    layout.drawnHeight.roundToInt().coerceAtLeast(1)
+                                )
+                            )
+
+                            // Outer circular crop vignette mask
+                            val fullPath = Path().apply {
+                                addRect(Rect(0f, 0f, size.width, size.height))
+                            }
+                            val radius = layout.cropDiameter / 2f
+                            val circlePath = Path().apply {
+                                addOval(
+                                    Rect(
+                                        layout.centerX - radius,
+                                        layout.centerY - radius,
+                                        layout.centerX + radius,
+                                        layout.centerY + radius
+                                    )
+                                )
+                            }
+                            val maskPath = Path().apply {
+                                op(fullPath, circlePath, PathOperation.Difference)
+                            }
+                            drawPath(maskPath, color = Color.Black.copy(alpha = 0.68f))
+
+                            drawCircle(
+                                color = Color.White.copy(alpha = 0.8f),
+                                radius = radius,
+                                center = Offset(layout.centerX, layout.centerY),
+                                style = Stroke(width = 1.5.dp.toPx())
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Text(
+                text = "Pinch or drag to reframe · Double-tap to zoom",
+                fontFamily = poppinsFamily,
+                fontSize = 12.sp,
+                color = Color.White.copy(alpha = 0.5f)
+            )
+
+            Spacer(modifier = Modifier.weight(0.5f))
+
+            // Single-handed Zoom Slider & Rotate/Reset controls
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = {
+                            val bmp = orientedBitmap ?: return@IconButton
+                            val newZoom = (zoom - 0.35f).coerceIn(
+                                AvatarCropMath.MIN_ZOOM,
+                                AvatarCropMath.MAX_ZOOM
+                            )
+                            val layout = AvatarCropMath.computeLayout(
+                                bmp.width, bmp.height, boxWidth, boxHeight,
+                                newZoom, panOffset.x, panOffset.y
+                            )
+                            zoom = newZoom
+                            panOffset = Offset(layout.clampedOffsetX, layout.clampedOffsetY)
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.ZoomOut,
+                            contentDescription = "Zoom out",
+                            tint = Color.White.copy(alpha = 0.72f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Slider(
+                        value = zoom,
+                        onValueChange = { nextZoom ->
+                            val bmp = orientedBitmap
+                            if (bmp != null && boxWidth > 0f) {
+                                val layout = AvatarCropMath.computeLayout(
+                                    bmp.width, bmp.height, boxWidth, boxHeight,
+                                    nextZoom, panOffset.x, panOffset.y
+                                )
+                                panOffset = Offset(layout.clampedOffsetX, layout.clampedOffsetY)
+                            }
+                            zoom = nextZoom
+                        },
+                        valueRange = AvatarCropMath.MIN_ZOOM..AvatarCropMath.MAX_ZOOM,
+                        colors = SliderDefaults.colors(
+                            thumbColor = Color.White,
+                            activeTrackColor = Color.White,
+                            inactiveTrackColor = Color.White.copy(alpha = 0.18f)
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    IconButton(
+                        onClick = {
+                            val bmp = orientedBitmap ?: return@IconButton
+                            val newZoom = (zoom + 0.35f).coerceIn(
+                                AvatarCropMath.MIN_ZOOM,
+                                AvatarCropMath.MAX_ZOOM
+                            )
+                            val layout = AvatarCropMath.computeLayout(
+                                bmp.width, bmp.height, boxWidth, boxHeight,
+                                newZoom, panOffset.x, panOffset.y
+                            )
+                            zoom = newZoom
+                            panOffset = Offset(layout.clampedOffsetX, layout.clampedOffsetY)
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.ZoomIn,
+                            contentDescription = "Zoom in",
+                            tint = Color.White.copy(alpha = 0.72f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+                ) {
+                    ProfilePillButton(
+                        icon = Icons.Rounded.RotateRight,
+                        label = "Rotate 90°",
+                        onClick = {
+                            quarterTurns = (quarterTurns + 1) % 4
+                            panOffset = Offset.Zero
+                        }
+                    )
+                    ProfilePillButton(
+                        icon = Icons.Rounded.Refresh,
+                        label = "Reset",
+                        onClick = {
+                            zoom = 1f
+                            panOffset = Offset.Zero
+                            quarterTurns = 0
+                        }
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -1252,8 +1028,8 @@ private fun EditProfileSheet(
     currentGenres: String,
     currentAvatarUri: String?,
     currentIsPro: Boolean,
-    accentColor: Color,
     onPickAvatar: () -> Unit,
+    onAdjustAvatar: () -> Unit,
     onSave: (name: String, genres: String, isPro: Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -1302,10 +1078,12 @@ private fun EditProfileSheet(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(60.dp)
+                        .size(64.dp)
                         .clip(CircleShape)
                         .background(ProfileTonalButton)
-                        .clickable(onClick = onPickAvatar),
+                        .clickable {
+                            if (!currentAvatarUri.isNullOrBlank()) onAdjustAvatar() else onPickAvatar()
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     if (!currentAvatarUri.isNullOrBlank()) {
@@ -1328,13 +1106,27 @@ private fun EditProfileSheet(
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White
                     )
-                    Text(
-                        text = "Choose from gallery",
-                        fontFamily = poppinsFamily,
-                        fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.58f),
-                        modifier = Modifier.clickable(onClick = onPickAvatar)
-                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(
+                            text = "Choose photo",
+                            fontFamily = poppinsFamily,
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White.copy(alpha = 0.76f),
+                            modifier = Modifier.clickable(onClick = onPickAvatar)
+                        )
+                        if (!currentAvatarUri.isNullOrBlank()) {
+                            Text(
+                                text = "Adjust picture",
+                                fontFamily = poppinsFamily,
+                                fontSize = 12.5.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.White.copy(alpha = 0.76f),
+                                modifier = Modifier.clickable(onClick = onAdjustAvatar)
+                            )
+                        }
+                    }
                 }
             }
 
@@ -1507,4 +1299,137 @@ private fun EditProfileSheet(
             }
         }
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bitmap Loading, Orientation & Cropping Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+private fun copyUriToLocalSource(context: Context, uri: Uri): Uri? {
+    return runCatching {
+        val bitmap = decodeOrientedBitmap(context, uri, maxDimension = 1600) ?: return null
+        val destFile = File(context.filesDir, AVATAR_SOURCE_FILE)
+        FileOutputStream(destFile).use { out ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 92, out)
+        }
+        Uri.fromFile(destFile)
+    }.getOrNull()
+}
+
+private fun deleteSavedAvatarFiles(context: Context, includeSource: Boolean) {
+    context.filesDir.listFiles { file ->
+        file.isFile && (
+            (file.name.startsWith("user_avatar") && file.name.endsWith(".jpg")) ||
+                (includeSource && file.name == AVATAR_SOURCE_FILE)
+            )
+    }?.forEach { file ->
+        runCatching { file.delete() }
+    }
+}
+
+private fun decodeOrientedBitmap(context: Context, uri: Uri, maxDimension: Int): Bitmap? {
+    return runCatching {
+        val boundsOpts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        openUriStream(context, uri)?.use { stream ->
+            BitmapFactory.decodeStream(stream, null, boundsOpts)
+        }
+        val rawW = boundsOpts.outWidth
+        val rawH = boundsOpts.outHeight
+        if (rawW <= 0 || rawH <= 0) return null
+
+        var sampleSize = 1
+        while ((rawW / sampleSize) > maxDimension || (rawH / sampleSize) > maxDimension) {
+            sampleSize *= 2
+        }
+
+        val decodeOpts = BitmapFactory.Options().apply {
+            inSampleSize = sampleSize
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+        }
+        val sampled = openUriStream(context, uri)?.use { stream ->
+            BitmapFactory.decodeStream(stream, null, decodeOpts)
+        } ?: return null
+
+        val orientation = openUriStream(context, uri)?.use { stream ->
+            ExifInterface(stream).getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            )
+        } ?: ExifInterface.ORIENTATION_NORMAL
+
+        val matrix = Matrix().apply {
+            when (orientation) {
+                ExifInterface.ORIENTATION_ROTATE_90 -> postRotate(90f)
+                ExifInterface.ORIENTATION_ROTATE_180 -> postRotate(180f)
+                ExifInterface.ORIENTATION_ROTATE_270 -> postRotate(270f)
+                ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> postScale(-1f, 1f)
+                ExifInterface.ORIENTATION_FLIP_VERTICAL -> postScale(1f, -1f)
+                ExifInterface.ORIENTATION_TRANSPOSE -> {
+                    postRotate(90f)
+                    postScale(-1f, 1f)
+                }
+                ExifInterface.ORIENTATION_TRANSVERSE -> {
+                    postRotate(270f)
+                    postScale(-1f, 1f)
+                }
+            }
+        }
+        if (matrix.isIdentity) sampled
+        else Bitmap.createBitmap(sampled, 0, 0, sampled.width, sampled.height, matrix, true)
+    }.getOrNull()
+}
+
+private fun openUriStream(context: Context, uri: Uri) =
+    if (uri.scheme == "file") {
+        uri.path?.let { File(it).takeIf(File::exists)?.inputStream() }
+    } else {
+        context.contentResolver.openInputStream(uri)
+    }
+
+private fun rotateBitmapQuarterTurns(source: Bitmap, quarterTurns: Int): Bitmap {
+    val turns = ((quarterTurns % 4) + 4) % 4
+    if (turns == 0) return source
+    val matrix = Matrix().apply { postRotate(turns * 90f) }
+    return Bitmap.createBitmap(source, 0, 0, source.width, source.height, matrix, true)
+}
+
+private fun saveCroppedAvatar(
+    context: Context,
+    source: Bitmap,
+    containerWidth: Float,
+    containerHeight: Float,
+    zoom: Float,
+    offsetX: Float,
+    offsetY: Float,
+    outputSizePx: Int = 512
+): File? {
+    return runCatching {
+        val cropRect = AvatarCropMath.computeSourceCropRect(
+            sourceWidth = source.width,
+            sourceHeight = source.height,
+            containerWidth = containerWidth,
+            containerHeight = containerHeight,
+            zoom = zoom,
+            offsetX = offsetX,
+            offsetY = offsetY
+        )
+        val outBitmap = Bitmap.createBitmap(outputSizePx, outputSizePx, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(outBitmap)
+        val srcRect = android.graphics.Rect(
+            cropRect.left.roundToInt().coerceIn(0, source.width - 1),
+            cropRect.top.roundToInt().coerceIn(0, source.height - 1),
+            (cropRect.left + cropRect.size).roundToInt().coerceIn(1, source.width),
+            (cropRect.top + cropRect.size).roundToInt().coerceIn(1, source.height)
+        )
+        val dstRect = RectF(0f, 0f, outputSizePx.toFloat(), outputSizePx.toFloat())
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG or android.graphics.Paint.FILTER_BITMAP_FLAG)
+        canvas.drawBitmap(source, srcRect, dstRect, paint)
+
+        deleteSavedAvatarFiles(context, includeSource = false)
+        val outFile = File(context.filesDir, "user_avatar_${System.currentTimeMillis()}.jpg")
+        FileOutputStream(outFile).use { stream ->
+            outBitmap.compress(Bitmap.CompressFormat.JPEG, 92, stream)
+        }
+        outFile
+    }.getOrNull()
 }

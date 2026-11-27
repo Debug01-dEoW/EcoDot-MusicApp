@@ -1,18 +1,33 @@
 package com.example.ecodot.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Build
+import androidx.compose.material.icons.rounded.Campaign
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.NewReleases
+import androidx.compose.material.icons.rounded.SystemUpdate
+import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -23,21 +38,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.ecodot.data.local.prefs.UserPreferencesManager
 import com.example.ecodot.ui.theme.EcoDotRed
 import com.example.ecodot.util.AppUpdateInfo
 import com.example.ecodot.util.UpdateStatus
 import java.io.File
 
+private val UpdateBg = Color(0xFF13141A)
+private val UpdateCardBg = Color(0xFF1B1C24)
+private val UpdateGreen = Color(0xFF1ED760)
+
 /**
- * SimpMusic-styled clean, organized In-App Update Dialog.
- *
- * Features:
- * - Pinned dialog title ("New update available")
- * - Subheader with version and formatted release timestamp
- * - Clickable changelog and user-guide hyperlinks
- * - Categorized sections: New, Improved, Fixed, What's Changed, New Contributors
- * - Bullet points with inline clickable pull-request links and @mentions
- * - Responsive smooth scrolling with pinned bottom actions (Cancel / Download / Install)
+ * Clean, modern In-App Update & Release News screen showing version upgrade info,
+ * release overview news, categorized changes, download size/progress, and install actions.
  */
 @Composable
 fun UpdateDialog(
@@ -59,6 +72,13 @@ fun UpdateDialog(
     val errorState = status as? UpdateStatus.Error
 
     val isMandatory = info?.isMandatory == true
+    val targetVersion = info?.versionName ?: readyState?.info?.versionName ?: currentVersion
+    val displayTargetVersion = if (targetVersion.startsWith("v", ignoreCase = true)) targetVersion else "v$targetVersion"
+    val displayCurrentVersion = if (currentVersion.startsWith("v", ignoreCase = true)) currentVersion else "v$currentVersion"
+    val releaseDate = info?.releaseDate ?: info?.publishedAt ?: readyState?.info?.releaseDate
+    val apkSizeBytes = info?.apkSize ?: readyState?.info?.apkSize ?: 0L
+    val description = info?.description ?: readyState?.info?.description
+    val uriHandler = LocalUriHandler.current
 
     Dialog(
         onDismissRequest = {
@@ -75,37 +95,134 @@ fun UpdateDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 32.dp),
+                .padding(horizontal = 18.dp, vertical = 28.dp),
             contentAlignment = Alignment.Center
         ) {
             Surface(
                 modifier = modifier
                     .fillMaxWidth()
-                    .widthIn(max = 440.dp)
-                    .fillMaxHeight(0.85f),
-                shape = RoundedCornerShape(28.dp),
-                color = Color(0xFF2C2D35),
-                shadowElevation = 16.dp,
-                tonalElevation = 6.dp
+                    .widthIn(max = 460.dp)
+                    .fillMaxHeight(0.88f)
+                    .border(0.6.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(26.dp)),
+                shape = RoundedCornerShape(26.dp),
+                color = UpdateBg,
+                shadowElevation = 20.dp
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 16.dp)
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    // Pinned Header
-                    Text(
-                        text = "New update available",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
-                    )
+                    // Pinned Top Hero Header
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        UpdateGreen.copy(alpha = 0.16f),
+                                        UpdateBg
+                                    )
+                                )
+                            )
+                            .padding(horizontal = 22.dp, vertical = 20.dp)
+                    ) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .clip(CircleShape)
+                                        .background(UpdateGreen.copy(alpha = 0.18f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.SystemUpdate,
+                                        contentDescription = null,
+                                        tint = UpdateGreen,
+                                        modifier = Modifier.size(19.dp)
+                                    )
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = when {
+                                            readyState != null -> "Update Ready to Install"
+                                            downloadingState != null -> "Downloading Update..."
+                                            else -> "New EcoDot Update"
+                                        },
+                                        color = Color.White,
+                                        fontSize = 19.sp,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                    if (!releaseDate.isNullOrBlank()) {
+                                        Text(
+                                            text = "Released $releaseDate",
+                                            color = Color.White.copy(alpha = 0.62f),
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
+                            }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                            // Version upgrade + size + developer credit chips
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(50))
+                                        .background(UpdateGreen.copy(alpha = 0.16f))
+                                        .border(0.5.dp, UpdateGreen.copy(alpha = 0.45f), RoundedCornerShape(50))
+                                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "$displayCurrentVersion -> $displayTargetVersion",
+                                        color = UpdateGreen,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
 
-                    // Scrollable Changelog Area — keyed and snapped post-layout so every open starts at top
+                                if (apkSizeBytes > 0L) {
+                                    val mbSize = apkSizeBytes / (1024f * 1024f)
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(50))
+                                            .background(Color.White.copy(alpha = 0.08f))
+                                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                                    ) {
+                                        Text(
+                                            text = String.format("%.1f MB", mbSize),
+                                            color = Color.White.copy(alpha = 0.85f),
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                }
+                            }
+
+                            Text(
+                                text = "By Debug01-dEoW aka Deep",
+                                color = Color(0xFF90CAF9),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable {
+                                        runCatching {
+                                            uriHandler.openUri(UserPreferencesManager.DEFAULT_GITHUB_PROFILE_URL)
+                                        }
+                                    }
+                                    .padding(vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    // Scrollable News & Changelog Area — starts cleanly at the top on every open
                     val targetVersionKey = "${info?.versionName ?: readyState?.info?.versionName}_${info?.source}"
                     val scrollState = key(targetVersionKey) { rememberScrollState(initial = 0) }
                     LaunchedEffect(targetVersionKey) {
@@ -113,156 +230,131 @@ fun UpdateDialog(
                         withFrameNanos { }
                         scrollState.scrollTo(0)
                     }
+
                     Column(
                         modifier = Modifier
-                            .weight(1f, fill = false)
+                            .weight(1f)
                             .verticalScroll(scrollState)
+                            .padding(horizontal = 18.dp, vertical = 6.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Version Line
-                        val targetVersion = info?.versionName ?: readyState?.info?.versionName ?: "v$currentVersion"
-                        Text(
-                            text = "Version $targetVersion available",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontSize = 17.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        )
-
-                        // Release Date Line
-                        val releaseDate = info?.releaseDate ?: info?.publishedAt ?: readyState?.info?.releaseDate
-                        if (!releaseDate.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.height(3.dp))
-                            Text(
-                                text = "Release: $releaseDate",
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Normal,
-                                    color = Color.White.copy(alpha = 0.82f)
+                        // Release Overview / Spotlight News
+                        if (!description.isNullOrBlank()) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(UpdateCardBg)
+                                    .border(0.5.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
+                                    .padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.AutoAwesome,
+                                        contentDescription = null,
+                                        tint = Color(0xFFFFD54F),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Text(
+                                        text = "Release News & Overview",
+                                        color = Color.White,
+                                        fontSize = 14.5.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Text(
+                                    text = description,
+                                    color = Color.White.copy(alpha = 0.84f),
+                                    fontSize = 13.sp,
+                                    lineHeight = 19.sp
                                 )
-                            )
+                            }
                         }
 
-                        // Full changelogs URL Link
-                        val changelogUrl = info?.changelogUrl ?: readyState?.info?.changelogUrl
-                        if (!changelogUrl.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.height(14.dp))
-                            Text(
-                                text = "Full changelogs here:",
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color.White
-                                )
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            ClickableUrlText(url = changelogUrl)
-                        }
-
-                        // Read user-guide URL Link
-                        val guideUrl = info?.guideUrl ?: readyState?.info?.guideUrl
-                        if (!guideUrl.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                text = "Read user-guide:",
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color.White
-                                )
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            ClickableUrlText(url = guideUrl)
-                        }
-
-                        // Structured Sections: New, Improved, Fixed, What's Changed, New Contributors
+                        // Structured Sections: News & Highlights, New, Improved, Fixed, What's Changed, New Contributors
                         val sections = info?.sections ?: readyState?.info?.sections ?: emptyList()
                         if (sections.isNotEmpty()) {
-                            for (section in sections) {
-                                Spacer(modifier = Modifier.height(18.dp))
-                                Text(
-                                    text = section.title,
-                                    style = MaterialTheme.typography.titleSmall.copy(
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
-                                    )
+                            sections.forEach { section ->
+                                UpdateSectionCard(
+                                    title = section.title,
+                                    items = section.items
                                 )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                for (item in section.items) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(bottom = 6.dp),
-                                        verticalAlignment = Alignment.Top
-                                    ) {
-                                        Text(
-                                            text = "• ",
-                                            style = MaterialTheme.typography.bodyMedium.copy(
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White.copy(alpha = 0.85f)
-                                            )
-                                        )
-                                        FormattedChangelogItem(
-                                            text = item,
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                    }
-                                }
                             }
                         } else {
-                            // Unstructured Changelog Fallback
                             val rawChangelog = info?.changelog ?: readyState?.info?.changelog
                             if (!rawChangelog.isNullOrBlank()) {
-                                Spacer(modifier = Modifier.height(18.dp))
-                                Text(
-                                    text = "What's Changed",
-                                    style = MaterialTheme.typography.titleSmall.copy(
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
+                                val fallbackItems = rawChangelog.lines()
+                                    .map { it.trim().trimStart('•', '*', '-', '+', ' ').trim() }
+                                    .filter { it.isNotEmpty() }
+                                if (fallbackItems.isNotEmpty()) {
+                                    UpdateSectionCard(
+                                        title = "What's Changed",
+                                        items = fallbackItems
                                     )
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                for (line in rawChangelog.lines()) {
-                                    val trimmed = line.trim().trimStart('•', '*', '-', '+', ' ').trim()
-                                    if (trimmed.isNotEmpty()) {
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(bottom = 6.dp),
-                                            verticalAlignment = Alignment.Top
-                                        ) {
-                                            Text(
-                                                text = "• ",
-                                                style = MaterialTheme.typography.bodyMedium.copy(
-                                                    fontSize = 14.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = Color.White.copy(alpha = 0.85f)
-                                                )
-                                            )
-                                            FormattedChangelogItem(
-                                                text = trimmed,
-                                                modifier = Modifier.weight(1f)
-                                            )
-                                        }
+                                }
+                            }
+                        }
+
+                        // Helpful Links Card
+                        val changelogUrl = info?.changelogUrl ?: readyState?.info?.changelogUrl
+                        val guideUrl = info?.guideUrl ?: readyState?.info?.guideUrl
+                        if (!changelogUrl.isNullOrBlank() || !guideUrl.isNullOrBlank()) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(UpdateCardBg)
+                                    .border(0.5.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
+                                    .padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                if (!changelogUrl.isNullOrBlank()) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        Text(
+                                            text = "Full Changelogs & Releases",
+                                            color = Color.White,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        ClickableUrlText(url = changelogUrl)
+                                    }
+                                }
+                                if (!guideUrl.isNullOrBlank()) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        Text(
+                                            text = "README & User Guide",
+                                            color = Color.White,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        ClickableUrlText(url = guideUrl)
                                     }
                                 }
                             }
                         }
 
-                        // Downloading Progress Indicator
-                        if (downloadingState != null) {
-                            Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
+
+                    // Downloading progress or Error banner above buttons
+                    if (downloadingState != null) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 8.dp)
+                        ) {
                             LinearProgressIndicator(
                                 progress = { downloadingState.progress },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(6.dp)
                                     .clip(RoundedCornerShape(3.dp)),
-                                color = EcoDotRed,
-                                trackColor = Color.White.copy(alpha = 0.15f)
+                                color = UpdateGreen,
+                                trackColor = Color.White.copy(alpha = 0.14f)
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Row(
@@ -278,106 +370,194 @@ fun UpdateDialog(
                                 Text(
                                     text = sizeText,
                                     style = MaterialTheme.typography.labelSmall.copy(
-                                        color = Color.White.copy(alpha = 0.7f)
+                                        color = Color.White.copy(alpha = 0.72f)
                                     )
                                 )
                                 val percent = (downloadingState.progress * 100).toInt()
                                 Text(
                                     text = "$percent%",
                                     style = MaterialTheme.typography.labelSmall.copy(
-                                        color = Color.White,
+                                        color = UpdateGreen,
                                         fontWeight = FontWeight.Bold
                                     )
                                 )
                             }
                         }
-
-                        // Error Status
-                        if (errorState != null) {
-                            Spacer(modifier = Modifier.height(14.dp))
-                            Text(
-                                text = errorState.message,
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = Color(0xFFFF5252),
-                                    fontWeight = FontWeight.Medium
-                                )
-                            )
-                        }
                     }
 
+                    if (errorState != null) {
+                        Text(
+                            text = errorState.message,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = Color(0xFFFF6B6B),
+                                fontWeight = FontWeight.Medium
+                            ),
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
+                        )
+                    }
+
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 0.5.dp)
+
                     // Pinned Bottom Actions
-                    Spacer(modifier = Modifier.height(12.dp))
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 14.dp),
                         horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (!isMandatory && downloadingState == null) {
                             TextButton(
                                 onClick = onDismiss,
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp)
                             ) {
                                 Text(
-                                    text = "Cancel",
-                                    style = MaterialTheme.typography.labelLarge.copy(
-                                        color = Color.White.copy(alpha = 0.85f),
-                                        fontWeight = FontWeight.Medium,
-                                        fontSize = 14.5.sp
-                                    )
+                                    text = "Later",
+                                    color = Color.White.copy(alpha = 0.78f),
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 14.sp
                                 )
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                         }
 
-                        if (readyState != null) {
-                            TextButton(
-                                onClick = { onInstallClick(readyState.apkFile) },
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                            ) {
-                                Text(
-                                    text = "Install",
-                                    style = MaterialTheme.typography.labelLarge.copy(
-                                        color = Color.White,
+                        when {
+                            readyState != null -> {
+                                Button(
+                                    onClick = { onInstallClick(readyState.apkFile) },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = UpdateGreen,
+                                        contentColor = Color.Black
+                                    ),
+                                    shape = RoundedCornerShape(50),
+                                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+                                ) {
+                                    Text(
+                                        text = "Install Update",
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 14.5.sp
+                                        fontSize = 14.sp
                                     )
-                                )
+                                }
                             }
-                        } else if (downloadingState != null) {
-                            val percent = (downloadingState.progress * 100).toInt()
-                            TextButton(
-                                onClick = { /* no-op during active download */ },
-                                enabled = false,
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                            ) {
-                                Text(
-                                    text = "$percent%",
-                                    style = MaterialTheme.typography.labelLarge.copy(
-                                        color = Color.White.copy(alpha = 0.7f),
+                            downloadingState != null -> {
+                                val percent = (downloadingState.progress * 100).toInt()
+                                Button(
+                                    onClick = { },
+                                    enabled = false,
+                                    colors = ButtonDefaults.buttonColors(
+                                        disabledContainerColor = Color.White.copy(alpha = 0.10f),
+                                        disabledContentColor = Color.White.copy(alpha = 0.72f)
+                                    ),
+                                    shape = RoundedCornerShape(50),
+                                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+                                ) {
+                                    Text(
+                                        text = "Downloading $percent%",
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 14.5.sp
+                                        fontSize = 14.sp
                                     )
-                                )
+                                }
                             }
-                        } else if (info != null) {
-                            TextButton(
-                                onClick = { onDownloadClick(info) },
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                            ) {
-                                Text(
-                                    text = "Download",
-                                    style = MaterialTheme.typography.labelLarge.copy(
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.5.sp
+                            info != null -> {
+                                Button(
+                                    onClick = { onDownloadClick(info) },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = UpdateGreen,
+                                        contentColor = Color.Black
+                                    ),
+                                    shape = RoundedCornerShape(50),
+                                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Download,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
                                     )
-                                )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        text = "Download Update",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun UpdateSectionCard(
+    title: String,
+    items: List<String>
+) {
+    val (icon, tint) = sectionStyle(title)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(UpdateCardBg)
+            .border(0.5.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = title,
+                color = Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        items.forEach { item ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top
+            ) {
+                Text(
+                    text = "•",
+                    color = tint,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+                FormattedChangelogItem(
+                    text = item,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+private fun sectionStyle(title: String): Pair<ImageVector, Color> {
+    val normalized = title.lowercase()
+    return when {
+        normalized.contains("news") || normalized.contains("highlight") ->
+            Icons.Rounded.Campaign to Color(0xFFFFD54F)
+        normalized == "new" || normalized.contains("feature") ->
+            Icons.Rounded.NewReleases to UpdateGreen
+        normalized.contains("improv") ->
+            Icons.Rounded.TrendingUp to Color(0xFF64B5F6)
+        normalized.contains("fix") || normalized.contains("bug") ->
+            Icons.Rounded.Build to Color(0xFFFF8A65)
+        normalized.contains("contributor") ->
+            Icons.Rounded.Favorite to EcoDotRed
+        else ->
+            Icons.Rounded.History to Color(0xFFB39DDB)
     }
 }
 
@@ -395,7 +575,7 @@ fun ClickableUrlText(
         style = MaterialTheme.typography.bodyMedium.copy(
             color = Color(0xFF90CAF9),
             textDecoration = TextDecoration.Underline,
-            fontSize = 13.sp,
+            fontSize = 12.5.sp,
             lineHeight = 18.sp
         ),
         modifier = modifier
@@ -404,8 +584,7 @@ fun ClickableUrlText(
             .clickable {
                 try {
                     uriHandler.openUri(url)
-                } catch (e: Exception) {
-                    // Fallback or ignore
+                } catch (_: Exception) {
                 }
             }
     )
@@ -431,8 +610,8 @@ fun FormattedChangelogItem(
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium.copy(
-                color = Color.White.copy(alpha = 0.88f),
-                fontSize = 13.5.sp,
+                color = Color.White.copy(alpha = 0.86f),
+                fontSize = 13.sp,
                 lineHeight = 19.sp
             ),
             modifier = modifier
@@ -449,8 +628,8 @@ fun FormattedChangelogItem(
             if (start > currentIndex) {
                 withStyle(
                     SpanStyle(
-                        color = Color.White.copy(alpha = 0.88f),
-                        fontSize = 13.5.sp
+                        color = Color.White.copy(alpha = 0.86f),
+                        fontSize = 13.sp
                     )
                 ) {
                     append(text.substring(currentIndex, start))
@@ -471,7 +650,7 @@ fun FormattedChangelogItem(
                         SpanStyle(
                             color = Color(0xFF90CAF9),
                             textDecoration = TextDecoration.Underline,
-                            fontSize = 13.5.sp
+                            fontSize = 13.sp
                         )
                     ) {
                         append(mdLabel)
@@ -487,7 +666,7 @@ fun FormattedChangelogItem(
                         SpanStyle(
                             color = Color(0xFF90CAF9),
                             textDecoration = TextDecoration.Underline,
-                            fontSize = 13.5.sp
+                            fontSize = 13.sp
                         )
                     ) {
                         append(cleanUrl)
@@ -496,8 +675,8 @@ fun FormattedChangelogItem(
                     if (trailingPunct.isNotEmpty()) {
                         withStyle(
                             SpanStyle(
-                                color = Color.White.copy(alpha = 0.88f),
-                                fontSize = 13.5.sp
+                                color = Color.White.copy(alpha = 0.86f),
+                                fontSize = 13.sp
                             )
                         ) {
                             append(trailingPunct)
@@ -509,7 +688,7 @@ fun FormattedChangelogItem(
                         SpanStyle(
                             color = Color.White,
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 13.5.sp
+                            fontSize = 13.sp
                         )
                     ) {
                         append(boldText)
@@ -520,7 +699,7 @@ fun FormattedChangelogItem(
                         SpanStyle(
                             color = Color(0xFFE3F2FD),
                             fontWeight = FontWeight.Medium,
-                            fontSize = 13.sp
+                            fontSize = 12.5.sp
                         )
                     ) {
                         append(codeText)
@@ -532,8 +711,8 @@ fun FormattedChangelogItem(
         if (currentIndex < text.length) {
             withStyle(
                 SpanStyle(
-                    color = Color.White.copy(alpha = 0.88f),
-                    fontSize = 13.5.sp
+                    color = Color.White.copy(alpha = 0.86f),
+                    fontSize = 13.sp
                 )
             ) {
                 append(text.substring(currentIndex))
@@ -562,8 +741,7 @@ fun FormattedChangelogItem(
                     .firstOrNull()?.let { annotation ->
                         try {
                             uriHandler.openUri(annotation.item)
-                        } catch (e: Exception) {
-                            // ignore
+                        } catch (_: Exception) {
                         }
                     }
             }

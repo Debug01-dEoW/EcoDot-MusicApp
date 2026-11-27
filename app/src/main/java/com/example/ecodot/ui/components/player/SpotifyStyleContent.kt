@@ -252,25 +252,7 @@ fun SpotifyStyleContent(
                 }
             }
 
-            // ── 2. Optional Song / Video Mode Switcher ────────────────────────
-            if (track.isYouTube) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        AudioVideoModeTogglePill(
-                            isVideoMode = isTrackAVideo,
-                            accentColor = SpotifyGreen,
-                            onSetVideoMode = onSetVideoMode
-                        )
-                    }
-                }
-            }
-
-            // ── 3. Swipeable Cover Art OR Responsive Video Stage ─────────────
+            // ── 2. Swipeable Cover Art OR Responsive Video Stage ─────────────
             item {
                 Spacer(modifier = Modifier.height(10.dp))
                 Crossfade(

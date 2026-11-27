@@ -152,11 +152,11 @@ import kotlin.math.absoluteValue
 fun Modifier.homeLiquidGlass(
     backdrop: Backdrop?,
     shape: Shape,
-    surfaceTint: Color = Color(0xFF1F2130),
-    surfaceAlpha: Float = 0.52f,
-    specularAlpha: Float = 0.86f,
-    frostSheenAlpha: Float = 0.22f,
-    blurDp: Dp = 8.dp,
+    surfaceTint: Color = Color(0xFF0E1018),
+    surfaceAlpha: Float = 0.14f,
+    specularAlpha: Float = 0.88f,
+    frostSheenAlpha: Float = 0.12f,
+    blurDp: Dp = 1.5.dp,
     pressedScaleTarget: Float = 0.96f,
     isPressed: Boolean = false
 ): Modifier {
@@ -172,16 +172,16 @@ fun Modifier.homeLiquidGlass(
         createSpecularRimBrush(
             tiltX = tilt.tiltX,
             tiltY = tilt.tiltY,
-            baseAlpha = specularAlpha * 0.62f,
-            secondaryAlpha = 0.16f
+            baseAlpha = specularAlpha * 0.72f,
+            secondaryAlpha = 0.22f
         )
     }
     val frostSheenBrush = remember(frostSheenAlpha) {
         Brush.verticalGradient(
             colors = listOf(
                 Color.White.copy(alpha = frostSheenAlpha),
-                Color.White.copy(alpha = frostSheenAlpha * 0.30f),
-                Color.Black.copy(alpha = 0.16f)
+                Color.White.copy(alpha = frostSheenAlpha * 0.25f),
+                Color.Transparent
             )
         )
     }
@@ -191,8 +191,8 @@ fun Modifier.homeLiquidGlass(
     if (!glassEnabled || backdrop == null) {
         return scaled
             .clip(shape)
-            .background(surfaceTint.copy(alpha = 0.90f), shape)
-            .border(1.dp, rimBrush, shape)
+            .background(surfaceTint.copy(alpha = 0.84f), shape)
+            .border(0.85.dp, rimBrush, shape)
     }
 
     return scaled
@@ -204,23 +204,23 @@ fun Modifier.homeLiquidGlass(
                     style = HighlightStyle.Default(
                         angle = 45f + (tilt.tiltX * 28f) + (tilt.tiltY * 14f)
                     ),
-                    width = 1.15.dp,
+                    width = 1.1.dp,
                     alpha = specularAlpha
                 )
             },
             shadow = {
-                Shadow(radius = 8.dp, color = Color.Black.copy(alpha = 0.34f))
+                Shadow(radius = 8.dp, color = Color.Black.copy(alpha = 0.26f))
             },
             innerShadow = {
-                InnerShadow(radius = 6.dp, alpha = 0.36f, color = Color.White)
+                InnerShadow(radius = 5.dp, alpha = 0.34f, color = Color.White)
             },
             effects = {
                 vibrancy()
                 blur(blurDp.toPx())
                 if (size.minDimension > 2f) {
                     lens(
-                        refractionHeight = size.minDimension / 4f,
-                        refractionAmount = size.minDimension / 2f,
+                        refractionHeight = size.minDimension / 3.8f,
+                        refractionAmount = size.minDimension / 1.85f,
                         depthEffect = false
                     )
                 }
@@ -351,10 +351,10 @@ fun LiquidGlassProfileButton(
                 .homeLiquidGlass(
                     backdrop = backdrop,
                     shape = CircleShape,
-                    surfaceTint = Color(0xFF212435),
-                    surfaceAlpha = 0.56f,
+                    surfaceTint = Color(0xFF0E1018),
+                    surfaceAlpha = 0.14f,
                     specularAlpha = 0.90f,
-                    frostSheenAlpha = 0.26f,
+                    frostSheenAlpha = 0.12f,
                     isPressed = isPressed
                 )
                 .clickable(
@@ -535,10 +535,10 @@ fun LiquidGlassAllChip(
                     Modifier.homeLiquidGlass(
                         backdrop = backdrop,
                         shape = shape,
-                        surfaceTint = pillTint,
-                        surfaceAlpha = 0.56f,
+                        surfaceTint = Color(0xFF0E1018),
+                        surfaceAlpha = 0.14f,
                         specularAlpha = 0.88f,
-                        frostSheenAlpha = 0.24f,
+                        frostSheenAlpha = 0.12f,
                         isPressed = isPressed
                     )
                 }
@@ -618,9 +618,9 @@ fun LiquidGlassMoodChip(
                 backdrop = backdrop,
                 shape = shape,
                 surfaceTint = outerTint,
-                surfaceAlpha = if (active) 0.68f else 0.56f,
-                specularAlpha = if (folded) 0.78f else 0.88f,
-                frostSheenAlpha = if (active) 0.24f else 0.24f,
+                surfaceAlpha = if (active) 0.26f else 0.14f,
+                specularAlpha = if (folded) 0.82f else 0.90f,
+                frostSheenAlpha = 0.12f,
                 isPressed = isPressed && !active
             )
             .homeLoadingRing(enabled = isLoading && selectedMood != null, shape = shape),
@@ -757,10 +757,10 @@ fun LiquidGlassActionPill(
             .homeLiquidGlass(
                 backdrop = backdrop,
                 shape = shape,
-                surfaceTint = Color(0xFF212435),
-                surfaceAlpha = 0.56f,
+                surfaceTint = Color(0xFF0E1018),
+                surfaceAlpha = 0.14f,
                 specularAlpha = 0.90f,
-                frostSheenAlpha = 0.25f,
+                frostSheenAlpha = 0.12f,
                 isPressed = isPressed
             )
             .padding(horizontal = 4.dp),

@@ -2,6 +2,7 @@ package com.example.ecodot.ui.components.player
 
 import androidx.compose.ui.graphics.Color
 import com.example.ecodot.data.local.prefs.AudioQuality
+import com.example.ecodot.util.AvatarCropMath
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -147,5 +148,62 @@ class PlayerStyleAndProfileTest {
 
         assertTrue(top.red > mid.red)
         assertTrue(mid.red > bottom.red)
+    }
+
+    @Test
+    fun `avatar crop math maps zoom and pan accurately within image bounds`() {
+        // Square 1000x1000 source at 1x zoom centered -> full 1000x1000 crop
+        val full = AvatarCropMath.computeSourceCropRect(
+            sourceWidth = 1000,
+            sourceHeight = 1000,
+            containerWidth = 1000f,
+            containerHeight = 1000f,
+            zoom = 1f,
+            offsetX = 0f,
+            offsetY = 0f
+        )
+        assertEquals(0f, full.left, 0.5f)
+        assertEquals(0f, full.top, 0.5f)
+        assertEquals(1000f, full.size, 0.5f)
+
+        // 2x zoom centered on 1000x1000 -> center 500x500 crop
+        val zoomed = AvatarCropMath.computeSourceCropRect(
+            sourceWidth = 1000,
+            sourceHeight = 1000,
+            containerWidth = 1000f,
+            containerHeight = 1000f,
+            zoom = 2f,
+            offsetX = 0f,
+            offsetY = 0f
+        )
+        assertEquals(250f, zoomed.left, 0.5f)
+        assertEquals(250f, zoomed.top, 0.5f)
+        assertEquals(500f, zoomed.size, 0.5f)
+
+        // Landscape 2000x1000 panned hard right -> clamped strictly to left edge (x = 0)
+        val clampedRightDrag = AvatarCropMath.computeSourceCropRect(
+            sourceWidth = 2000,
+            sourceHeight = 1000,
+            containerWidth = 1000f,
+            containerHeight = 1000f,
+            zoom = 1f,
+            offsetX = 10_000f,
+            offsetY = 0f
+        )
+        assertEquals(0f, clampedRightDrag.left, 0.5f)
+        assertEquals(1000f, clampedRightDrag.size, 0.5f)
+
+        // Landscape 2000x1000 panned hard left -> clamped strictly to right edge (x = 1000)
+        val clampedLeftDrag = AvatarCropMath.computeSourceCropRect(
+            sourceWidth = 2000,
+            sourceHeight = 1000,
+            containerWidth = 1000f,
+            containerHeight = 1000f,
+            zoom = 1f,
+            offsetX = -10_000f,
+            offsetY = 0f
+        )
+        assertEquals(1000f, clampedLeftDrag.left, 0.5f)
+        assertEquals(1000f, clampedLeftDrag.size, 0.5f)
     }
 }

@@ -119,17 +119,20 @@ fun MiniPlayer(
                 shadow = { Shadow(radius = 8.dp, color = Color.Black.copy(alpha = 0.22f)) },
                 innerShadow = { InnerShadow(radius = 6.dp, alpha = 0.25f, color = Color.White) },
                 effects = {
-                    blur(2.dp.toPx())
-                    colorControls(
-                        brightness = 0.04f,
-                        contrast = 1.05f,
-                        saturation = 1.25f
-                    )
+                    vibrancy()
+                    blur(1.5.dp.toPx())
+                    if (size.minDimension > 2f) {
+                        lens(
+                            refractionHeight = 14.dp.toPx(),
+                            refractionAmount = 22.dp.toPx(),
+                            depthEffect = false
+                        )
+                    }
                 },
                 onDrawSurface = {
-                    // Ultra-clean transparent glass: subtle darkening keeps text readable with zero blur fog
-                    drawRect(Color.Black.copy(alpha = 0.14f))
-                    drawRect(Color.White.copy(alpha = 0.05f))
+                    // Ultra-clean crystal glass: lens magnification without smoky haze
+                    drawRect(Color.Black.copy(alpha = 0.08f))
+                    drawRect(Color.White.copy(alpha = 0.06f))
                 }
             )
         } else {

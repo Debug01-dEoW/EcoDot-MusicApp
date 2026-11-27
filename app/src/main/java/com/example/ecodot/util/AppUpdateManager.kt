@@ -169,6 +169,7 @@ class AppUpdateManager(private val context: Context) {
             val changelog = json.optString("changelog", "").ifEmpty {
                 json.optString("body", "Bug fixes and performance improvements.").trim()
             }
+            val description = json.optString("description", "").trim().ifEmpty { null }
             val isMandatory = json.optBoolean("isMandatory", false)
             val apkSize = json.optLong("apkSize", 0L)
 
@@ -215,6 +216,7 @@ class AppUpdateManager(private val context: Context) {
                     versionName = remoteVersionName.ifEmpty { "v$remoteVersionCode" },
                     downloadUrl = downloadUrl,
                     changelog = changelog,
+                    description = description,
                     sections = parsedSections,
                     releaseDate = releaseDate,
                     changelogUrl = changelogUrl,
@@ -378,7 +380,14 @@ class AppUpdateManager(private val context: Context) {
         if (json.has("sections")) {
             val sectionsObj = json.optJSONObject("sections")
             if (sectionsObj != null) {
-                val canonicalOrder = listOf("New", "Improved", "Fixed", "What's Changed", "New Contributors")
+                val canonicalOrder = listOf(
+                    "News & Highlights",
+                    "New",
+                    "Improved",
+                    "Fixed",
+                    "What's Changed",
+                    "New Contributors"
+                )
                 // Process canonical in order
                 for (title in canonicalOrder) {
                     if (sectionsObj.has(title)) {

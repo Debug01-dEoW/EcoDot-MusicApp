@@ -17,6 +17,7 @@ data class AppUpdateInfo(
     val versionName: String,
     val downloadUrl: String,
     val changelog: String = "",
+    val description: String? = null,
     val sections: List<UpdateSection> = emptyList(),
     val releaseDate: String? = null,
     val changelogUrl: String? = null,

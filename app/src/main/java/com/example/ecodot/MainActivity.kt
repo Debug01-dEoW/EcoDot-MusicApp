@@ -287,6 +287,11 @@ class MainActivity : ComponentActivity() {
                                     LibraryScreen(
                                         viewModel = viewModel,
                                         navController = navController,
+                                        onEqualizerClick = { isEqualizerVisible = true },
+                                        onWatchVideo = {
+                                            viewModel.setVideoMode(true)
+                                            isNowPlayingVisible = true
+                                        },
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 }
@@ -295,6 +300,7 @@ class MainActivity : ComponentActivity() {
                                         viewModel = viewModel,
                                         navController = navController,
                                         modifier = Modifier.fillMaxSize(),
+                                        onEqualizerClick = { isEqualizerVisible = true },
                                         onWatchVideo = {
                                             viewModel.setVideoMode(true)
                                             isNowPlayingVisible = true

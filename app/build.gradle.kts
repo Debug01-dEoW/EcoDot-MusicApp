@@ -12,14 +12,14 @@ android {
         applicationId = "com.example.ecodot"
         minSdk = 24
         targetSdk = 37
-        versionCode = 26
-        versionName = "1.26v"
+        versionCode = 27
+        versionName = "1.27v"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     base {
-        archivesName.set("EcoDot 1.26v")
+        archivesName.set("EcoDot 1.27v")
     }
 
     buildTypes {

@@ -58,6 +58,8 @@ import kotlinx.coroutines.launch
 fun LibraryScreen(
     viewModel: MusicViewModel,
     navController: NavController,
+    onEqualizerClick: () -> Unit = {},
+    onWatchVideo: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -84,6 +86,10 @@ fun LibraryScreen(
     val allTracks by viewModel.tracks.collectAsState()
     val currentTrack by viewModel.currentTrack.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
+    val isVideoMode by viewModel.isVideoMode.collectAsState()
+    val sleepTimerRemaining by viewModel.sleepTimerRemaining.collectAsState()
+    val playerStyle by viewModel.playerStyle.collectAsState()
+    val isCanvasEnabledByUser by viewModel.isCanvasEnabledByUser.collectAsState()
     val downloadProgressMap by viewModel.downloadProgress.collectAsState()
     val pinnedPlaylistIds by viewModel.pinnedPlaylistIds.collectAsState()
     val cachedTracks by viewModel.cachedTracks.collectAsState()
@@ -132,6 +138,8 @@ fun LibraryScreen(
     var playlistToEdit by remember { mutableStateOf<Playlist?>(null) }
     var trackForOptions by remember { mutableStateOf<Track?>(null) }
     var trackForAddToPlaylist by remember { mutableStateOf<Track?>(null) }
+    var ringtoneClipperTrack by remember { mutableStateOf<Track?>(null) }
+    var showPlayerStyleSheet by remember { mutableStateOf(false) }
 
     // Listen for bottom-bar tab reset when user taps "Library" while already on Library
     LaunchedEffect(Unit) {
@@ -182,7 +190,27 @@ fun LibraryScreen(
             playlist = playlist,
             viewModel = viewModel,
             onBack = { openPlaylist = null },
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            onGoToAlbum = { track ->
+                openPlaylist = null
+                if (track.album.isNotBlank() && !track.albumId.isNullOrEmpty()) {
+                    navController.navigate("album/${track.albumId}")
+                } else if (track.album.isNotBlank()) {
+                    viewModel.performSearch(track.album)
+                    navController.navigate("search")
+                }
+            },
+            onGoToArtist = { track ->
+                openPlaylist = null
+                if (!track.artistId.isNullOrEmpty()) {
+                    navController.navigate("artist/${track.artistId}")
+                } else if (track.artist.isNotBlank()) {
+                    viewModel.performSearch(track.artist)
+                    navController.navigate("search")
+                }
+            },
+            onEqualizerClick = onEqualizerClick,
+            onWatchVideo = { onWatchVideo() }
         )
         return
     }
@@ -241,10 +269,13 @@ fun LibraryScreen(
         val isDownloaded = downloadedTracks.any { it.id == track.id }
         val downloadProgress = downloadProgressMap[track.id]
         val isLiked by viewModel.isTrackLiked(track.id).collectAsState(initial = false)
+        val isActiveTrack = currentTrack?.id == track.id
+        val trackInVideoMode = isActiveTrack && (isVideoMode || viewModel.isTrackVideo(track))
 
         TrackOptionsBottomSheet(
             track = track,
             onDismiss = { trackForOptions = null },
+            onPlayNow = { viewModel.playTrack(track) },
             onPlayNext = { viewModel.playNext(track) },
             onAddToQueue = { viewModel.addToQueue(track) },
             onGoToAlbum = {
@@ -274,7 +305,47 @@ fun LibraryScreen(
             onAddToPlaylist = {
                 trackForOptions = null
                 trackForAddToPlaylist = track
-            }
+            },
+            onSetSleepTimer = { viewModel.setSleepTimer(it) },
+            onSetSleepTimerAtEndOfTrack = { viewModel.setSleepTimerAtEndOfTrack() },
+            onCancelSleepTimer = { viewModel.cancelSleepTimer() },
+            sleepTimerRemaining = sleepTimerRemaining,
+            isVideoMode = trackInVideoMode,
+            onToggleVideoMode = {
+                if (isActiveTrack) {
+                    viewModel.setVideoMode(!trackInVideoMode)
+                } else {
+                    viewModel.playTrack(track, isVideo = true)
+                    viewModel.setVideoMode(true)
+                    onWatchVideo()
+                }
+            },
+            onSwitchPlayerStyle = { showPlayerStyleSheet = true },
+            onEqualizerClick = onEqualizerClick,
+            isCanvasActive = isCanvasEnabledByUser,
+            onSetCanvasUrl = { url ->
+                if (url == "DISABLED") viewModel.disableCanvas()
+                else if (url == "FETCH_CANVAS") viewModel.enableCanvasForTrack(track)
+                else viewModel.setCanvasUrl(track, url)
+            },
+            onSetAsRingtone = { ringtoneClipperTrack = track }
+        )
+    }
+
+    ringtoneClipperTrack?.let { track ->
+        com.example.ecodot.ui.components.RingtoneClipperBottomSheet(
+            track = track,
+            viewModel = viewModel,
+            onDismiss = { ringtoneClipperTrack = null }
+        )
+    }
+
+    if (showPlayerStyleSheet) {
+        com.example.ecodot.ui.components.player.PlayerStyleBottomSheet(
+            currentStyle = playerStyle,
+            accentColor = EcoDotRed,
+            onStyleSelected = { viewModel.setPlayerStyle(it) },
+            onDismiss = { showPlayerStyleSheet = false }
         )
     }
 

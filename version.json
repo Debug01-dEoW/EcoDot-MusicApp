@@ -1,44 +1,46 @@
 {
-  "versionCode": 26,
-  "versionName": "1.26v",
-  "releaseDate": "26 Nov 2026 03:45:00",
+  "versionCode": 27,
+  "versionName": "1.27v",
+  "releaseDate": "27 Nov 2026 22:40:00",
   "author": "Debug01-dEoW aka Deep",
-  "description": "EcoDot 1.26v — A vibrant hybrid Android music player with realistic Liquid Glass optics, SimpMusic UI architecture, Apple Music/Vinyl/Spotify player styles, seamless 1080p video mode, AutoMix crossfade, and YouTube Music streaming, made by Debug01-dEoW aka Deep.",
+  "description": "EcoDot 1.27v — A fast 120Hz Android music & video player with crystal-clear Liquid Glass optics, Spotify-inspired playlists, interactive circular profile photo cropping, full scrollable 3-dots track actions, Apple Music / Vinyl / Spotify Now Playing styles, seamless 1080p video playback, AutoMix DJ crossfade, and YouTube Music streaming — crafted by Debug01-dEoW aka Deep.",
   "profileUrl": "https://github.com/Debug01-dEoW",
   "repoUrl": "https://github.com/Debug01-dEoW/EcoDot-MusicApp",
   "changelogUrl": "https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases",
   "guideUrl": "https://github.com/Debug01-dEoW/EcoDot-MusicApp#readme",
-  "downloadUrl": "https://raw.githubusercontent.com/Debug01-dEoW/EcoDot-MusicApp/main/releases/EcoDot%201.26v.apk",
+  "downloadUrl": "https://raw.githubusercontent.com/Debug01-dEoW/EcoDot-MusicApp/main/releases/EcoDot%201.27v.apk",
   "isMandatory": false,
-  "apkSize": 8274711,
+  "apkSize": 8291463,
   "sections": {
+    "News & Highlights": [
+      "**Major 1.27v Update Notice**: All EcoDot `v1.26v` users automatically receive this over-the-air update prompt with in-app APK installation.",
+      "**120Hz Zero-Lag Engine & R8 Build**: Eliminated UI jank on high-refresh-rate displays through isolated playback progress state reads, hardware 120Hz display mode selection, and sized bitmap decoding.",
+      "**Spotify-Grade Playlist & Track Tools**: Redesigned Playlist view with ambient header gradients + complete scrollable 3-dots Track Options sheet across Home, Search, Library, and Playlists."
+    ],
     "New": [
-      "Signature Now Playing Styles: Apple Music (6x6 dynamic mesh gradients, inline lyrics strip, dock controls, Queue & Lyrics tabs), Vinyl Turntable (33⅓ RPM platter & tonearm), Spotify obsidian cards, and EcoDot Classic",
-      "Real-time audio telemetry badge (kbps · kHz) driven directly by active YouTube stream resolution and Media3 session metadata",
-      "Rich User Profile page with persistent local photo avatar uploads, interactive favorite genre chips, 2x2 listening analytics cards, Top Tracks, Recently Played, and one-tap Player Style switcher",
-      "SimpMusic-style Search & Browse pages: categorized tabs, quick-access filters, related songs/albums/playlists expansion from Home \"More\", and integrated Shazam acoustic song recognizer",
-      "SimpMusic-style Settings screen with Liquid Glass controls, SponsorBlock skip categories, High AAC (256 kbps), AutoMix dual-deck crossfade, and multi-category storage breakdown"
+      "**Spotify Playlist Interface**: Centered artwork (with Spotify's iconic purple Heart gradient for Liked Songs & 2x2 mosaics for playlists), ambient Palette gradients, one-tap Download All, Shuffle, green Play/Pause FAB, and clean borderless track rows.",
+      "**Redesigned Track Options Sheet**: Grouping Quick Actions (Play Next, Add Queue, Playlist) with full scrollable controls — Save/Remove Liked Songs, Download, Remove from Playlist, Switch to Music Video/Audio, Sleep Timer, Looping Canvas, Now Playing Style, Equalizer, Ringtone Clipper, and Album/Artist navigation.",
+      "**Interactive Profile Photo Adjuster**: Pinch/drag pan, zoom slider (`1x–5x`), 90° rotate, and circular crop preview (`AvatarCropMath`) inside the minimal Profile page.",
+      "**Upgraded Update & News Dialog**: Structured release spotlight card, version delta badge (`v1.26v -> v1.27v`), package size display, and clickable GitHub attribution (`Made by Debug01-dEoW aka Deep` on Home & Update screens)."
     ],
     "Improved": [
-      "120Hz High-Refresh Smoothness & R8 Optimization: hardware 120Hz Display.Mode selection, isolated playback-position state reads across Now Playing/Seekbars/Lyrics, single-pass backdrop captures, sized bitmap decoding, and full R8 optimization with zero visual compromises",
-      "Seamless Video Mode queue transitions: responsive 1080p surface stays active across Next, Previous, and Queue track changes without pausing or reverting to audio mode",
-      "Authentic Liquid Glass optics across Home top filter chips (All, Moods, +, Settings) and YouTube Music pull-to-refresh feeds",
-      "AutoMix & Crossfade engine with equal-power gain curves and DJ-style low-pass/high-pass filter sweeps (CrossfadeFilterAudioProcessor)"
+      "**Crystal-Clear Liquid Glass Optics**: Restored crisp optical refraction and low-haze lens clarity across Home header chips, Search Bar, filter pills, MiniPlayer, and bottom navigation bar.",
+      "**Minimal Distraction-Free Profile & Player Themes**: Cleaned up Profile clutter and removed redundant Song/Video toggle pills from Spotify and Vinyl Now Playing layouts.",
+      "**Removed Recent Search Black Backdrop**: Eliminated the opaque dark sticky header box behind 'Recent searches | Clear search history'."
     ],
     "Fixed": [
-      "Resolved Home deep-scrolling crash and Search backdrop focus crash",
-      "Eliminated blurry cover thumbnails by filtering low-resolution placeholders and prioritizing crisp high-DPI artwork URLs",
-      "Fixed Profile genre chip layout crash and UpdateDialog initial scroll position",
-      "Prevented dual-player AudioFocus contention during crossfades and stale video metadata on subtitle refreshes"
+      "Fixed 3-dots menu in playlists only showing a 6-item dropdown instead of all track actions.",
+      "Fixed vertical clipping at the bottom of TrackOptionsBottomSheet by enabling full sheet scrolling and navigation bar insets.",
+      "Fixed smoky/dark backdrop artifacts on Home and Search headers and eliminated 120Hz scroll frame drops."
     ],
     "What's Changed": [
-      "feat(1.26v): Apple Music, Vinyl & Spotify styles, seamless video continuity, Profile overhaul & telemetry by @Debug01-dEoW aka Deep in https://github.com/Debug01-dEoW/EcoDot-MusicApp",
-      "feat(crossfade): AutoMix dual-deck crossfade, DJ filter sweeps, High AAC 256 kbps & Settings by @Debug01-dEoW aka Deep in https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases",
-      "fix(stability): Home deep-scroll crash, Search crash, Video queue continuity & sharp artwork loading by @Debug01-dEoW aka Deep in https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases"
+      "perf(120hz): eliminate UI jank across Home/NowPlaying & optimize R8 release by @Debug01-dEoW aka Deep",
+      "ui(playlists,sheet): redesign Spotify playlists, full TrackOptionsBottomSheet, clear Liquid Glass & minimal Profile cropper by @Debug01-dEoW aka Deep",
+      "feat(update): EcoDot 1.27v Update screen with release news, Home footer credit & OTA notice for v1.26v users by @Debug01-dEoW aka Deep"
     ],
     "New Contributors": [
       "Made by @Debug01-dEoW aka Deep · https://github.com/Debug01-dEoW · Releases: https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases"
     ]
   },
-  "changelog": "## New\n• Signature Now Playing Styles: Apple Music (6x6 dynamic mesh gradients, inline lyrics strip, dock controls, Queue & Lyrics tabs), Vinyl Turntable (33⅓ RPM platter & tonearm), Spotify obsidian cards, and EcoDot Classic\n• Real-time audio telemetry badge (kbps · kHz) driven directly by active YouTube stream resolution and Media3 session metadata\n• Rich User Profile page with persistent local photo avatar uploads, interactive favorite genre chips, 2x2 listening analytics cards, Top Tracks, Recently Played, and one-tap Player Style switcher\n• SimpMusic-style Search & Browse pages: categorized tabs, quick-access filters, related songs/albums/playlists expansion from Home \"More\", and integrated Shazam acoustic song recognizer\n• SimpMusic-style Settings screen with Liquid Glass controls, SponsorBlock skip categories, High AAC (256 kbps), AutoMix dual-deck crossfade, and multi-category storage breakdown\n\n## Improved\n• 120Hz High-Refresh Smoothness & R8 Optimization: hardware 120Hz Display.Mode selection, isolated playback-position state reads across Now Playing/Seekbars/Lyrics, single-pass backdrop captures, sized bitmap decoding, and full R8 optimization with zero visual compromises\n• Seamless Video Mode queue transitions: responsive 1080p surface stays active across Next, Previous, and Queue track changes without pausing or reverting to audio mode\n• Authentic Liquid Glass optics across Home top filter chips (All, Moods, +, Settings) and YouTube Music pull-to-refresh feeds\n• AutoMix & Crossfade engine with equal-power gain curves and DJ-style low-pass/high-pass filter sweeps (CrossfadeFilterAudioProcessor)\n\n## Fixed\n• Resolved Home deep-scrolling crash and Search backdrop focus crash\n• Eliminated blurry cover thumbnails by filtering low-resolution placeholders and prioritizing crisp high-DPI artwork URLs\n• Fixed Profile genre chip layout crash and UpdateDialog initial scroll position\n• Prevented dual-player AudioFocus contention during crossfades and stale video metadata on subtitle refreshes\n\n## What's Changed\n• feat(1.26v): Apple Music, Vinyl & Spotify styles, seamless video continuity, Profile overhaul & telemetry by @Debug01-dEoW aka Deep in https://github.com/Debug01-dEoW/EcoDot-MusicApp\n• feat(crossfade): AutoMix dual-deck crossfade, DJ filter sweeps, High AAC 256 kbps & Settings by @Debug01-dEoW aka Deep in https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases\n• fix(stability): Home deep-scroll crash, Search crash, Video queue continuity & sharp artwork loading by @Debug01-dEoW aka Deep in https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases\n\n## New Contributors\n• Made by @Debug01-dEoW aka Deep · https://github.com/Debug01-dEoW · Releases: https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases"
+  "changelog": "## News & Highlights\n• **Major 1.27v Update Notice**: All EcoDot `v1.26v` users automatically receive this over-the-air update prompt with in-app APK installation.\n• **120Hz Zero-Lag Engine & R8 Build**: Eliminated UI jank on high-refresh-rate displays through isolated playback progress state reads, hardware 120Hz display mode selection, and sized bitmap decoding.\n• **Spotify-Grade Playlist & Track Tools**: Redesigned Playlist view with ambient header gradients + complete scrollable 3-dots Track Options sheet across Home, Search, Library, and Playlists.\n\n## New\n• **Spotify Playlist Interface**: Centered artwork (with Spotify's iconic purple Heart gradient for Liked Songs & 2x2 mosaics for playlists), ambient Palette gradients, one-tap Download All, Shuffle, green Play/Pause FAB, and clean borderless track rows.\n• **Redesigned Track Options Sheet**: Grouping Quick Actions (Play Next, Add Queue, Playlist) with full scrollable controls — Save/Remove Liked Songs, Download, Remove from Playlist, Switch to Music Video/Audio, Sleep Timer, Looping Canvas, Now Playing Style, Equalizer, Ringtone Clipper, and Album/Artist navigation.\n• **Interactive Profile Photo Adjuster**: Pinch/drag pan, zoom slider (`1x–5x`), 90° rotate, and circular crop preview (`AvatarCropMath`) inside the minimal Profile page.\n• **Upgraded Update & News Dialog**: Structured release spotlight card, version delta badge (`v1.26v -> v1.27v`), package size display, and clickable GitHub attribution (`Made by Debug01-dEoW aka Deep` on Home & Update screens).\n\n## Improved\n• **Crystal-Clear Liquid Glass Optics**: Restored crisp optical refraction and low-haze lens clarity across Home header chips, Search Bar, filter pills, MiniPlayer, and bottom navigation bar.\n• **Minimal Distraction-Free Profile & Player Themes**: Cleaned up Profile clutter and removed redundant Song/Video toggle pills from Spotify and Vinyl Now Playing layouts.\n• **Removed Recent Search Black Backdrop**: Eliminated the opaque dark sticky header box behind 'Recent searches | Clear search history'.\n\n## Fixed\n• Fixed 3-dots menu in playlists only showing a 6-item dropdown instead of all track actions.\n• Fixed vertical clipping at the bottom of TrackOptionsBottomSheet by enabling full sheet scrolling and navigation bar insets.\n• Fixed smoky/dark backdrop artifacts on Home and Search headers and eliminated 120Hz scroll frame drops.\n\n## What's Changed\n• perf(120hz): eliminate UI jank across Home/NowPlaying & optimize R8 release by @Debug01-dEoW aka Deep\n• ui(playlists,sheet): redesign Spotify playlists, full TrackOptionsBottomSheet, clear Liquid Glass & minimal Profile cropper by @Debug01-dEoW aka Deep\n• feat(update): EcoDot 1.27v Update screen with release news, Home footer credit & OTA notice for v1.26v users by @Debug01-dEoW aka Deep\n\n## New Contributors\n• Made by @Debug01-dEoW aka Deep · https://github.com/Debug01-dEoW · Releases: https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases"
 }

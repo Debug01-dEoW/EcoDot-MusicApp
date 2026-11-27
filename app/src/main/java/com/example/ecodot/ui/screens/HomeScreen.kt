@@ -197,6 +197,10 @@ fun HomeScreen(
 
     val downloadedTracks by viewModel.downloadedTracks.collectAsState()
     val downloadProgressMap by viewModel.downloadProgress.collectAsState()
+    val isVideoMode by viewModel.isVideoMode.collectAsState()
+    val sleepTimerRemaining by viewModel.sleepTimerRemaining.collectAsState()
+    val playerStyle by viewModel.playerStyle.collectAsState()
+    val isCanvasEnabledByUser by viewModel.isCanvasEnabledByUser.collectAsState()
 
     var selectedMood by remember { mutableStateOf<String?>(null) }
     var isMoodExpanded by remember { mutableStateOf(false) }
@@ -208,6 +212,8 @@ fun HomeScreen(
     var longPressedAlbum by remember { mutableStateOf<Album?>(null) }
     var longPressedPlaylist by remember { mutableStateOf<Playlist?>(null) }
     var showPlaylistPicker by remember { mutableStateOf<Track?>(null) }
+    var ringtoneClipperTrack by remember { mutableStateOf<Track?>(null) }
+    var showPlayerStyleSheet by remember { mutableStateOf(false) }
 
     val listState = rememberLazyListState()
     val chipScrollState = rememberScrollState()
@@ -1039,13 +1045,37 @@ fun HomeScreen(
                                         Text(
                                             text = "© 2026 EcoDot v$appVersionName",
                                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                                            color = Color.White.copy(alpha = 0.42f)
+                                            color = Color.White.copy(alpha = 0.45f)
                                         )
                                         Spacer(modifier = Modifier.height(3.dp))
                                         Text(
                                             text = "SimpMusic UI • Liquid Glass • YouTube Music",
                                             style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
-                                            color = Color.White.copy(alpha = 0.28f)
+                                            color = Color.White.copy(alpha = 0.30f)
+                                        )
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Text(
+                                            text = "Made by Debug01-dEoW aka Deep",
+                                            style = MaterialTheme.typography.labelMedium.copy(
+                                                fontSize = 11.5.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            ),
+                                            color = Color.White.copy(alpha = 0.62f),
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(50))
+                                                .clickable {
+                                                    runCatching {
+                                                        context.startActivity(
+                                                            android.content.Intent(
+                                                                android.content.Intent.ACTION_VIEW,
+                                                                android.net.Uri.parse(
+                                                                    com.example.ecodot.data.local.prefs.UserPreferencesManager.DEFAULT_GITHUB_PROFILE_URL
+                                                                )
+                                                            )
+                                                        )
+                                                    }
+                                                }
+                                                .padding(horizontal = 10.dp, vertical = 3.dp)
                                         )
                                     }
                                 }
@@ -1075,26 +1105,12 @@ fun HomeScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .drawBackdrop(
-                            backdrop = homeFeedBackdrop,
-                            shape = { RectangleShape },
-                            effects = {
-                                colorControls(
-                                    brightness = -0.16f,
-                                    contrast = 1.04f,
-                                    saturation = 1.15f
-                                )
-                                blur(14.dp.toPx())
-                            },
-                            onDrawSurface = {
-                                drawRect(Color(0xFF0A0B10).copy(alpha = 0.68f))
-                            }
-                        )
                         .background(
                             Brush.verticalGradient(
-                                listOf(
-                                    Color(0xFF070709).copy(alpha = 0.55f),
-                                    Color(0xFF070709).copy(alpha = 0.12f)
+                                colorStops = arrayOf(
+                                    0f to Color(0xFF070709).copy(alpha = 0.56f),
+                                    0.55f to Color(0xFF070709).copy(alpha = 0.22f),
+                                    1f to Color.Transparent
                                 )
                             )
                         )
@@ -1230,10 +1246,13 @@ fun HomeScreen(
             val isDownloaded = downloadedTracks.any { it.id == track.id }
             val downloadProgress = downloadProgressMap[track.id]
             val isLiked by viewModel.isTrackLiked(track.id).collectAsState(initial = false)
+            val isActiveTrack = currentTrack?.id == track.id
+            val trackInVideoMode = isActiveTrack && (isVideoMode || viewModel.isTrackVideo(track))
 
             TrackOptionsBottomSheet(
                 track = track,
                 onDismiss = { longPressedTrack = null },
+                onPlayNow = { viewModel.playTrack(track) },
                 onPlayNext = { viewModel.playNext(track) },
                 onAddToQueue = { viewModel.addToQueue(track) },
                 onGoToAlbum = {
@@ -1264,10 +1283,46 @@ fun HomeScreen(
                     longPressedTrack = null
                     showPlaylistPicker = track
                 },
+                onSetSleepTimer = { viewModel.setSleepTimer(it) },
+                onSetSleepTimerAtEndOfTrack = { viewModel.setSleepTimerAtEndOfTrack() },
+                onCancelSleepTimer = { viewModel.cancelSleepTimer() },
+                sleepTimerRemaining = sleepTimerRemaining,
+                isVideoMode = trackInVideoMode,
+                onToggleVideoMode = {
+                    if (isActiveTrack) {
+                        viewModel.setVideoMode(!trackInVideoMode)
+                    } else {
+                        viewModel.playTrack(track, isVideo = true)
+                        viewModel.setVideoMode(true)
+                        onWatchVideo()
+                    }
+                },
+                onSwitchPlayerStyle = { showPlayerStyleSheet = true },
+                onEqualizerClick = onEqualizerClick,
+                isCanvasActive = isCanvasEnabledByUser,
                 onSetCanvasUrl = { url ->
-                    if (url == "FETCH_CANVAS") viewModel.enableCanvasForTrack(track)
+                    if (url == "DISABLED") viewModel.disableCanvas()
+                    else if (url == "FETCH_CANVAS") viewModel.enableCanvasForTrack(track)
                     else viewModel.setCanvasUrl(track, url)
-                }
+                },
+                onSetAsRingtone = { ringtoneClipperTrack = track }
+            )
+        }
+
+        ringtoneClipperTrack?.let { track ->
+            com.example.ecodot.ui.components.RingtoneClipperBottomSheet(
+                track = track,
+                viewModel = viewModel,
+                onDismiss = { ringtoneClipperTrack = null }
+            )
+        }
+
+        if (showPlayerStyleSheet) {
+            com.example.ecodot.ui.components.player.PlayerStyleBottomSheet(
+                currentStyle = playerStyle,
+                accentColor = EcoDotRed,
+                onStyleSelected = { viewModel.setPlayerStyle(it) },
+                onDismiss = { showPlayerStyleSheet = false }
             )
         }
 

@@ -283,7 +283,7 @@ class UserPreferencesManager(context: Context) {
         const val DEFAULT_GITHUB_REPO_URL = "https://github.com/Debug01-dEoW/EcoDot-MusicApp"
         const val DEFAULT_GITHUB_RELEASES_URL = "https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases"
         const val DEFAULT_UPDATE_JSON_URL = "https://raw.githubusercontent.com/Debug01-dEoW/EcoDot-MusicApp/main/version.json"
-        const val APP_DESCRIPTION = "A vibrant hybrid Android music player with realistic Liquid Glass optics, SimpMusic UI architecture, Apple Music/Vinyl/Spotify player styles, seamless 1080p video mode, AutoMix crossfade & YouTube Music streaming — made by Debug01-dEoW aka Deep."
+        const val APP_DESCRIPTION = "A vibrant 120Hz Android music & video player featuring crystal-clear Liquid Glass optics, Spotify-inspired playlists, Apple Music / Vinyl / Spotify Now Playing styles, full scrollable track tools, interactive circular profile photo cropper, seamless 1080p video playback, AutoMix DJ crossfade, and YouTube Music streaming — crafted by Debug01-dEoW aka Deep."
     }
 
     var updateJsonUrl: String

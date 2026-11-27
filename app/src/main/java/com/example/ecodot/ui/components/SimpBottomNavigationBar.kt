@@ -154,10 +154,20 @@ fun SimpBottomNavigationBar(
                 innerShadow = {
                     InnerShadow(radius = 5.dp, alpha = 0.16f, color = Color.White)
                 },
-                effects = {},
+                effects = {
+                    vibrancy()
+                    blur(1.2.dp.toPx())
+                    if (size.minDimension > 2f) {
+                        lens(
+                            refractionHeight = 12.dp.toPx(),
+                            refractionAmount = 20.dp.toPx(),
+                            depthEffect = false
+                        )
+                    }
+                },
                 onDrawSurface = {
-                    drawRect(Color.Black.copy(alpha = 0.04f))
-                    drawRect(Color.White.copy(alpha = 0.02f))
+                    drawRect(Color.Black.copy(alpha = 0.05f))
+                    drawRect(Color.White.copy(alpha = 0.04f))
                 }
             )
         } else {
@@ -224,15 +234,18 @@ fun SimpBottomNavigationBar(
                             InnerShadow(radius = 7.dp, alpha = 0.42f, color = Color.White)
                         },
                         effects = {
-                            blur(2.dp.toPx())
-                            colorControls(
-                                brightness = 0.05f,
-                                contrast = 1.08f,
-                                saturation = 1.25f
-                            )
+                            vibrancy()
+                            blur(1.5.dp.toPx())
+                            if (size.minDimension > 2f) {
+                                lens(
+                                    refractionHeight = 14.dp.toPx(),
+                                    refractionAmount = 24.dp.toPx(),
+                                    depthEffect = false
+                                )
+                            }
                         },
                         onDrawSurface = {
-                            drawRect(Color.Black.copy(alpha = 0.07f))
+                            drawRect(Color.Black.copy(alpha = 0.04f))
                             drawRect(Color.White.copy(alpha = 0.09f))
                         }
                     )

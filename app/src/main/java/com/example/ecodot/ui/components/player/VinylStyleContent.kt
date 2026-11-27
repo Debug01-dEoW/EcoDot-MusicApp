@@ -243,24 +243,16 @@ fun VinylStyleContent(
                 }
             }
 
-            // ── 2. Audio / Video Mode & Telemetry Badge Row ───────────────────
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (track.isYouTube) {
-                        AudioVideoModeTogglePill(
-                            isVideoMode = isTrackAVideo,
-                            accentColor = brassGold,
-                            onSetVideoMode = onSetVideoMode
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    if (!streamBadgeLabel.isNullOrBlank()) {
+            // ── 2. Telemetry Badge Row ──────────────────────────────────────
+            if (!streamBadgeLabel.isNullOrBlank()) {
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Surface(
                             shape = RoundedCornerShape(50),
                             color = brassGold.copy(alpha = 0.14f),
