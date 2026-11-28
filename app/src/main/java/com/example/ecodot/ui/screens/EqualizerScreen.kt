@@ -1,4 +1,8 @@
 package com.example.ecodot.ui.screens
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.ArrowBack
+import com.example.ecodot.ui.theme.SettingsEthernet
+import com.example.ecodot.ui.theme.SurroundSound
 
 import android.content.Intent
 import android.media.audiofx.AudioEffect
@@ -14,10 +18,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.SettingsEthernet
-import androidx.compose.material.icons.rounded.SurroundSound
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -65,7 +65,7 @@ fun EqualizerScreen(
                 title = { Text("Audio Effects", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(SimpIcons.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -293,7 +293,7 @@ fun EqualizerScreen(
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    Icons.Rounded.SurroundSound,
+                                    SimpIcons.SurroundSound,
                                     contentDescription = null,
                                     tint = if (eqEnabled) accentColor else Color.White.copy(alpha = 0.3f),
                                     modifier = Modifier.size(24.dp)
@@ -352,7 +352,7 @@ fun EqualizerScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
-                        Icon(Icons.Rounded.SettingsEthernet, contentDescription = null, tint = Color.White)
+                        Icon(SimpIcons.SettingsEthernet, contentDescription = null, tint = Color.White)
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(horizontalAlignment = Alignment.Start) {
                             Text("Launch Device Equalizer", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)

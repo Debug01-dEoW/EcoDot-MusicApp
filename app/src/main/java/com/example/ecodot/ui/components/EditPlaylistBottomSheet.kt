@@ -1,4 +1,8 @@
 package com.example.ecodot.ui.components
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.Check
+import com.example.ecodot.ui.theme.Close
+import com.example.ecodot.ui.theme.Edit
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -8,10 +12,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -92,7 +92,7 @@ fun EditPlaylistBottomSheet(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Rounded.Edit,
+                            SimpIcons.Edit,
                             contentDescription = null,
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
@@ -110,7 +110,7 @@ fun EditPlaylistBottomSheet(
                     modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
-                        Icons.Rounded.Close,
+                        SimpIcons.Close,
                         contentDescription = "Close",
                         tint = Color.White.copy(alpha = 0.6f)
                     )
@@ -191,7 +191,7 @@ fun EditPlaylistBottomSheet(
                         ) {
                             if (isSelected) {
                                 Icon(
-                                    Icons.Rounded.Check,
+                                    SimpIcons.Check,
                                     contentDescription = null,
                                     tint = Color.White,
                                     modifier = Modifier.size(18.dp)

@@ -1,13 +1,17 @@
 package com.example.ecodot.ui.components
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.AddToQueue
+import com.example.ecodot.ui.theme.Delete
+import com.example.ecodot.ui.theme.Edit
+import com.example.ecodot.ui.theme.PlayArrow
+import com.example.ecodot.ui.theme.PushPin
+import com.example.ecodot.ui.theme.QueueMusic
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -131,7 +135,7 @@ fun LibraryPlaylistOptionsBottomSheet(
 
             // Play option
             LibraryPlaylistOptionRow(
-                icon = Icons.Rounded.PlayArrow,
+                icon = SimpIcons.PlayArrow,
                 title = "Play",
                 onClick = {
                     onPlay()
@@ -141,7 +145,7 @@ fun LibraryPlaylistOptionsBottomSheet(
 
             // Play next
             LibraryPlaylistOptionRow(
-                icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                icon = SimpIcons.QueueMusic,
                 title = "Play Next",
                 onClick = {
                     onPlayNext()
@@ -151,7 +155,7 @@ fun LibraryPlaylistOptionsBottomSheet(
 
             // Add to queue
             LibraryPlaylistOptionRow(
-                icon = Icons.Rounded.AddToQueue,
+                icon = SimpIcons.AddToQueue,
                 title = "Add to Queue",
                 onClick = {
                     onAddToQueue()
@@ -161,7 +165,7 @@ fun LibraryPlaylistOptionsBottomSheet(
 
             // Pin / Unpin
             LibraryPlaylistOptionRow(
-                icon = Icons.Rounded.PushPin,
+                icon = SimpIcons.PushPin,
                 title = if (isPinned) "Unpin from top" else "Pin to top",
                 tint = if (isPinned) EcoDotRed else Color.White,
                 onClick = {
@@ -173,7 +177,7 @@ fun LibraryPlaylistOptionsBottomSheet(
             // Edit & Delete (only for custom playlists)
             if (!isSystemPlaylist) {
                 LibraryPlaylistOptionRow(
-                    icon = Icons.Rounded.Edit,
+                    icon = SimpIcons.Edit,
                     title = "Edit Playlist",
                     onClick = {
                         onDismiss()
@@ -182,7 +186,7 @@ fun LibraryPlaylistOptionsBottomSheet(
                 )
 
                 LibraryPlaylistOptionRow(
-                    icon = Icons.Rounded.Delete,
+                    icon = SimpIcons.Delete,
                     title = "Delete Playlist",
                     tint = Color(0xFFFF5252),
                     onClick = {

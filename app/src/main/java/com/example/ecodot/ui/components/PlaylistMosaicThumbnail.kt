@@ -1,11 +1,11 @@
 package com.example.ecodot.ui.components
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.MusicNote
+import com.example.ecodot.ui.theme.QueueMusic
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.QueueMusic
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -57,7 +57,7 @@ fun PlaylistMosaicThumbnail(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Rounded.QueueMusic,
+                    SimpIcons.QueueMusic,
                     contentDescription = null,
                     tint = Color.White.copy(alpha = 0.7f),
                     modifier = Modifier.size(iconSize)
@@ -132,7 +132,7 @@ fun PlaylistMosaicThumbnail(
                         .padding(10.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.MusicNote,
+                        imageVector = SimpIcons.MusicNote,
                         contentDescription = null,
                         tint = Color.White.copy(alpha = 0.35f),
                         modifier = Modifier

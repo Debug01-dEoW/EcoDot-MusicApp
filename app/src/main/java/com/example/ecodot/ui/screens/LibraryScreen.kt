@@ -22,8 +22,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -391,7 +389,7 @@ fun LibraryScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Rounded.Groups,
+                        SimpIcons.Groups,
                         contentDescription = null,
                         tint = Color(0xFFE7D7FD),
                         modifier = Modifier.size(34.dp)
@@ -505,7 +503,7 @@ fun LibraryScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Rounded.Groups,
+                        SimpIcons.Groups,
                         contentDescription = "Listen Together",
                         tint = Color(0xFFE7D7FD),
                         modifier = Modifier.size(24.dp)
@@ -784,7 +782,7 @@ fun LibraryScreen(
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Rounded.Add,
+                                                imageVector = SimpIcons.Add,
                                                 contentDescription = "Create",
                                                 tint = Color.White,
                                                 modifier = Modifier.size(54.dp)
@@ -856,7 +854,7 @@ fun LibraryScreen(
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Rounded.Add,
+                                                imageVector = SimpIcons.Add,
                                                 contentDescription = "Create",
                                                 tint = Color.White,
                                                 modifier = Modifier.size(54.dp)
@@ -966,7 +964,7 @@ private fun RecentTrackRow(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Rounded.MusicNote,
+                            SimpIcons.MusicNote,
                             contentDescription = null,
                             tint = Color.White.copy(alpha = 0.4f),
                             modifier = Modifier.size(24.dp)
@@ -1016,7 +1014,7 @@ private fun RecentTrackRow(
                 modifier = Modifier.size(40.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.MoreVert,
+                    imageVector = SimpIcons.MoreVert,
                     contentDescription = "Options",
                     tint = Color.White.copy(alpha = 0.7f),
                     modifier = Modifier.size(20.dp)
@@ -1072,7 +1070,7 @@ private fun PlaylistGridCell(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Rounded.PushPin,
+                            SimpIcons.PushPin,
                             contentDescription = "Pinned",
                             tint = Color(0xFFE7D7FD),
                             modifier = Modifier.size(13.dp)
@@ -1160,7 +1158,7 @@ private fun PlaylistOverviewCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Rounded.PushPin,
+                        SimpIcons.PushPin,
                         contentDescription = "Pinned",
                         tint = Color(0xFFE7D7FD),
                         modifier = Modifier.size(11.dp)
@@ -1225,7 +1223,7 @@ private fun CreatePlaylistOverviewCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.Add,
+                    imageVector = SimpIcons.Add,
                     contentDescription = "Create",
                     tint = Color.White,
                     modifier = Modifier.size(22.dp)

@@ -1,4 +1,12 @@
 package com.example.ecodot.ui.components.player
+import com.example.ecodot.ui.theme.AddCircleOutline
+import com.example.ecodot.ui.theme.CheckCircle
+import com.example.ecodot.ui.theme.KeyboardArrowDown
+import com.example.ecodot.ui.theme.MoreVert
+import com.example.ecodot.ui.theme.OpenInFull
+import com.example.ecodot.ui.theme.Person
+import com.example.ecodot.ui.theme.Share
+import com.example.ecodot.ui.theme.Style
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.Crossfade
@@ -28,15 +36,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AddCircleOutline
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.OpenInFull
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.Style
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -202,7 +201,7 @@ fun SpotifyStyleContent(
                 ) {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.Rounded.KeyboardArrowDown,
+                            imageVector = SimpIcons.KeyboardArrowDown,
                             contentDescription = "Minimize",
                             tint = Color.White,
                             modifier = Modifier.size(28.dp)
@@ -235,7 +234,7 @@ fun SpotifyStyleContent(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = onOpenStylePicker) {
                             Icon(
-                                imageVector = Icons.Rounded.Style,
+                                imageVector = SimpIcons.Style,
                                 contentDescription = "Switch player style",
                                 tint = Color.White.copy(alpha = 0.85f),
                                 modifier = Modifier.size(20.dp)
@@ -243,7 +242,7 @@ fun SpotifyStyleContent(
                         }
                         IconButton(onClick = { onOpenOptionsMenu(track) }) {
                             Icon(
-                                imageVector = Icons.Rounded.MoreVert,
+                                imageVector = SimpIcons.MoreVert,
                                 contentDescription = "Options",
                                 tint = Color.White
                             )
@@ -402,7 +401,7 @@ fun SpotifyStyleContent(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = if (isLiked) Icons.Rounded.CheckCircle else Icons.Rounded.AddCircleOutline,
+                            imageVector = if (isLiked) SimpIcons.CheckCircle else SimpIcons.AddCircleOutline,
                             contentDescription = "Save to Liked Songs",
                             tint = if (isLiked) SpotifyGreen else Color.White,
                             modifier = Modifier.size(28.dp)
@@ -572,7 +571,7 @@ fun SpotifyStyleContent(
                                         .clickable(onClick = onOpenShareLyrics)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
-                                        Icon(Icons.Rounded.Share, contentDescription = "Share lyrics", tint = Color.White, modifier = Modifier.size(16.dp))
+                                        Icon(SimpIcons.Share, contentDescription = "Share lyrics", tint = Color.White, modifier = Modifier.size(16.dp))
                                     }
                                 }
                                 Surface(
@@ -584,7 +583,7 @@ fun SpotifyStyleContent(
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(Icons.Rounded.OpenInFull, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                        Icon(SimpIcons.OpenInFull, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text(
                                             text = "EXPAND",
@@ -712,7 +711,7 @@ fun SpotifyStyleContent(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.Person,
+                                imageVector = SimpIcons.Person,
                                 contentDescription = null,
                                 tint = Color.White.copy(alpha = 0.1f),
                                 modifier = Modifier.size(84.dp)

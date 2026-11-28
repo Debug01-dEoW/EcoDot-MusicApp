@@ -1,4 +1,14 @@
 package com.example.ecodot.ui.components
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.AutoAwesome
+import com.example.ecodot.ui.theme.Build
+import com.example.ecodot.ui.theme.Campaign
+import com.example.ecodot.ui.theme.Download
+import com.example.ecodot.ui.theme.Favorite
+import com.example.ecodot.ui.theme.History
+import com.example.ecodot.ui.theme.NewReleases
+import com.example.ecodot.ui.theme.SystemUpdate
+import com.example.ecodot.ui.theme.TrendingUp
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -9,16 +19,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.Build
-import androidx.compose.material.icons.rounded.Campaign
-import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.NewReleases
-import androidx.compose.material.icons.rounded.SystemUpdate
-import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -140,7 +140,7 @@ fun UpdateDialog(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Rounded.SystemUpdate,
+                                        imageVector = SimpIcons.SystemUpdate,
                                         contentDescription = null,
                                         tint = UpdateGreen,
                                         modifier = Modifier.size(19.dp)
@@ -254,7 +254,7 @@ fun UpdateDialog(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Rounded.AutoAwesome,
+                                        imageVector = SimpIcons.AutoAwesome,
                                         contentDescription = null,
                                         tint = Color(0xFFFFD54F),
                                         modifier = Modifier.size(18.dp)
@@ -469,7 +469,7 @@ fun UpdateDialog(
                                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Rounded.Download,
+                                        imageVector = SimpIcons.Download,
                                         contentDescription = null,
                                         modifier = Modifier.size(18.dp)
                                     )
@@ -547,17 +547,17 @@ private fun sectionStyle(title: String): Pair<ImageVector, Color> {
     val normalized = title.lowercase()
     return when {
         normalized.contains("news") || normalized.contains("highlight") ->
-            Icons.Rounded.Campaign to Color(0xFFFFD54F)
+            SimpIcons.Campaign to Color(0xFFFFD54F)
         normalized == "new" || normalized.contains("feature") ->
-            Icons.Rounded.NewReleases to UpdateGreen
+            SimpIcons.NewReleases to UpdateGreen
         normalized.contains("improv") ->
-            Icons.Rounded.TrendingUp to Color(0xFF64B5F6)
+            SimpIcons.TrendingUp to Color(0xFF64B5F6)
         normalized.contains("fix") || normalized.contains("bug") ->
-            Icons.Rounded.Build to Color(0xFFFF8A65)
+            SimpIcons.Build to Color(0xFFFF8A65)
         normalized.contains("contributor") ->
-            Icons.Rounded.Favorite to EcoDotRed
+            SimpIcons.Favorite to EcoDotRed
         else ->
-            Icons.Rounded.History to Color(0xFFB39DDB)
+            SimpIcons.History to Color(0xFFB39DDB)
     }
 }
 

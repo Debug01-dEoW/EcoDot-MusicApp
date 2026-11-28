@@ -1,4 +1,17 @@
 package com.example.ecodot.ui.screens
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.ArrowBack
+import com.example.ecodot.ui.theme.Check
+import com.example.ecodot.ui.theme.Close
+import com.example.ecodot.ui.theme.CloudDownload
+import com.example.ecodot.ui.theme.DeleteOutline
+import com.example.ecodot.ui.theme.MoreVert
+import com.example.ecodot.ui.theme.MusicNote
+import com.example.ecodot.ui.theme.PlayArrow
+import com.example.ecodot.ui.theme.QueueMusic
+import com.example.ecodot.ui.theme.Search
+import com.example.ecodot.ui.theme.Shuffle
+import com.example.ecodot.ui.theme.Tune
 
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -15,9 +28,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -138,7 +148,7 @@ fun CachedSongsScreen(
                             )
                             if (isSelected) {
                                 Icon(
-                                    imageVector = Icons.Rounded.Check,
+                                    imageVector = SimpIcons.Check,
                                     contentDescription = null,
                                     tint = Color(0xFFE7D7FD),
                                     modifier = Modifier.size(18.dp)
@@ -273,7 +283,7 @@ fun CachedSongsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.QueueMusic,
+                        imageVector = SimpIcons.QueueMusic,
                         contentDescription = null,
                         tint = Color.White,
                         modifier = Modifier.size(22.dp)
@@ -302,7 +312,7 @@ fun CachedSongsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.DeleteOutline,
+                        imageVector = SimpIcons.DeleteOutline,
                         contentDescription = null,
                         tint = Color(0xFFFF5252),
                         modifier = Modifier.size(22.dp)
@@ -339,7 +349,7 @@ fun CachedSongsScreen(
             ) {
                 IconButton(onClick = onBack) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        imageVector = SimpIcons.ArrowBack,
                         contentDescription = "Back",
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
@@ -356,7 +366,7 @@ fun CachedSongsScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { showLimitDialog = true }) {
                         Icon(
-                            imageVector = Icons.Rounded.Tune,
+                            imageVector = SimpIcons.Tune,
                             contentDescription = "Cache Limit Settings",
                             tint = Color.White.copy(alpha = 0.85f),
                             modifier = Modifier.size(22.dp)
@@ -372,7 +382,7 @@ fun CachedSongsScreen(
                         }
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.DeleteOutline,
+                            imageVector = SimpIcons.DeleteOutline,
                             contentDescription = "Clear Cache",
                             tint = if (tracks.isNotEmpty()) Color.White.copy(alpha = 0.75f) else Color.White.copy(alpha = 0.25f),
                             modifier = Modifier.size(22.dp)
@@ -444,7 +454,7 @@ fun CachedSongsScreen(
                                 .padding(horizontal = 14.dp, vertical = 5.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.Tune,
+                                imageVector = SimpIcons.Tune,
                                 contentDescription = null,
                                 tint = Color(0xFFE7D7FD),
                                 modifier = Modifier.size(14.dp)
@@ -479,7 +489,7 @@ fun CachedSongsScreen(
                                 enabled = filteredTracks.isNotEmpty()
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.PlayArrow,
+                                    imageVector = SimpIcons.PlayArrow,
                                     contentDescription = null,
                                     tint = Color(0xFF1E1035),
                                     modifier = Modifier.size(20.dp)
@@ -508,7 +518,7 @@ fun CachedSongsScreen(
                                 enabled = filteredTracks.isNotEmpty()
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.Shuffle,
+                                    imageVector = SimpIcons.Shuffle,
                                     contentDescription = null,
                                     tint = Color.White,
                                     modifier = Modifier.size(18.dp)
@@ -541,7 +551,7 @@ fun CachedSongsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.Search,
+                                    imageVector = SimpIcons.Search,
                                     contentDescription = null,
                                     tint = Color.White.copy(alpha = 0.45f),
                                     modifier = Modifier.size(20.dp)
@@ -575,7 +585,7 @@ fun CachedSongsScreen(
                                         modifier = Modifier.size(28.dp)
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Rounded.Close,
+                                            imageVector = SimpIcons.Close,
                                             contentDescription = "Clear search",
                                             tint = Color.White.copy(alpha = 0.6f),
                                             modifier = Modifier.size(18.dp)
@@ -604,7 +614,7 @@ fun CachedSongsScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.CloudDownload,
+                                    imageVector = SimpIcons.CloudDownload,
                                     contentDescription = null,
                                     tint = Color.White.copy(alpha = 0.4f),
                                     modifier = Modifier.size(30.dp)
@@ -714,7 +724,7 @@ private fun CachedTrackRow(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Rounded.MusicNote,
+                        SimpIcons.MusicNote,
                         contentDescription = null,
                         tint = Color.White.copy(alpha = 0.4f),
                         modifier = Modifier.size(22.dp)
@@ -764,7 +774,7 @@ private fun CachedTrackRow(
             modifier = Modifier.size(38.dp)
         ) {
             Icon(
-                imageVector = Icons.Rounded.MoreVert,
+                imageVector = SimpIcons.MoreVert,
                 contentDescription = "Options",
                 tint = Color.White.copy(alpha = 0.65f),
                 modifier = Modifier.size(20.dp)

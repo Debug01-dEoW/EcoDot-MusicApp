@@ -1,6 +1,15 @@
 @file:OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 
 package com.example.ecodot.ui.components
+import com.example.ecodot.ui.theme.Add
+import com.example.ecodot.ui.theme.Close
+import com.example.ecodot.ui.theme.MoreVert
+import com.example.ecodot.ui.theme.Person
+import com.example.ecodot.ui.theme.PlaylistAdd
+import com.example.ecodot.ui.theme.Refresh
+import com.example.ecodot.ui.theme.Settings
+import com.example.ecodot.ui.theme.Shuffle
+import com.example.ecodot.ui.theme.SystemUpdate
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -50,18 +59,6 @@ import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.PlaylistAdd
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -380,7 +377,7 @@ fun LiquidGlassProfileButton(
                 )
             } else {
                 Icon(
-                    imageVector = Icons.Rounded.Person,
+                    imageVector = SimpIcons.Person,
                     contentDescription = "Profile",
                     tint = Color.White,
                     modifier = Modifier.size(21.dp)
@@ -426,7 +423,7 @@ fun LiquidGlassProfileButton(
                         )
                     } else {
                         Icon(
-                            imageVector = Icons.Rounded.Person,
+                            imageVector = SimpIcons.Person,
                             contentDescription = null,
                             tint = Color(0xFFE7D7FD),
                             modifier = Modifier.size(22.dp)
@@ -453,7 +450,7 @@ fun LiquidGlassProfileButton(
             HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
             DropdownMenuItem(
                 text = { Text("Profile & stats", color = Color.White, fontSize = 14.sp) },
-                leadingIcon = { Icon(Icons.Rounded.Person, null, tint = Color(0xFFE7D7FD), modifier = Modifier.size(19.dp)) },
+                leadingIcon = { Icon(SimpIcons.Person, null, tint = Color(0xFFE7D7FD), modifier = Modifier.size(19.dp)) },
                 onClick = {
                     menuExpanded = false
                     onOpenProfile()
@@ -461,7 +458,7 @@ fun LiquidGlassProfileButton(
             )
             DropdownMenuItem(
                 text = { Text("Refresh Home feed", color = Color.White, fontSize = 14.sp) },
-                leadingIcon = { Icon(Icons.Rounded.Refresh, null, tint = Color(0xFF90CAF9), modifier = Modifier.size(19.dp)) },
+                leadingIcon = { Icon(SimpIcons.Refresh, null, tint = Color(0xFF90CAF9), modifier = Modifier.size(19.dp)) },
                 onClick = {
                     menuExpanded = false
                     onRefreshFeed()
@@ -469,7 +466,7 @@ fun LiquidGlassProfileButton(
             )
             DropdownMenuItem(
                 text = { Text("Check for updates", color = Color.White, fontSize = 14.sp) },
-                leadingIcon = { Icon(Icons.Rounded.SystemUpdate, null, tint = Color(0xFF80CBC4), modifier = Modifier.size(19.dp)) },
+                leadingIcon = { Icon(SimpIcons.SystemUpdate, null, tint = Color(0xFF80CBC4), modifier = Modifier.size(19.dp)) },
                 onClick = {
                     menuExpanded = false
                     onCheckUpdates()
@@ -477,7 +474,7 @@ fun LiquidGlassProfileButton(
             )
             DropdownMenuItem(
                 text = { Text("Settings", color = Color.White, fontSize = 14.sp) },
-                leadingIcon = { Icon(Icons.Rounded.Settings, null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(19.dp)) },
+                leadingIcon = { Icon(SimpIcons.Settings, null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(19.dp)) },
                 onClick = {
                     menuExpanded = false
                     onOpenSettings()
@@ -771,7 +768,7 @@ fun LiquidGlassActionPill(
             modifier = Modifier.size(36.dp)
         ) {
             Icon(
-                imageVector = Icons.Rounded.Add,
+                imageVector = SimpIcons.Add,
                 contentDescription = "Create",
                 tint = Color.White,
                 modifier = Modifier.size(21.dp)
@@ -788,7 +785,7 @@ fun LiquidGlassActionPill(
             modifier = Modifier.size(36.dp)
         ) {
             Icon(
-                imageVector = Icons.Rounded.Settings,
+                imageVector = SimpIcons.Settings,
                 contentDescription = "Settings",
                 tint = Color.White,
                 modifier = Modifier.size(19.dp)
@@ -1259,7 +1256,7 @@ fun RankedVideoChartCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
+                    imageVector = SimpIcons.PlayArrow,
                     contentDescription = "Watch",
                     tint = Color.White,
                     modifier = Modifier.size(20.dp)
@@ -1467,7 +1464,7 @@ fun SimpQuickPicksRowItem(
             modifier = Modifier.size(32.dp)
         ) {
             Icon(
-                imageVector = Icons.Rounded.MoreVert,
+                imageVector = SimpIcons.MoreVert,
                 contentDescription = "Track options",
                 tint = Color.White.copy(alpha = 0.55f),
                 modifier = Modifier.size(18.dp)
@@ -1647,7 +1644,7 @@ fun HomeCreateActionBottomSheet(
             )
             Spacer(modifier = Modifier.height(6.dp))
             HomeCreateSheetRow(
-                icon = Icons.Rounded.PlaylistAdd,
+                icon = SimpIcons.PlaylistAdd,
                 title = "Local playlist",
                 subtitle = "Create a custom playlist stored on your device",
                 onClick = {
@@ -1656,7 +1653,7 @@ fun HomeCreateActionBottomSheet(
                 }
             )
             HomeCreateSheetRow(
-                icon = Icons.Rounded.Shuffle,
+                icon = SimpIcons.Shuffle,
                 title = "Play Instant Radio",
                 subtitle = "Start a shuffled queue from your current Quick picks",
                 onClick = {
@@ -1665,7 +1662,7 @@ fun HomeCreateActionBottomSheet(
                 }
             )
             HomeCreateSheetRow(
-                icon = Icons.Rounded.Refresh,
+                icon = SimpIcons.Refresh,
                 title = "Refresh YouTube Music Feed",
                 subtitle = "Pull fresh recommendations, videos & charts",
                 onClick = {
@@ -1792,7 +1789,7 @@ fun HomeBrowseSheet(
                     }
                 }
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Rounded.Close, contentDescription = "Close", tint = Color.White.copy(alpha = 0.8f))
+                    Icon(SimpIcons.Close, contentDescription = "Close", tint = Color.White.copy(alpha = 0.8f))
                 }
             }
 

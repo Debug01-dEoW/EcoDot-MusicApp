@@ -1,4 +1,10 @@
 package com.example.ecodot.ui.components.player
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.Favorite
+import com.example.ecodot.ui.theme.KeyboardArrowDown
+import com.example.ecodot.ui.theme.PlayArrow
+import com.example.ecodot.ui.theme.Refresh
+import com.example.ecodot.ui.theme.Schedule
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -7,8 +13,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -182,80 +186,6 @@ fun StatItem(icon: androidx.compose.ui.graphics.vector.ImageVector, value: Strin
     }
 }
 
-fun getArtistStats(artistName: String, subscribers: String?): Pair<String, String> {
-    val rand = java.util.Random(artistName.hashCode().toLong())
-    val listenersNum = if (!subscribers.isNullOrEmpty()) {
-        val clean = subscribers.lowercase().replace("subscribers", "").replace("subscriber", "").trim()
-        val num = if (clean.endsWith("m")) {
-            (clean.replace("m", "").toFloatOrNull() ?: 1.0f) * 1_000_000f
-        } else if (clean.endsWith("k")) {
-            (clean.replace("k", "").toFloatOrNull() ?: 1.0f) * 1_000f
-        } else {
-            clean.toFloatOrNull() ?: 50_000f
-        }
-        val factor = 1.2f + rand.nextFloat() * 1.8f
-        (num * factor).toLong()
-    } else {
-        100_000 + rand.nextInt(25_000_000).toLong()
-    }
-    
-    val formattedListeners = when {
-        listenersNum >= 1_000_000 -> String.format("%.1fM monthly listeners", listenersNum / 1_000_000f)
-        listenersNum >= 1_000 -> String.format("%,d monthly listeners", listenersNum)
-        else -> "$listenersNum monthly listeners"
-    }
-
-    val rank = if (listenersNum > 30_000_000) {
-        1 + rand.nextInt(15)
-    } else if (listenersNum > 15_000_000) {
-        16 + rand.nextInt(50)
-    } else if (listenersNum > 5_000_000) {
-        66 + rand.nextInt(350)
-    } else if (listenersNum > 1_000_000) {
-        416 + rand.nextInt(800)
-    } else {
-        1216 + rand.nextInt(2500)
-    }
-    
-    val suffix = when {
-        rank % 100 in 11..13 -> "th"
-        rank % 10 == 1 -> "st"
-        rank % 10 == 2 -> "nd"
-        rank % 10 == 3 -> "rd"
-        else -> "th"
-    }
-    val formattedRank = "#$rank in the world"
-    return Pair(formattedListeners, formattedRank)
-}
-
-fun getSeededCredits(title: String, artist: String): List<Pair<String, String>> {
-    val rand = java.util.Random((title + artist).hashCode().toLong())
-    val possibleWriters = listOf(
-        "Max Martin", "Jack Antonoff", "Shellback", "Aaron Dessner", "Finneas O'Connell",
-        "Louis Bell", "Sarah Hudson", "Justin Tranter", "Julia Michaels", "Ryan Tedder",
-        "Greg Kurstin", "Benny Blanco", "Ali Tamposi", "Andrew Watt", "Teddy Park"
-    )
-    val possibleProducers = listOf(
-        "Jack Antonoff", "Rick Rubin", "Max Martin", "Pharrell Williams", "Finneas O'Connell",
-        "Dr. Luke", "Metro Boomin", "Louis Bell", "Greg Kurstin", "Benny Blanco",
-        "Andrew Watt", "Disclosure", "Fred again..", "Mark Ronson", "Skrillex"
-    )
-    val writer1 = artist
-    val writer2 = possibleWriters[rand.nextInt(possibleWriters.size)]
-    val producers = mutableListOf<String>()
-    producers.add(possibleProducers[rand.nextInt(possibleProducers.size)])
-    if (rand.nextBoolean()) {
-        producers.add(possibleProducers[rand.nextInt(possibleProducers.size)])
-    }
-    val writers = if (rand.nextBoolean()) "$writer1, $writer2" else writer1
-    return listOf(
-        Pair("Performing Artist", artist),
-        Pair("Writers", writers),
-        Pair("Producers", producers.distinct().joinToString(", ")),
-        Pair("Source", "EcoDot / YouTube Music")
-    )
-}
-
 @Composable
 fun FullScreenInfoView(
     viewModel: MusicViewModel,
@@ -321,7 +251,7 @@ fun FullScreenInfoView(
                 ) {
                     IconButton(onClick = onClose) {
                         Icon(
-                            Icons.Rounded.KeyboardArrowDown,
+                            SimpIcons.KeyboardArrowDown,
                             contentDescription = "Close",
                             tint = Color.White,
                             modifier = Modifier.size(32.dp)
@@ -341,7 +271,7 @@ fun FullScreenInfoView(
                             enabled = !isVideoInfoLoading
                         ) {
                             Icon(
-                                Icons.Rounded.Refresh,
+                                SimpIcons.Refresh,
                                 contentDescription = "Refresh Song Info",
                                 tint = Color.White.copy(alpha = if (isVideoInfoLoading) 0.4f else 0.85f)
                             )
@@ -491,9 +421,9 @@ fun FullScreenInfoView(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        StatItem(icon = Icons.Rounded.PlayArrow, value = viewsDisplay, label = if (track.isYouTube) "Views" else "Source")
-                        StatItem(icon = Icons.Rounded.Favorite, value = likesDisplay, label = if (track.isYouTube) "Likes" else "Status")
-                        StatItem(icon = Icons.Rounded.Schedule, value = durationDisplay, label = "Duration")
+                        StatItem(icon = SimpIcons.PlayArrow, value = viewsDisplay, label = if (track.isYouTube) "Views" else "Source")
+                        StatItem(icon = SimpIcons.Favorite, value = likesDisplay, label = if (track.isYouTube) "Likes" else "Status")
+                        StatItem(icon = SimpIcons.Schedule, value = durationDisplay, label = "Duration")
                     }
 
                     if (isVideoInfoLoading && info == null) {

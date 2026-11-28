@@ -1,4 +1,14 @@
 package com.example.ecodot.ui.components.player
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.Check
+import com.example.ecodot.ui.theme.Info
+import com.example.ecodot.ui.theme.KeyboardArrowDown
+import com.example.ecodot.ui.theme.MoreVert
+import com.example.ecodot.ui.theme.Pause
+import com.example.ecodot.ui.theme.PlayArrow
+import com.example.ecodot.ui.theme.Share
+import com.example.ecodot.ui.theme.SkipNext
+import com.example.ecodot.ui.theme.SkipPrevious
 
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -24,8 +34,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -436,7 +444,7 @@ fun LyricsPanel(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        Icons.Rounded.Check,
+                                        SimpIcons.Check,
                                         contentDescription = null,
                                         tint = Color.Black,
                                         modifier = Modifier.size(14.dp)
@@ -754,7 +762,7 @@ fun FullScreenLyricsView(
                     modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.KeyboardArrowDown,
+                        imageVector = SimpIcons.KeyboardArrowDown,
                         contentDescription = "Close",
                         tint = Color.White,
                         modifier = Modifier.size(28.dp)
@@ -775,7 +783,7 @@ fun FullScreenLyricsView(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Info,
+                        imageVector = SimpIcons.Info,
                         contentDescription = null,
                         tint = accentColor.copy(alpha = 0.9f),
                         modifier = Modifier.size(14.dp)
@@ -930,7 +938,7 @@ fun FullScreenLyricsView(
                         modifier = Modifier.size(44.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.Share,
+                            imageVector = SimpIcons.Share,
                             contentDescription = "Share",
                             tint = if (isSelectionMode) accentColor else Color.White.copy(alpha = 0.85f),
                             modifier = Modifier.size(24.dp)
@@ -943,7 +951,7 @@ fun FullScreenLyricsView(
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.SkipPrevious,
+                            imageVector = SimpIcons.SkipPrevious,
                             contentDescription = "Previous",
                             tint = Color.White,
                             modifier = Modifier.size(34.dp)
@@ -960,7 +968,7 @@ fun FullScreenLyricsView(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            imageVector = if (isPlaying) SimpIcons.Pause else SimpIcons.PlayArrow,
                             contentDescription = "Play/Pause",
                             tint = Color.Black,
                             modifier = Modifier.size(30.dp)
@@ -973,7 +981,7 @@ fun FullScreenLyricsView(
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.SkipNext,
+                            imageVector = SimpIcons.SkipNext,
                             contentDescription = "Next",
                             tint = Color.White,
                             modifier = Modifier.size(34.dp)
@@ -986,7 +994,7 @@ fun FullScreenLyricsView(
                         modifier = Modifier.size(44.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.MoreVert,
+                            imageVector = SimpIcons.MoreVert,
                             contentDescription = "More",
                             tint = Color.White.copy(alpha = 0.85f),
                             modifier = Modifier.size(26.dp)
@@ -1037,7 +1045,7 @@ fun FullScreenLyricsView(
                         )
                     } else {
                         Icon(
-                            Icons.Rounded.Share,
+                            SimpIcons.Share,
                             contentDescription = null,
                             tint = Color.Black,
                             modifier = Modifier.size(18.dp)

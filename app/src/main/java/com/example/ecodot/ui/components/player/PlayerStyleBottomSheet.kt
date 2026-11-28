@@ -1,4 +1,10 @@
 package com.example.ecodot.ui.components.player
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.Album
+import com.example.ecodot.ui.theme.CheckCircle
+import com.example.ecodot.ui.theme.GraphicEq
+import com.example.ecodot.ui.theme.MusicNote
+import com.example.ecodot.ui.theme.Radio
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -8,8 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -75,7 +79,7 @@ fun PlayerStyleBottomSheet(
                 title = "Apple Music",
                 description = "Artwork mesh backdrop, frosted blur, expanding pill scrubber, live lyric strip & dock tabs",
                 badge = "Mesh + Dock",
-                icon = Icons.Rounded.MusicNote,
+                icon = SimpIcons.MusicNote,
                 previewBrush = Brush.linearGradient(listOf(Color(0xFFFA233B), Color(0xFF4C1D3D))),
                 isSelected = currentStyle == PlayerStyle.APPLE_MUSIC,
                 accentColor = Color(0xFFFF375F),
@@ -91,7 +95,7 @@ fun PlayerStyleBottomSheet(
                 title = "Vinyl Turntable",
                 description = "Spinning 33⅓ RPM disc, tracking aluminum tonearm, sleeve notes & studio monitor video",
                 badge = "33⅓ RPM",
-                icon = Icons.Rounded.Radio,
+                icon = SimpIcons.Radio,
                 previewBrush = Brush.linearGradient(listOf(Color(0xFFE5C07B), Color(0xFF3E2D1E))),
                 isSelected = currentStyle == PlayerStyle.VINYL,
                 accentColor = Color(0xFFE5C07B),
@@ -107,7 +111,7 @@ fun PlayerStyleBottomSheet(
                 title = "Spotify",
                 description = "Obsidian gradient canvas, swipeable art, emerald Save toggle, crisp cards & output pill",
                 badge = "Canvas + Cards",
-                icon = Icons.Rounded.Album,
+                icon = SimpIcons.Album,
                 previewBrush = Brush.linearGradient(listOf(Color(0xFF1ED760), Color(0xFF143622))),
                 isSelected = currentStyle == PlayerStyle.SPOTIFY,
                 accentColor = Color(0xFF1ED760),
@@ -123,7 +127,7 @@ fun PlayerStyleBottomSheet(
                 title = "EcoDot Classic",
                 description = "Vibrant Liquid Glass aesthetics, inline synced lyrics card & ambient video aurora",
                 badge = "Liquid Glass",
-                icon = Icons.Rounded.GraphicEq,
+                icon = SimpIcons.GraphicEq,
                 previewBrush = Brush.linearGradient(listOf(resolvedAccent, Color(0xFF191B26))),
                 isSelected = currentStyle == PlayerStyle.ECODOT,
                 accentColor = resolvedAccent,
@@ -217,7 +221,7 @@ private fun StyleOptionCard(
 
             if (isSelected) {
                 Icon(
-                    imageVector = Icons.Rounded.CheckCircle,
+                    imageVector = SimpIcons.CheckCircle,
                     contentDescription = "Selected",
                     tint = accentColor,
                     modifier = Modifier.size(22.dp)

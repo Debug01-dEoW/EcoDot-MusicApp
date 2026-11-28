@@ -10,7 +10,7 @@
   "guideUrl": "https://github.com/Debug01-dEoW/EcoDot-MusicApp#readme",
   "downloadUrl": "https://raw.githubusercontent.com/Debug01-dEoW/EcoDot-MusicApp/main/releases/EcoDot%201.27v.apk",
   "isMandatory": false,
-  "apkSize": 8291911,
+  "apkSize": 6724633,
   "sections": {
     "News & Highlights": [
       "**Official Release Key Signing**: EcoDot `1.27v` is now signed with a dedicated RSA-2048 release certificate (`CN=Debug01-dEoW, OU=EcoDot, O=Deep Patel, C=IN`) to establish Google Play Protect trust across installs. *(Note: When upgrading from debug-signed `v1.26v`, uninstall `v1.26v` once before installing `1.27v` if Android reports a signature conflict; all future updates install in-place automatically.)*",

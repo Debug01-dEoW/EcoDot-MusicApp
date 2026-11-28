@@ -1,4 +1,10 @@
 package com.example.ecodot.ui.components.player
+import com.example.ecodot.ui.theme.Favorite
+import com.example.ecodot.ui.theme.FavoriteBorder
+import com.example.ecodot.ui.theme.KeyboardArrowDown
+import com.example.ecodot.ui.theme.MoreVert
+import com.example.ecodot.ui.theme.OpenInFull
+import com.example.ecodot.ui.theme.Style
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.Crossfade
@@ -26,14 +32,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Album
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.OpenInFull
-import androidx.compose.material.icons.rounded.Style
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -196,7 +194,7 @@ fun VinylStyleContent(
                 ) {
                     IconButton(onClick = onBackClick) {
                         Icon(
-                            imageVector = Icons.Rounded.KeyboardArrowDown,
+                            imageVector = SimpIcons.KeyboardArrowDown,
                             contentDescription = "Minimize",
                             tint = Color.White,
                             modifier = Modifier.size(28.dp)
@@ -226,7 +224,7 @@ fun VinylStyleContent(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = onOpenStylePicker) {
                             Icon(
-                                imageVector = Icons.Rounded.Style,
+                                imageVector = SimpIcons.Style,
                                 contentDescription = "Switch Style",
                                 tint = Color.White.copy(alpha = 0.85f),
                                 modifier = Modifier.size(21.dp)
@@ -234,7 +232,7 @@ fun VinylStyleContent(
                         }
                         IconButton(onClick = { onOpenOptionsMenu(track) }) {
                             Icon(
-                                imageVector = Icons.Rounded.MoreVert,
+                                imageVector = SimpIcons.MoreVert,
                                 contentDescription = "More Options",
                                 tint = Color.White
                             )
@@ -391,7 +389,7 @@ fun VinylStyleContent(
                         onToggleLike()
                     }) {
                         Icon(
-                            imageVector = if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                            imageVector = if (isLiked) SimpIcons.Favorite else SimpIcons.FavoriteBorder,
                             contentDescription = "Favorite",
                             tint = if (isLiked) Color(0xFFFF4D6D) else Color.White
                         )
@@ -562,7 +560,7 @@ fun VinylStyleContent(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Rounded.OpenInFull,
+                                        imageVector = SimpIcons.OpenInFull,
                                         contentDescription = "Expand",
                                         tint = brassGold,
                                         modifier = Modifier.size(14.dp)

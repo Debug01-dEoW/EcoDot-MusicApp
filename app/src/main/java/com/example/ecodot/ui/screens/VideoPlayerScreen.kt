@@ -1,4 +1,14 @@
 package com.example.ecodot.ui.screens
+import com.example.ecodot.ui.theme.Check
+import com.example.ecodot.ui.theme.ClosedCaption
+import com.example.ecodot.ui.theme.ClosedCaptionOff
+import com.example.ecodot.ui.theme.Fullscreen
+import com.example.ecodot.ui.theme.FullscreenExit
+import com.example.ecodot.ui.theme.KeyboardArrowDown
+import com.example.ecodot.ui.theme.PictureInPictureAlt
+import com.example.ecodot.ui.theme.Settings
+import com.example.ecodot.ui.theme.SkipNext
+import com.example.ecodot.ui.theme.SkipPrevious
 
 import android.app.Activity
 import android.app.PictureInPictureParams
@@ -23,8 +33,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -449,7 +457,7 @@ fun VideoPlayerScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.KeyboardArrowDown,
+                            imageVector = SimpIcons.KeyboardArrowDown,
                             contentDescription = "Close Video",
                             tint = Color.White,
                             modifier = Modifier.size(28.dp)
@@ -518,7 +526,7 @@ fun VideoPlayerScreen(
                             modifier = Modifier.size(38.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.PictureInPictureAlt,
+                                imageVector = SimpIcons.PictureInPictureAlt,
                                 contentDescription = "PiP Mode",
                                 tint = Color.White,
                                 modifier = Modifier.size(22.dp)
@@ -536,7 +544,7 @@ fun VideoPlayerScreen(
                             modifier = Modifier.size(38.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.Settings,
+                                imageVector = SimpIcons.Settings,
                                 contentDescription = "Quality",
                                 tint = Color.White,
                                 modifier = Modifier.size(22.dp)
@@ -568,7 +576,7 @@ fun VideoPlayerScreen(
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             if (q == currentVideoQuality) {
                                                 Icon(
-                                                    Icons.Rounded.Check,
+                                                    SimpIcons.Check,
                                                     null,
                                                     tint = EcoDotRed,
                                                     modifier = Modifier.size(16.dp)
@@ -606,7 +614,7 @@ fun VideoPlayerScreen(
                     // Previous Track
                     VideoGlassButton(size = 44, onClick = { viewModel.skipPrevious() }) {
                         Icon(
-                            imageVector = Icons.Rounded.SkipPrevious,
+                            imageVector = SimpIcons.SkipPrevious,
                             contentDescription = "Previous",
                             tint = Color.White.copy(alpha = 0.75f),
                             modifier = Modifier.size(24.dp)
@@ -670,7 +678,7 @@ fun VideoPlayerScreen(
                     // Next Track
                     VideoGlassButton(size = 44, onClick = { viewModel.skipNext() }) {
                         Icon(
-                            imageVector = Icons.Rounded.SkipNext,
+                            imageVector = SimpIcons.SkipNext,
                             contentDescription = "Next",
                             tint = Color.White.copy(alpha = 0.75f),
                             modifier = Modifier.size(24.dp)
@@ -723,7 +731,7 @@ fun VideoPlayerScreen(
                                     .padding(8.dp)
                             ) {
                                 Icon(
-                                    imageVector = if (showCaptions) Icons.Rounded.ClosedCaption else Icons.Rounded.ClosedCaptionOff,
+                                    imageVector = if (showCaptions) SimpIcons.ClosedCaption else SimpIcons.ClosedCaptionOff,
                                     contentDescription = "Toggle Captions",
                                     tint = if (showCaptions) Color.White else Color.White.copy(alpha = 0.7f),
                                     modifier = Modifier.size(22.dp)
@@ -741,7 +749,7 @@ fun VideoPlayerScreen(
                                     .padding(8.dp)
                             ) {
                                 Icon(
-                                    imageVector = if (isFullscreen) Icons.Rounded.FullscreenExit else Icons.Rounded.Fullscreen,
+                                    imageVector = if (isFullscreen) SimpIcons.FullscreenExit else SimpIcons.Fullscreen,
                                     contentDescription = if (isFullscreen) "Exit Fullscreen" else "Fullscreen",
                                     tint = Color.White,
                                     modifier = Modifier.size(24.dp)

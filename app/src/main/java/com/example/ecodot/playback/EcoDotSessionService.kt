@@ -1004,29 +1004,66 @@ class EcoDotSessionService : MediaSessionService() {
                 .setDisplayName("Forward 10s").setEnabled(hasMedia).build()
         )
 
+    private fun isTrustedExternalMediaController(
+        session: MediaSession,
+        controller: MediaSession.ControllerInfo
+    ): Boolean {
+        val pkg = controller.packageName
+        if (pkg == packageName) return true
+        if (session.isMediaNotificationController(controller) ||
+            session.isAutomotiveController(controller) ||
+            session.isAutoCompanionController(controller)
+        ) {
+            return true
+        }
+        if (pkg == "com.android.systemui" ||
+            pkg == "android" ||
+            pkg == "com.android.bluetooth" ||
+            pkg == "com.google.android.projection.gearhead" ||
+            pkg == "com.google.android.googlequicksearchbox" ||
+            pkg == "com.google.android.wearable.app"
+        ) {
+            return true
+        }
+        return runCatching {
+            val appInfo = packageManager.getApplicationInfo(pkg, 0)
+            (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0 ||
+                (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+        }.getOrDefault(false)
+    }
+
     private inner class CommandCallback : MediaSession.Callback {
         override fun onConnect(
             session: MediaSession,
             controller: MediaSession.ControllerInfo
         ): MediaSession.ConnectionResult {
-            val sessionCmds = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
-                .add(SessionCommand(ACTION_TOGGLE_LIKE,     Bundle.EMPTY))
-                .add(SessionCommand(ACTION_TOGGLE_SHUFFLE,  Bundle.EMPTY))
-                .add(SessionCommand(ACTION_CYCLE_REPEAT,    Bundle.EMPTY))
-                .add(SessionCommand(ACTION_FORWARD_10,      Bundle.EMPTY))
-                .add(SessionCommand(ACTION_SET_EQ_BAND,     Bundle.EMPTY))
-                .add(SessionCommand(ACTION_SET_VIRTUALIZER, Bundle.EMPTY))
-                .add(SessionCommand(ACTION_SET_EQ_ENABLED,  Bundle.EMPTY))
-                .add(SessionCommand(ACTION_SET_SKIP_SILENCE, Bundle.EMPTY))
-                .add(SessionCommand(ACTION_SET_NORMALIZE_VOLUME, Bundle.EMPTY))
-                .add(SessionCommand(ACTION_REFRESH_SPONSOR_SEGMENTS, Bundle.EMPTY))
-                .add(SessionCommand(ACTION_CLEAR_URL_CACHE, Bundle.EMPTY))
-                .add(SessionCommand(ACTION_UPDATE_QUEUE,    Bundle.EMPTY))
-                .add(SessionCommand(ACTION_UPDATE_INDEX,    Bundle.EMPTY))
-                .add(SessionCommand(ACTION_INVALIDATE_STAGED_NEXT, Bundle.EMPTY))
-                .add(SessionCommand(ACTION_SET_SLEEP_TIMER, Bundle.EMPTY))
-                .add(SessionCommand(ACTION_CANCEL_SLEEP_TIMER, Bundle.EMPTY))
-                .build()
+            val isInternalClient = controller.packageName == packageName
+            if (!isTrustedExternalMediaController(session, controller)) {
+                Log.w(TAG, "Rejected untrusted MediaSession client: ${controller.packageName}")
+                return MediaSession.ConnectionResult.reject()
+            }
+
+            val sessionCmdBuilder = MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+                .add(SessionCommand(ACTION_TOGGLE_LIKE, Bundle.EMPTY))
+                .add(SessionCommand(ACTION_TOGGLE_SHUFFLE, Bundle.EMPTY))
+                .add(SessionCommand(ACTION_CYCLE_REPEAT, Bundle.EMPTY))
+                .add(SessionCommand(ACTION_FORWARD_10, Bundle.EMPTY))
+
+            if (isInternalClient) {
+                sessionCmdBuilder
+                    .add(SessionCommand(ACTION_SET_EQ_BAND, Bundle.EMPTY))
+                    .add(SessionCommand(ACTION_SET_VIRTUALIZER, Bundle.EMPTY))
+                    .add(SessionCommand(ACTION_SET_EQ_ENABLED, Bundle.EMPTY))
+                    .add(SessionCommand(ACTION_SET_SKIP_SILENCE, Bundle.EMPTY))
+                    .add(SessionCommand(ACTION_SET_NORMALIZE_VOLUME, Bundle.EMPTY))
+                    .add(SessionCommand(ACTION_REFRESH_SPONSOR_SEGMENTS, Bundle.EMPTY))
+                    .add(SessionCommand(ACTION_CLEAR_URL_CACHE, Bundle.EMPTY))
+                    .add(SessionCommand(ACTION_UPDATE_QUEUE, Bundle.EMPTY))
+                    .add(SessionCommand(ACTION_UPDATE_INDEX, Bundle.EMPTY))
+                    .add(SessionCommand(ACTION_INVALIDATE_STAGED_NEXT, Bundle.EMPTY))
+                    .add(SessionCommand(ACTION_SET_SLEEP_TIMER, Bundle.EMPTY))
+                    .add(SessionCommand(ACTION_CANCEL_SLEEP_TIMER, Bundle.EMPTY))
+            }
 
             val playerCmds = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
                 .add(Player.COMMAND_SEEK_TO_NEXT)
@@ -1038,7 +1075,7 @@ class EcoDotSessionService : MediaSessionService() {
                 .build()
 
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
-                .setAvailableSessionCommands(sessionCmds)
+                .setAvailableSessionCommands(sessionCmdBuilder.build())
                 .setAvailablePlayerCommands(playerCmds)
                 .build()
         }

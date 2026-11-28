@@ -1,6 +1,18 @@
 @file:OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 
 package com.example.ecodot.ui.screens
+import com.example.ecodot.ui.theme.Add
+import com.example.ecodot.ui.theme.ArrowBack
+import com.example.ecodot.ui.theme.Close
+import com.example.ecodot.ui.theme.ErrorOutline
+import com.example.ecodot.ui.theme.GraphicEq
+import com.example.ecodot.ui.theme.History
+import com.example.ecodot.ui.theme.MusicNote
+import com.example.ecodot.ui.theme.Person
+import com.example.ecodot.ui.theme.PlayArrow
+import com.example.ecodot.ui.theme.Search
+import com.example.ecodot.ui.theme.SearchOff
+import com.example.ecodot.ui.theme.WifiOff
 
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -50,21 +62,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Album
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.ErrorOutline
-import androidx.compose.material.icons.rounded.GraphicEq
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.SearchOff
-import androidx.compose.material.icons.rounded.WifiOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -755,7 +752,7 @@ fun SearchScreen(
                                         modifier = Modifier.size(36.dp)
                                     ) {
                                         Icon(
-                                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                            imageVector = SimpIcons.ArrowBack,
                                             contentDescription = "Back",
                                             tint = Color.White,
                                             modifier = Modifier.size(20.dp)
@@ -767,7 +764,7 @@ fun SearchScreen(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Rounded.Search,
+                                            imageVector = SimpIcons.Search,
                                             contentDescription = "Search",
                                             tint = if (isFocused) Color(0xFFF0E3FF) else Color.White.copy(alpha = 0.75f),
                                             modifier = Modifier.size(21.dp)
@@ -851,7 +848,7 @@ fun SearchScreen(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Rounded.Close,
+                                            imageVector = SimpIcons.Close,
                                             contentDescription = "Clear search",
                                             tint = Color.White.copy(alpha = 0.88f),
                                             modifier = Modifier.size(14.dp)
@@ -864,7 +861,7 @@ fun SearchScreen(
                                     modifier = Modifier.size(34.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Rounded.GraphicEq,
+                                        imageVector = SimpIcons.GraphicEq,
                                         contentDescription = "Recognize song",
                                         tint = Color(0xFFF0E3FF),
                                         modifier = Modifier.size(20.dp)
@@ -1296,7 +1293,7 @@ private fun SimpSearchHistoryBody(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.History,
+                            imageVector = SimpIcons.History,
                             contentDescription = null,
                             tint = Color.White.copy(alpha = 0.30f),
                             modifier = Modifier.size(44.dp)
@@ -1339,7 +1336,7 @@ private fun SimpHistoryRow(
         ) {
             if (isQuery || item.imageUrl.isNullOrEmpty()) {
                 Icon(
-                    imageVector = Icons.Rounded.History,
+                    imageVector = SimpIcons.History,
                     contentDescription = null,
                     tint = Color.White.copy(alpha = 0.55f),
                     modifier = Modifier.size(20.dp)
@@ -1395,7 +1392,7 @@ private fun SimpHistoryRow(
         }
         IconButton(onClick = onRemove, modifier = Modifier.size(32.dp)) {
             Icon(
-                imageVector = Icons.Rounded.Close,
+                imageVector = SimpIcons.Close,
                 contentDescription = "Remove",
                 tint = Color.White.copy(alpha = 0.35f),
                 modifier = Modifier.size(16.dp)
@@ -1457,7 +1454,7 @@ private fun SimpSuggestionsBody(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.PlayArrow,
+                                imageVector = SimpIcons.PlayArrow,
                                 contentDescription = null,
                                 tint = Color(0xFF1A102B),
                                 modifier = Modifier.size(22.dp)
@@ -1511,7 +1508,7 @@ private fun SimpSuggestionsBody(
                             imageUrl = item.track.albumArtUri,
                             isCircular = false,
                             isPlaying = isTrackPlaying,
-                            trailingIcon = Icons.Rounded.Add,
+                            trailingIcon = SimpIcons.Add,
                             onTrailingClick = { onAddToQueue(item.track) },
                             onClick = { onTrackClick(item.track) }
                         )
@@ -1589,7 +1586,7 @@ private fun InstantMediaRow(
                 )
             } else {
                 Icon(
-                    imageVector = if (isCircular) Icons.Rounded.Person else Icons.Rounded.MusicNote,
+                    imageVector = if (isCircular) SimpIcons.Person else SimpIcons.MusicNote,
                     contentDescription = null,
                     tint = Color.White.copy(alpha = 0.5f),
                     modifier = Modifier.size(20.dp)
@@ -1730,7 +1727,7 @@ private fun SimpSearchResultsBody(
     if (!networkState.isConnected && !anyData) {
         SearchCenteredMessage(
             searchBarHeight = searchBarHeight,
-            icon = Icons.Rounded.WifiOff,
+            icon = SimpIcons.WifiOff,
             title = "No Internet Connection",
             subtitle = "Check your connection to search online music. Downloaded music remains available in Library."
         )
@@ -1754,7 +1751,7 @@ private fun SimpSearchResultsBody(
                 modifier = Modifier.padding(horizontal = 32.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.ErrorOutline,
+                    imageVector = SimpIcons.ErrorOutline,
                     contentDescription = null,
                     modifier = Modifier.size(52.dp),
                     tint = EcoDotRed.copy(alpha = 0.72f)
@@ -1790,7 +1787,7 @@ private fun SimpSearchResultsBody(
     if (isEmptyForFilter) {
         SearchCenteredMessage(
             searchBarHeight = searchBarHeight,
-            icon = Icons.Rounded.SearchOff,
+            icon = SimpIcons.SearchOff,
             title = "No results found",
             subtitle = "Try another keyword or switch filter tab"
         )

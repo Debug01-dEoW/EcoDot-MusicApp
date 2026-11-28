@@ -1,4 +1,16 @@
 package com.example.ecodot.ui.screens
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.ArrowBack
+import com.example.ecodot.ui.theme.DeleteSweep
+import com.example.ecodot.ui.theme.DownloadDone
+import com.example.ecodot.ui.theme.Favorite
+import com.example.ecodot.ui.theme.FavoriteBorder
+import com.example.ecodot.ui.theme.History
+import com.example.ecodot.ui.theme.MoreVert
+import com.example.ecodot.ui.theme.PlaylistAdd
+import com.example.ecodot.ui.theme.QueueMusic
+import com.example.ecodot.ui.theme.QueuePlayNext
+import com.example.ecodot.ui.theme.Schedule
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -7,10 +19,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -95,13 +103,13 @@ fun HistoryScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(SimpIcons.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
                 actions = {
                     if (historyItems.isNotEmpty()) {
                         IconButton(onClick = { showClearDialog = true }) {
-                            Icon(Icons.Rounded.DeleteSweep, contentDescription = "Clear History", tint = EcoDotRed)
+                            Icon(SimpIcons.DeleteSweep, contentDescription = "Clear History", tint = EcoDotRed)
                         }
                     }
                 },
@@ -125,7 +133,7 @@ fun HistoryScreen(
                     modifier = Modifier.padding(24.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.History,
+                        imageVector = SimpIcons.History,
                         contentDescription = null,
                         tint = Color.White.copy(alpha = 0.15f),
                         modifier = Modifier.size(96.dp)
@@ -241,8 +249,8 @@ fun HistoryTrackItem(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 Icon(
-                                    if (playlist.name == "Liked Songs") Icons.Rounded.Favorite
-                                    else Icons.Rounded.QueueMusic,
+                                    if (playlist.name == "Liked Songs") SimpIcons.Favorite
+                                    else SimpIcons.QueueMusic,
                                     contentDescription = null,
                                     tint = if (playlist.name == "Liked Songs") EcoDotRed else Color.White.copy(0.5f),
                                     modifier = Modifier.size(20.dp)
@@ -318,7 +326,7 @@ fun HistoryTrackItem(
                         .background(Color.White.copy(alpha = 0.3f))
                 )
                 Icon(
-                    imageVector = Icons.Rounded.Schedule,
+                    imageVector = SimpIcons.Schedule,
                     contentDescription = null,
                     tint = Color.White.copy(alpha = 0.4f),
                     modifier = Modifier.size(12.dp)
@@ -343,11 +351,11 @@ fun HistoryTrackItem(
                 Text("${(progress * 100).toInt()}%", fontSize = 8.sp, color = Color.White, fontWeight = FontWeight.Bold)
             }
         } else if (isDownloaded) {
-            Icon(Icons.Rounded.DownloadDone, contentDescription = "Downloaded", tint = Color(0xFF4CAF50), modifier = Modifier.size(20.dp))
+            Icon(SimpIcons.DownloadDone, contentDescription = "Downloaded", tint = Color(0xFF4CAF50), modifier = Modifier.size(20.dp))
         }
 
         IconButton(onClick = { showMenu = true }) {
-            Icon(Icons.Rounded.MoreVert, contentDescription = "More",
+            Icon(SimpIcons.MoreVert, contentDescription = "More",
                 tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(24.dp))
         }
 
@@ -356,17 +364,17 @@ fun HistoryTrackItem(
             DropdownMenuItem(
                 text = { Text("Play Next", color = Color.White) },
                 onClick = { viewModel.playNext(track); showMenu = false },
-                leadingIcon = { Icon(Icons.Rounded.QueuePlayNext, "Play Next", tint = Color.White) }
+                leadingIcon = { Icon(SimpIcons.QueuePlayNext, "Play Next", tint = Color.White) }
             )
             DropdownMenuItem(
                 text = { Text("Add to Queue", color = Color.White) },
                 onClick = { viewModel.addToQueue(track); showMenu = false },
-                leadingIcon = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, "Add to Queue", tint = Color.White) }
+                leadingIcon = { Icon(SimpIcons.QueueMusic, "Add to Queue", tint = Color.White) }
             )
             DropdownMenuItem(
                 text = { Text("Add to Playlist", color = Color.White) },
                 onClick = { showAddToPlaylist = true; showMenu = false },
-                leadingIcon = { Icon(Icons.Rounded.PlaylistAdd, "Playlist", tint = Color.White) }
+                leadingIcon = { Icon(SimpIcons.PlaylistAdd, "Playlist", tint = Color.White) }
             )
             DropdownMenuItem(
                 text = { Text("Like", color = Color.White) },
@@ -374,7 +382,7 @@ fun HistoryTrackItem(
                     viewModel.toggleTrackLike(track)
                     showMenu = false
                 },
-                leadingIcon = { Icon(Icons.Rounded.FavoriteBorder, "Like", tint = EcoDotRed) }
+                leadingIcon = { Icon(SimpIcons.FavoriteBorder, "Like", tint = EcoDotRed) }
             )
         }
     }

@@ -8,9 +8,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,7 +39,6 @@ import com.example.ecodot.ui.viewmodel.ArtistCollection
 import com.example.ecodot.ui.viewmodel.ArtistViewModel
 import com.example.ecodot.ui.viewmodel.MusicViewModel
 import com.example.ecodot.ui.theme.*
-import androidx.compose.material.icons.rounded.DownloadDone
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -118,7 +114,7 @@ fun ArtistProfileScreen(
                                 fontSize = 18.sp
                             )
                             Icon(
-                                imageVector = Icons.Rounded.CheckCircle,
+                                imageVector = SimpIcons.CheckCircle,
                                 contentDescription = "Verified",
                                 tint = Color(0xFF3897F0),
                                 modifier = Modifier.size(16.dp)
@@ -137,7 +133,7 @@ fun ArtistProfileScreen(
                             .background(Color.Black.copy(0.2f), CircleShape)
                             .padding(4.dp)
                     ) {
-                        Icon(Icons.Rounded.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(SimpIcons.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                 },
                 actions = {
@@ -164,7 +160,7 @@ fun ArtistProfileScreen(
                                 .background(accentColor, CircleShape)
                         ) {
                             Icon(
-                                imageVector = if (isThisArtistPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                imageVector = if (isThisArtistPlaying) SimpIcons.Pause else SimpIcons.PlayArrow,
                                 contentDescription = "Play",
                                 tint = Color.White,
                                 modifier = Modifier.size(18.dp)
@@ -277,7 +273,7 @@ fun ArtistProfileScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.Verified,
+                                imageVector = SimpIcons.Verified,
                                 contentDescription = null,
                                 tint = Color(0xFF3897F0),
                                 modifier = Modifier.size(16.dp)
@@ -335,7 +331,7 @@ fun ArtistProfileScreen(
                                     .clip(RoundedCornerShape(24.dp))
                                     .background(Brush.horizontalGradient(listOf(accentColor, dominantColor)))
                             ) {
-                                Icon(Icons.Rounded.Shuffle, null, modifier = Modifier.size(16.dp))
+                                Icon(SimpIcons.Shuffle, null, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(6.dp))
                                 Text("Shuffle", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             }
@@ -352,7 +348,7 @@ fun ArtistProfileScreen(
                                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
                                 modifier = Modifier.height(42.dp)
                             ) {
-                                Icon(Icons.Rounded.Radio, null, tint = accentColor, modifier = Modifier.size(16.dp))
+                                Icon(SimpIcons.Radio, null, tint = accentColor, modifier = Modifier.size(16.dp))
                                 Spacer(Modifier.width(6.dp))
                                 Text("Radio", fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             }
@@ -377,7 +373,7 @@ fun ArtistProfileScreen(
                                 modifier = Modifier.height(42.dp)
                             ) {
                                 Icon(
-                                    imageVector = if (isFollowed) Icons.Rounded.Check else Icons.Rounded.Add,
+                                    imageVector = if (isFollowed) SimpIcons.Check else SimpIcons.Add,
                                     contentDescription = null,
                                     modifier = Modifier.size(14.dp)
                                 )
@@ -449,7 +445,7 @@ fun ArtistProfileScreen(
                                         ) {
                                             Box(contentAlignment = Alignment.Center) {
                                                 Icon(
-                                                    Icons.Rounded.PlayArrow,
+                                                    SimpIcons.PlayArrow,
                                                     null,
                                                     tint = Color.White,
                                                     modifier = Modifier.size(18.dp)
@@ -496,7 +492,7 @@ fun ArtistProfileScreen(
                                 }
                                 
                                 Icon(
-                                    Icons.Rounded.KeyboardArrowRight,
+                                    SimpIcons.KeyboardArrowRight,
                                     null,
                                     tint = Color.White.copy(0.3f),
                                     modifier = Modifier.size(24.dp)
@@ -680,7 +676,7 @@ fun ArtistProfileScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = if (isThisArtistPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            imageVector = if (isThisArtistPlaying) SimpIcons.Pause else SimpIcons.PlayArrow,
                             contentDescription = "Play/Pause",
                             tint = Color.White,
                             modifier = Modifier.size(28.dp)
@@ -793,9 +789,9 @@ fun ArtistProfileScreen(
                     val encodedName = java.net.URLEncoder.encode(uiState.artistName, "UTF-8")
                     
                     val socials = listOf(
-                        "Instagram" to (Icons.Rounded.CameraAlt to "https://www.google.com/search?q=$encodedName+instagram"),
-                        "X" to (Icons.Rounded.Language to "https://www.google.com/search?q=$encodedName+twitter"),
-                        "Official Website" to (Icons.Rounded.Language to "https://www.google.com/search?q=$encodedName+official+website")
+                        "Instagram" to (SimpIcons.CameraAlt to "https://www.google.com/search?q=$encodedName+instagram"),
+                        "X" to (SimpIcons.Language to "https://www.google.com/search?q=$encodedName+twitter"),
+                        "Official Website" to (SimpIcons.Language to "https://www.google.com/search?q=$encodedName+official+website")
                     )
                     
                     socials.forEach { (name, iconAndUrl) ->
@@ -965,7 +961,7 @@ fun ArtistTrackRow(
                     .padding(8.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.MoreVert,
+                    imageVector = SimpIcons.MoreVert,
                     contentDescription = "Options",
                     tint = Color.White.copy(0.4f),
                     modifier = Modifier.size(20.dp)

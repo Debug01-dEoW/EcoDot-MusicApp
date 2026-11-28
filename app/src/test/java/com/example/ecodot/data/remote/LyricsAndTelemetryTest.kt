@@ -1,7 +1,10 @@
 package com.example.ecodot.data.remote
 
 import com.example.ecodot.ui.components.player.PlayerStyleMath
+import com.example.ecodot.util.CustomCover
+import com.example.ecodot.util.PlaylistCustomizer
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -59,5 +62,19 @@ class LyricsAndTelemetryTest {
         assertEquals(62_500L, parsed[1].timeMs)
         assertEquals(218_000L, parsed[2].timeMs)
         assertEquals(224_000L, parsed[3].timeMs)
+    }
+
+    @Test
+    fun `PlaylistCustomizer round-trips CustomCover via Moshi without Gson`() {
+        val original = CustomCover(
+            startColor = "#FF1DB954",
+            endColor = "#FF070708",
+            isPrivate = true,
+            tags = listOf("daily", "chill")
+        )
+        val json = PlaylistCustomizer.serializeCustomCover(original)
+        val restored = PlaylistCustomizer.parseCustomCover(json)
+        assertNotNull(restored)
+        assertEquals(original, restored)
     }
 }

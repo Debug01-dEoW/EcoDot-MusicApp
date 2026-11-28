@@ -1,4 +1,6 @@
 package com.example.ecodot.ui.components
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.KeyboardArrowRight
 
 import android.graphics.RenderEffect
 import android.graphics.RuntimeShader
@@ -14,7 +16,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -993,7 +994,7 @@ fun IOSSettingsRow(
             )
         } else {
             androidx.compose.material3.Icon(
-                imageVector = androidx.compose.material.icons.Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                imageVector = SimpIcons.KeyboardArrowRight,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = 0.25f),
                 modifier = Modifier.size(18.dp)

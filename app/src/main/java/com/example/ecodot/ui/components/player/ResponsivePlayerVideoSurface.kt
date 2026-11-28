@@ -1,4 +1,8 @@
 package com.example.ecodot.ui.components.player
+import com.example.ecodot.ui.theme.AspectRatio
+import com.example.ecodot.ui.theme.Headphones
+import com.example.ecodot.ui.theme.MusicNote
+import com.example.ecodot.ui.theme.PlayCircle
 
 import android.view.HapticFeedbackConstants
 import androidx.annotation.OptIn
@@ -23,11 +27,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AspectRatio
-import androidx.compose.material.icons.rounded.Headphones
-import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -196,7 +195,7 @@ fun ResponsivePlayerVideoSurface(
                             modifier = Modifier.size(38.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.AspectRatio,
+                                imageVector = SimpIcons.AspectRatio,
                                 contentDescription = if (videoResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) "Fit video" else "Fill video",
                                 tint = if (videoResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) Color(0xFFFFD54F) else Color.White,
                                 modifier = Modifier.size(20.dp)
@@ -366,7 +365,7 @@ fun AudioVideoModeTogglePill(
                 label = "Song",
                 selected = !isVideoMode,
                 accentColor = accentColor,
-                icon = Icons.Rounded.MusicNote,
+                icon = SimpIcons.MusicNote,
                 onClick = {
                     if (isVideoMode) {
                         view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
@@ -379,7 +378,7 @@ fun AudioVideoModeTogglePill(
                 label = "Video",
                 selected = isVideoMode,
                 accentColor = accentColor,
-                icon = Icons.Rounded.PlayCircle,
+                icon = SimpIcons.PlayCircle,
                 onClick = {
                     if (!isVideoMode) {
                         view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
@@ -486,7 +485,7 @@ fun QuickAudioOutputSheet(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Headphones,
+                        imageVector = SimpIcons.Headphones,
                         contentDescription = null,
                         tint = accentColor,
                         modifier = Modifier.size(24.dp)

@@ -1,6 +1,22 @@
 @file:OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 
 package com.example.ecodot.ui.components
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.AutoAwesome
+import com.example.ecodot.ui.theme.Check
+import com.example.ecodot.ui.theme.ChevronRight
+import com.example.ecodot.ui.theme.Close
+import com.example.ecodot.ui.theme.Download
+import com.example.ecodot.ui.theme.DownloadForOffline
+import com.example.ecodot.ui.theme.Favorite
+import com.example.ecodot.ui.theme.FavoriteBorder
+import com.example.ecodot.ui.theme.MoreVert
+import com.example.ecodot.ui.theme.MusicNote
+import com.example.ecodot.ui.theme.PlayArrow
+import com.example.ecodot.ui.theme.PlaylistAdd
+import com.example.ecodot.ui.theme.PlaylistPlay
+import com.example.ecodot.ui.theme.QueueMusic
+import com.example.ecodot.ui.theme.SelectAll
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandHorizontally
@@ -32,22 +48,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
-import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.DownloadForOffline
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.SelectAll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -161,7 +161,7 @@ fun SimpMusicChartButton(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
-                imageVector = Icons.Rounded.AutoAwesome,
+                imageVector = SimpIcons.AutoAwesome,
                 contentDescription = null,
                 tint = Color(0xFFFFB74D),
                 modifier = Modifier.size(16.dp)
@@ -325,7 +325,7 @@ fun SimpSearchSongRow(
                     ) {
                         if (isSelected) {
                             Icon(
-                                imageVector = Icons.Rounded.Check,
+                                imageVector = SimpIcons.Check,
                                 contentDescription = null,
                                 tint = Color(0xFF1A102B),
                                 modifier = Modifier.size(14.dp)
@@ -357,7 +357,7 @@ fun SimpSearchSongRow(
                     )
                 } else {
                     Icon(
-                        imageVector = Icons.Rounded.MusicNote,
+                        imageVector = SimpIcons.MusicNote,
                         contentDescription = null,
                         tint = Color.White.copy(alpha = 0.45f),
                         modifier = Modifier.size(20.dp)
@@ -381,7 +381,7 @@ fun SimpSearchSongRow(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.PlayArrow,
+                            imageVector = SimpIcons.PlayArrow,
                             contentDescription = null,
                             tint = Color.White,
                             modifier = Modifier.size(12.dp)
@@ -408,7 +408,7 @@ fun SimpSearchSongRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (isDownloaded) {
                         Icon(
-                            imageVector = Icons.Rounded.DownloadForOffline,
+                            imageVector = SimpIcons.DownloadForOffline,
                             contentDescription = "Downloaded",
                             tint = Color(0xFF81C784),
                             modifier = Modifier
@@ -449,7 +449,7 @@ fun SimpSearchSongRow(
                     modifier = Modifier.size(34.dp)
                 ) {
                     Icon(
-                        imageVector = if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                        imageVector = if (isLiked) SimpIcons.Favorite else SimpIcons.FavoriteBorder,
                         contentDescription = "Like",
                         tint = if (isLiked) EcoDotRed else Color.White.copy(alpha = 0.40f),
                         modifier = Modifier.size(18.dp)
@@ -460,7 +460,7 @@ fun SimpSearchSongRow(
                     modifier = Modifier.size(34.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.MoreVert,
+                        imageVector = SimpIcons.MoreVert,
                         contentDescription = "Options",
                         tint = Color.White.copy(alpha = 0.65f),
                         modifier = Modifier.size(19.dp)
@@ -531,7 +531,7 @@ fun SimpSearchCollectionRow(
         }
 
         Icon(
-            imageVector = Icons.Rounded.ChevronRight,
+            imageVector = SimpIcons.ChevronRight,
             contentDescription = null,
             tint = Color.White.copy(alpha = 0.35f),
             modifier = Modifier.size(20.dp)
@@ -590,7 +590,7 @@ fun SimpSearchArtistRow(
         }
 
         Icon(
-            imageVector = Icons.Rounded.ChevronRight,
+            imageVector = SimpIcons.ChevronRight,
             contentDescription = null,
             tint = Color.White.copy(alpha = 0.35f),
             modifier = Modifier.size(20.dp)
@@ -620,7 +620,7 @@ fun SimpSongSelectionTopAppBar(
     ) {
         IconButton(onClick = onExit) {
             Icon(
-                imageVector = Icons.Rounded.Close,
+                imageVector = SimpIcons.Close,
                 contentDescription = "Exit selection",
                 tint = Color.White
             )
@@ -636,7 +636,7 @@ fun SimpSongSelectionTopAppBar(
         )
         IconButton(onClick = onSelectAll) {
             Icon(
-                imageVector = Icons.Rounded.SelectAll,
+                imageVector = SimpIcons.SelectAll,
                 contentDescription = "Select all",
                 tint = Color(0xFFF0E3FF)
             )
@@ -644,7 +644,7 @@ fun SimpSongSelectionTopAppBar(
         if (selectedCount > 0) {
             IconButton(onClick = onOpenActions) {
                 Icon(
-                    imageVector = Icons.Rounded.MoreVert,
+                    imageVector = SimpIcons.MoreVert,
                     contentDescription = "Batch actions",
                     tint = Color.White
                 )
@@ -708,11 +708,11 @@ fun SimpSelectedSongsBottomSheet(
             )
             HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
 
-            SelectionSheetAction(Icons.AutoMirrored.Rounded.PlaylistPlay, "Play next") { act(onPlayNext) }
-            SelectionSheetAction(Icons.AutoMirrored.Rounded.QueueMusic, "Add to queue") { act(onAddToQueue) }
-            SelectionSheetAction(Icons.AutoMirrored.Rounded.PlaylistAdd, "Add to playlist") { act(onAddToPlaylist) }
-            SelectionSheetAction(Icons.Rounded.Download, "Download all") { act(onDownload) }
-            SelectionSheetAction(Icons.Rounded.FavoriteBorder, "Add to favorites") { act(onAddToFavorites) }
+            SelectionSheetAction(SimpIcons.PlaylistPlay, "Play next") { act(onPlayNext) }
+            SelectionSheetAction(SimpIcons.QueueMusic, "Add to queue") { act(onAddToQueue) }
+            SelectionSheetAction(SimpIcons.PlaylistAdd, "Add to playlist") { act(onAddToPlaylist) }
+            SelectionSheetAction(SimpIcons.Download, "Download all") { act(onDownload) }
+            SelectionSheetAction(SimpIcons.FavoriteBorder, "Add to favorites") { act(onAddToFavorites) }
         }
     }
 }

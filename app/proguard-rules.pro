@@ -1,24 +1,20 @@
 # Keep stack trace line numbers legible for release crash reports
 -keepattributes SourceFile,LineNumberTable,*Annotation*,Signature,InnerClasses,EnclosingMethod
 
-# Reflection-serialized remote, UI, and persistence models (Moshi / Gson / Room)
+# Reflection-serialized remote, UI, and persistence models (Moshi / Room)
 -keep class com.example.ecodot.data.remote.** { *; }
 -keep class com.example.ecodot.data.local.entities.** { *; }
+-keep class com.example.ecodot.domain.model.** { *; }
 -keep class com.example.ecodot.util.CustomCover { *; }
--keep class com.example.ecodot.ui.viewmodel.Album { *; }
--keep class com.example.ecodot.ui.viewmodel.Artist { *; }
 -keep class com.example.ecodot.ui.viewmodel.InstantSearchItem { *; }
 
-# Moshi & Gson
+# Moshi reflection & generated adapters
 -keepclassmembers class * {
     @com.squareup.moshi.Json *;
 }
 -keep class * extends com.squareup.moshi.JsonAdapter { *; }
 -keepclassmembers class * extends com.squareup.moshi.JsonAdapter { *; }
 -dontwarn com.squareup.moshi.**
--keepclassmembers class * {
-    @com.google.gson.annotations.SerializedName <fields>;
-}
 
 # Room & SQLite
 -keep class * extends androidx.room.RoomDatabase { *; }
@@ -35,7 +31,8 @@
 }
 
 # NewPipeExtractor & Rhino JS engine
--keep class org.schabi.newpipe.extractor.** { *; }
+-keep class org.schabi.newpipe.extractor.ServiceList { *; }
+-keep class org.schabi.newpipe.extractor.services.** { *; }
 -dontwarn org.schabi.newpipe.**
 -dontwarn org.mozilla.javascript.**
 -dontwarn org.jsoup.**
@@ -43,15 +40,22 @@
 -dontwarn javax.naming.**
 
 # Koin dependency injection
--keep class org.koin.** { *; }
 -keep class com.example.ecodot.di.** { *; }
+-keep class * extends org.koin.core.component.KoinComponent { *; }
 
-# Media3 ExoPlayer & Notification session
--keep class androidx.media3.** { *; }
+# Media3 ExoPlayer & MediaSession entry points
+-keep class androidx.media3.session.** { *; }
+-keepclassmembers class * extends androidx.media3.common.Player { *; }
 -dontwarn androidx.media3.**
 
 # Kyant Backdrop / Haze GPU shaders
--keep class com.kyant.backdrop.** { *; }
--keep class dev.chrisbanes.haze.** { *; }
 -dontwarn com.kyant.backdrop.**
 -dontwarn dev.chrisbanes.haze.**
+
+# Strip verbose/debug/info logging in release builds
+-assumenosideeffects class android.util.Log {
+    public static boolean isLoggable(java.lang.String, int);
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+}

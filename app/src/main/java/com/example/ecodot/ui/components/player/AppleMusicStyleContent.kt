@@ -1,4 +1,17 @@
 package com.example.ecodot.ui.components.player
+import com.example.ecodot.ui.theme.DragHandle
+import com.example.ecodot.ui.theme.FastForward
+import com.example.ecodot.ui.theme.FastRewind
+import com.example.ecodot.ui.theme.Lyrics
+import com.example.ecodot.ui.theme.MoreVert
+import com.example.ecodot.ui.theme.OpenInFull
+import com.example.ecodot.ui.theme.Pause
+import com.example.ecodot.ui.theme.PlayArrow
+import com.example.ecodot.ui.theme.Share
+import com.example.ecodot.ui.theme.Star
+import com.example.ecodot.ui.theme.StarBorder
+import com.example.ecodot.ui.theme.VolumeMute
+import com.example.ecodot.ui.theme.VolumeUp
 
 import android.graphics.Bitmap
 import android.os.Build
@@ -22,6 +35,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -50,19 +64,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.VolumeMute
-import androidx.compose.material.icons.automirrored.rounded.VolumeUp
-import androidx.compose.material.icons.rounded.FastForward
-import androidx.compose.material.icons.rounded.FastRewind
-import androidx.compose.material.icons.rounded.Lyrics
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.OpenInFull
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -100,8 +101,11 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -182,6 +186,8 @@ fun AppleMusicStyleContent(
     onNext: () -> Unit,
     onSeekTo: (Long) -> Unit,
     onSelectQueueIndex: (Int) -> Unit,
+    onMoveQueueItem: (Int, Int) -> Unit = { _, _ -> },
+    onRemoveQueueItem: (Int, Track) -> Unit = { _, _ -> },
     onToggleLike: () -> Unit,
     onToggleShuffle: () -> Unit,
     onToggleRepeat: () -> Unit,
@@ -408,7 +414,9 @@ fun AppleMusicStyleContent(
                             onToggleShuffle = onToggleShuffle,
                             onToggleRepeat = onToggleRepeat,
                             onToggleEndlessMode = onToggleEndlessMode,
-                            onSelectQueueIndex = onSelectQueueIndex
+                            onSelectQueueIndex = onSelectQueueIndex,
+                            onMoveQueueItem = onMoveQueueItem,
+                            onRemoveQueueItem = onRemoveQueueItem
                         )
                     }
                 }
@@ -726,7 +734,7 @@ private fun AppleMusicTitleAndActionsRow(
             ) {
                 Crossfade(targetState = isLiked, label = "appleStarLike") { liked ->
                     Icon(
-                        imageVector = if (liked) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                        imageVector = if (liked) SimpIcons.Star else SimpIcons.StarBorder,
                         contentDescription = "Favorite",
                         tint = Color.White,
                         modifier = Modifier.size(23.dp)
@@ -739,7 +747,7 @@ private fun AppleMusicTitleAndActionsRow(
                 modifier = Modifier.size(36.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.MoreVert,
+                    imageVector = SimpIcons.MoreVert,
                     contentDescription = "More options",
                     tint = Color.White,
                     modifier = Modifier.size(22.dp)
@@ -848,21 +856,21 @@ private fun AppleMusicBottomControlsCluster(
             verticalAlignment = Alignment.CenterVertically
         ) {
             AppleMusicPressButton(
-                icon = Icons.Rounded.FastRewind,
+                icon = SimpIcons.FastRewind,
                 iconSize = 40.dp,
                 contentDescription = "Previous",
                 onClick = onPrevious
             )
 
             AppleMusicPressButton(
-                icon = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                icon = if (isPlaying) SimpIcons.Pause else SimpIcons.PlayArrow,
                 iconSize = 48.dp,
                 contentDescription = if (isPlaying) "Pause" else "Play",
                 onClick = onPlayPause
             )
 
             AppleMusicPressButton(
-                icon = Icons.Rounded.FastForward,
+                icon = SimpIcons.FastForward,
                 iconSize = 40.dp,
                 contentDescription = "Next",
                 onClick = onNext
@@ -877,7 +885,7 @@ private fun AppleMusicBottomControlsCluster(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.AutoMirrored.Rounded.VolumeMute,
+                imageVector = SimpIcons.VolumeMute,
                 contentDescription = "Mute volume",
                 tint = Color.White.copy(alpha = 0.68f),
                 modifier = Modifier.size(18.dp)
@@ -891,7 +899,7 @@ private fun AppleMusicBottomControlsCluster(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Icon(
-                imageVector = Icons.AutoMirrored.Rounded.VolumeUp,
+                imageVector = SimpIcons.VolumeUp,
                 contentDescription = "Increase volume",
                 tint = Color.White.copy(alpha = 0.68f),
                 modifier = Modifier.size(18.dp)
@@ -907,7 +915,7 @@ private fun AppleMusicBottomControlsCluster(
             verticalAlignment = Alignment.CenterVertically
         ) {
             AppleMusicDockButton(
-                icon = Icons.Rounded.Lyrics,
+                icon = SimpIcons.Lyrics,
                 selected = activeTab == AppleMusicTab.LYRICS,
                 enabled = hasLyrics || activeTab == AppleMusicTab.LYRICS,
                 contentDescription = "Lyrics",
@@ -1198,7 +1206,7 @@ private fun AppleMusicCompactTrackHeader(
         Spacer(modifier = Modifier.width(6.dp))
         IconButton(onClick = onToggleLike, modifier = Modifier.size(36.dp)) {
             Icon(
-                imageVector = if (isLiked) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                imageVector = if (isLiked) SimpIcons.Star else SimpIcons.StarBorder,
                 contentDescription = "Favorite",
                 tint = Color.White,
                 modifier = Modifier.size(23.dp)
@@ -1206,7 +1214,7 @@ private fun AppleMusicCompactTrackHeader(
         }
         IconButton(onClick = onOpenOptions, modifier = Modifier.size(36.dp)) {
             Icon(
-                imageVector = Icons.Rounded.MoreVert,
+                imageVector = SimpIcons.MoreVert,
                 contentDescription = "Options",
                 tint = Color.White,
                 modifier = Modifier.size(22.dp)
@@ -1306,7 +1314,7 @@ private fun AppleMusicLyricsBody(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            imageVector = Icons.Rounded.Share,
+                            imageVector = SimpIcons.Share,
                             contentDescription = "Share lyrics",
                             tint = Color.White,
                             modifier = Modifier.size(18.dp)
@@ -1323,7 +1331,7 @@ private fun AppleMusicLyricsBody(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            imageVector = Icons.Rounded.OpenInFull,
+                            imageVector = SimpIcons.OpenInFull,
                             contentDescription = "Fullscreen lyrics",
                             tint = Color.White,
                             modifier = Modifier.size(18.dp)
@@ -1449,7 +1457,9 @@ private fun AppleMusicQueueBody(
     onToggleShuffle: () -> Unit,
     onToggleRepeat: () -> Unit,
     onToggleEndlessMode: () -> Unit,
-    onSelectQueueIndex: (Int) -> Unit
+    onSelectQueueIndex: (Int) -> Unit,
+    onMoveQueueItem: (Int, Int) -> Unit,
+    onRemoveQueueItem: (Int, Track) -> Unit
 ) {
     val context = LocalContext.current
     val upcoming = remember(queue, currentQueueIndex) {
@@ -1550,8 +1560,11 @@ private fun AppleMusicQueueBody(
             }
         }
 
-        // Flush, borderless queue track rows sitting directly over the frosted mesh (Image 3 exact)
+        // Flush, swipe-to-remove & drag-to-reorder queue track rows sitting directly over the frosted mesh
         val listState = rememberLazyListState()
+        val dragState = rememberQueueDragReorderState(itemCount = upcoming.size) { fromRel, toRel ->
+            onMoveQueueItem(currentQueueIndex + 1 + fromRel, currentQueueIndex + 1 + toRel)
+        }
         LazyColumn(
             state = listState,
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp),
@@ -1577,55 +1590,100 @@ private fun AppleMusicQueueBody(
             } else {
                 itemsIndexed(upcoming, key = { idx, t -> "${t.id}_$idx" }) { idx, qTrack ->
                     val absoluteIdx = currentQueueIndex + 1 + idx
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable { onSelectQueueIndex(absoluteIdx) }
-                            .padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    val isDragged = dragState.isDragged(idx)
+                    val animatedShift by animateFloatAsState(
+                        targetValue = dragState.shiftAmountPx(idx),
+                        animationSpec = tween(durationMillis = 180),
+                        label = "am_queue_shift_$idx"
+                    )
+                    val dragScale by animateFloatAsState(
+                        targetValue = if (isDragged) 1.02f else 1f,
+                        animationSpec = tween(120),
+                        label = "am_queue_scale_$idx"
+                    )
+
+                    QueueSwipeRemoveBox(
+                        enabled = true,
+                        isDragged = isDragged,
+                        onRemove = { onRemoveQueueItem(absoluteIdx, qTrack) },
+                        modifier = Modifier.animateItem()
                     ) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(YouTubeParser.getHighResUrl(qTrack.albumArtUri, isWide = false) ?: qTrack.albumArtUri)
-                                .size(160, 160)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = qTrack.title,
-                            contentScale = ContentScale.Crop,
+                        Row(
                             modifier = Modifier
-                                .size(48.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = qTrack.title,
-                                fontFamily = poppinsFamily,
-                                fontSize = 14.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = qTrack.artist,
-                                fontFamily = poppinsFamily,
-                                fontSize = 12.sp,
-                                color = Color.White.copy(alpha = 0.68f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                        IconButton(
-                            onClick = { onOpenQueueItemOptions?.invoke(qTrack, absoluteIdx) ?: onOpenOptions(qTrack) },
-                            modifier = Modifier.size(34.dp)
+                                .fillMaxWidth()
+                                .onSizeChanged { size -> dragState.updateItemHeight(size.height.toFloat()) }
+                                .graphicsLayer {
+                                    translationY = if (isDragged) dragState.dragAccumPx else animatedShift
+                                    scaleX = dragScale
+                                    scaleY = dragScale
+                                }
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (isDragged) Color.White.copy(alpha = 0.14f) else Color.Transparent)
+                                .clickable { onSelectQueueIndex(absoluteIdx) }
+                                .padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(YouTubeParser.getHighResUrl(qTrack.albumArtUri, isWide = false) ?: qTrack.albumArtUri)
+                                    .size(160, 160)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = qTrack.title,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = qTrack.title,
+                                    fontFamily = poppinsFamily,
+                                    fontSize = 14.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = qTrack.artist,
+                                    fontFamily = poppinsFamily,
+                                    fontSize = 12.sp,
+                                    color = Color.White.copy(alpha = 0.68f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            IconButton(
+                                onClick = { onOpenQueueItemOptions?.invoke(qTrack, absoluteIdx) ?: onOpenOptions(qTrack) },
+                                modifier = Modifier.size(34.dp)
+                            ) {
+                                Icon(
+                                    imageVector = SimpIcons.MoreVert,
+                                    contentDescription = "Track options",
+                                    tint = Color.White.copy(alpha = 0.85f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                             Icon(
-                                imageVector = Icons.Rounded.MoreVert,
-                                contentDescription = "Track options",
-                                tint = Color.White.copy(alpha = 0.85f),
-                                modifier = Modifier.size(20.dp)
+                                imageVector = SimpIcons.DragHandle,
+                                contentDescription = "Drag to reorder",
+                                tint = Color.White.copy(alpha = if (isDragged) 0.95f else 0.45f),
+                                modifier = Modifier
+                                    .padding(start = 2.dp, end = 4.dp)
+                                    .size(22.dp)
+                                    .pointerInput(idx) {
+                                        detectDragGestures(
+                                            onDragStart = { dragState.onDragStart(idx) },
+                                            onDragEnd = { dragState.onDragEnd() },
+                                            onDragCancel = { dragState.onDragEnd() },
+                                            onDrag = { change, dragAmount ->
+                                                change.consume()
+                                                dragState.onDrag(dragAmount.y)
+                                            }
+                                        )
+                                    }
                             )
                         }
                     }

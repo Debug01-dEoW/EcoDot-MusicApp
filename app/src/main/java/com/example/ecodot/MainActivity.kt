@@ -1,4 +1,10 @@
 package com.example.ecodot
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.Home
+import com.example.ecodot.ui.theme.LibraryMusic
+import com.example.ecodot.ui.theme.Search
+import com.example.ecodot.ui.theme.Wifi
+import com.example.ecodot.ui.theme.WifiOff
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -14,8 +20,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.*
@@ -518,7 +522,7 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(
-                                imageVector = if (isBannerSuccess) Icons.Rounded.Wifi else Icons.Rounded.WifiOff,
+                                imageVector = if (isBannerSuccess) SimpIcons.Wifi else SimpIcons.WifiOff,
                                 contentDescription = null,
                                 tint = if (isBannerSuccess) Color(0xFF1DB954) else Color(0xFFFF3B30),
                                 modifier = Modifier.size(20.dp)
@@ -594,9 +598,9 @@ fun DynamicIslandNavBar(
     hazeState: HazeState? = null
 ) {
     val navItems = listOf(
-        Triple("home",    Icons.Rounded.Home,         "Home"),
-        Triple("search",  Icons.Rounded.Search,       "Search"),
-        Triple("library", Icons.Rounded.LibraryMusic, "Library"),
+        Triple("home",    SimpIcons.Home,         "Home"),
+        Triple("search",  SimpIcons.Search,       "Search"),
+        Triple("library", SimpIcons.LibraryMusic, "Library"),
     )
 
     val selectedIndex = when (currentRoute) {

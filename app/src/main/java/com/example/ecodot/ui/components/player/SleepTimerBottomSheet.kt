@@ -1,4 +1,7 @@
 package com.example.ecodot.ui.components.player
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.QueueMusic
+import com.example.ecodot.ui.theme.Timer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -6,9 +9,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -57,7 +57,7 @@ fun SleepTimerBottomSheet(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Timer,
+                        imageVector = SimpIcons.Timer,
                         contentDescription = null,
                         tint = EcoDotRed,
                         modifier = Modifier.size(22.dp)
@@ -192,7 +192,7 @@ fun SleepTimerBottomSheet(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.QueueMusic,
+                            imageVector = SimpIcons.QueueMusic,
                             contentDescription = null,
                             tint = Color.White.copy(alpha = 0.6f),
                             modifier = Modifier.size(18.dp)

@@ -1,4 +1,14 @@
 package com.example.ecodot.ui.components
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.Close
+import com.example.ecodot.ui.theme.GraphicEq
+import com.example.ecodot.ui.theme.Mic
+import com.example.ecodot.ui.theme.MicOff
+import com.example.ecodot.ui.theme.MusicNote
+import com.example.ecodot.ui.theme.MusicOff
+import com.example.ecodot.ui.theme.PlayArrow
+import com.example.ecodot.ui.theme.Refresh
+import com.example.ecodot.ui.theme.Replay
 
 import android.Manifest
 import android.content.Context
@@ -19,8 +29,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -128,7 +136,7 @@ fun SongRecognitionBottomSheet(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.GraphicEq,
+                        imageVector = SimpIcons.GraphicEq,
                         contentDescription = null,
                         tint = EcoDotRed,
                         modifier = Modifier.size(20.dp)
@@ -154,7 +162,7 @@ fun SongRecognitionBottomSheet(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.Close,
+                            imageVector = SimpIcons.Close,
                             contentDescription = "Close",
                             tint = Color.White.copy(alpha = 0.7f),
                             modifier = Modifier.size(16.dp)
@@ -169,7 +177,7 @@ fun SongRecognitionBottomSheet(
             when {
                 !micGranted -> {
                     RecognitionOrb(
-                        icon = Icons.Rounded.MicOff,
+                        icon = SimpIcons.MicOff,
                         muted = true
                     )
                     Spacer(modifier = Modifier.height(20.dp))
@@ -195,7 +203,7 @@ fun SongRecognitionBottomSheet(
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.fillMaxWidth(0.8f).height(48.dp)
                     ) {
-                        Icon(Icons.Rounded.Mic, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(SimpIcons.Mic, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Grant Permission", fontWeight = FontWeight.Bold)
                     }
@@ -220,7 +228,7 @@ fun SongRecognitionBottomSheet(
                             )
                         } else {
                             Icon(
-                                imageVector = Icons.Rounded.MusicNote,
+                                imageVector = SimpIcons.MusicNote,
                                 contentDescription = null,
                                 tint = EcoDotRed,
                                 modifier = Modifier.size(60.dp)
@@ -270,7 +278,7 @@ fun SongRecognitionBottomSheet(
                                 brush = Brush.horizontalGradient(listOf(Color.White.copy(alpha = 0.2f), Color.White.copy(alpha = 0.2f)))
                             )
                         ) {
-                            Icon(Icons.Rounded.Replay, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            Icon(SimpIcons.Replay, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
                             Text("Listen Again", color = Color.White, fontWeight = FontWeight.SemiBold)
                         }
@@ -286,7 +294,7 @@ fun SongRecognitionBottomSheet(
                             shape = RoundedCornerShape(16.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = EcoDotRed)
                         ) {
-                            Icon(Icons.Rounded.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Icon(SimpIcons.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
                             Spacer(Modifier.width(6.dp))
                             Text("Play & Search", fontWeight = FontWeight.Bold)
                         }
@@ -295,7 +303,7 @@ fun SongRecognitionBottomSheet(
 
                 recognition is Recognition.NoMatch || recognition is Recognition.Failed -> {
                     RecognitionOrb(
-                        icon = Icons.Rounded.MusicOff,
+                        icon = SimpIcons.MusicOff,
                         muted = true
                     )
                     Spacer(modifier = Modifier.height(20.dp))
@@ -319,7 +327,7 @@ fun SongRecognitionBottomSheet(
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.fillMaxWidth(0.75f).height(48.dp)
                     ) {
-                        Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(SimpIcons.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Try Again", fontWeight = FontWeight.Bold)
                     }
@@ -328,7 +336,7 @@ fun SongRecognitionBottomSheet(
                 else -> {
                     val isListening = recognition is Recognition.Listening
                     RecognitionOrb(
-                        icon = if (isListening) Icons.Rounded.GraphicEq else Icons.Rounded.MusicNote,
+                        icon = if (isListening) SimpIcons.GraphicEq else SimpIcons.MusicNote,
                         listening = isListening
                     )
                     Spacer(modifier = Modifier.height(24.dp))

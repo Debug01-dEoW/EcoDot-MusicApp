@@ -14,13 +14,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,7 +40,6 @@ import com.example.ecodot.ui.viewmodel.MusicViewModel
 import com.example.ecodot.ui.theme.*
 import com.example.ecodot.ui.components.*
 import kotlin.math.min
-import androidx.compose.material.icons.rounded.DownloadDone
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,7 +78,7 @@ fun AlbumDetailScreen(
                     interactionSource = interactionSource,
                     shape = RoundedCornerShape(18.dp)
                 ) {
-                    Icon(Icons.Rounded.PlayArrow, contentDescription = "Play All", modifier = Modifier.size(32.dp))
+                    Icon(SimpIcons.PlayArrow, contentDescription = "Play All", modifier = Modifier.size(32.dp))
                 }
             }
         }
@@ -226,7 +218,7 @@ fun AlbumDetailScreen(
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
                                     Icon(
-                                        imageVector = if (isAlbumSaved) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                        imageVector = if (isAlbumSaved) SimpIcons.Favorite else SimpIcons.FavoriteBorder,
                                         contentDescription = null,
                                         tint = if (isAlbumSaved) EcoDotRed else Color.White,
                                         modifier = Modifier.size(18.dp)
@@ -316,11 +308,11 @@ fun AlbumDetailScreen(
                                         Text("${(progress * 100).toInt()}%", fontSize = 8.sp, color = Color.White, fontWeight = FontWeight.Bold)
                                     }
                                 } else if (isDownloaded) {
-                                    Icon(Icons.Rounded.DownloadDone, contentDescription = "Downloaded", tint = Color(0xFF4CAF50), modifier = Modifier.size(20.dp))
+                                    Icon(SimpIcons.DownloadDone, contentDescription = "Downloaded", tint = Color(0xFF4CAF50), modifier = Modifier.size(20.dp))
                                 }
                                 
                                 IconButton(onClick = { optionsMenuTrack = track }) {
-                                    Icon(Icons.Rounded.MoreVert, contentDescription = null, tint = Color.White.copy(alpha = 0.4f))
+                                    Icon(SimpIcons.MoreVert, contentDescription = null, tint = Color.White.copy(alpha = 0.4f))
                                 }
                             }
                         }
@@ -353,7 +345,7 @@ fun AlbumDetailScreen(
                         },
                         modifier = Modifier.background(Color.Black.copy(0.3f), CircleShape)
                     ) {
-                        Icon(Icons.Rounded.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(SimpIcons.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                     
                     Spacer(Modifier.width(16.dp))

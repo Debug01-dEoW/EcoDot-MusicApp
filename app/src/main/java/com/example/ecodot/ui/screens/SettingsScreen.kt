@@ -1,4 +1,6 @@
 package com.example.ecodot.ui.screens
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.ArrowBackIos
 
 import android.content.Intent
 import android.media.audiofx.AudioEffect
@@ -21,8 +23,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBackIos
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -751,7 +751,7 @@ private fun SettingTopBar(
                 modifier = Modifier.padding(horizontal = 4.dp)
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBackIos,
+                    imageVector = SimpIcons.ArrowBackIos,
                     contentDescription = "Back",
                     tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(20.dp)

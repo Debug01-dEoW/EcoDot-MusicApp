@@ -1,8 +1,11 @@
 package com.example.ecodot.util
 
 import androidx.compose.ui.graphics.Color
-import com.google.gson.Gson
+import com.squareup.moshi.JsonClass
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 
+@JsonClass(generateAdapter = true)
 data class CustomCover(
     val startColor: String = "#FF1DB954",
     val endColor: String = "#FF070708",
@@ -11,19 +14,18 @@ data class CustomCover(
 )
 
 object PlaylistCustomizer {
-    private val gson = Gson()
+    private val moshi = Moshi.Builder()
+        .addLast(KotlinJsonAdapterFactory())
+        .build()
+    private val coverAdapter = moshi.adapter(CustomCover::class.java)
 
     fun parseCustomCover(json: String?): CustomCover? {
         if (json.isNullOrEmpty() || !json.trim().startsWith("{")) return null
-        return try {
-            gson.fromJson(json, CustomCover::class.java)
-        } catch (e: Exception) {
-            null
-        }
+        return runCatching { coverAdapter.fromJson(json) }.getOrNull()
     }
 
     fun serializeCustomCover(cover: CustomCover): String {
-        return gson.toJson(cover)
+        return coverAdapter.toJson(cover)
     }
 
     fun parseColorSafe(hex: String, fallback: Color): Color {

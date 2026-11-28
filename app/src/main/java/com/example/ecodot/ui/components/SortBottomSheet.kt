@@ -1,13 +1,13 @@
 package com.example.ecodot.ui.components
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.Check
+import com.example.ecodot.ui.theme.Close
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -66,7 +66,7 @@ fun SortBottomSheet(
                     modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
-                        Icons.Rounded.Close,
+                        SimpIcons.Close,
                         contentDescription = "Close",
                         tint = Color.White.copy(alpha = 0.6f)
                     )
@@ -104,7 +104,7 @@ fun SortBottomSheet(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                Icons.Rounded.Check,
+                                SimpIcons.Check,
                                 contentDescription = null,
                                 tint = Color.Black,
                                 modifier = Modifier.size(16.dp)

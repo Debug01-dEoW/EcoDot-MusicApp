@@ -1,6 +1,10 @@
 @file:OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 
 package com.example.ecodot.ui.screens
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.ArrowBack
+import com.example.ecodot.ui.theme.PlayArrow
+import com.example.ecodot.ui.theme.Refresh
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -28,11 +32,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -153,7 +152,7 @@ fun BrowseScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        imageVector = SimpIcons.ArrowBack,
                         contentDescription = "Back",
                         tint = Color.White,
                         modifier = Modifier.size(20.dp)
@@ -200,7 +199,7 @@ fun BrowseScreen(
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.PlayArrow,
+                                imageVector = SimpIcons.PlayArrow,
                                 contentDescription = null,
                                 tint = Color(0xFF1E1035),
                                 modifier = Modifier.size(16.dp)
@@ -220,7 +219,7 @@ fun BrowseScreen(
                     modifier = Modifier.size(38.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Refresh,
+                        imageVector = SimpIcons.Refresh,
                         contentDescription = "Refresh",
                         tint = Color.White.copy(alpha = 0.85f),
                         modifier = Modifier.size(20.dp)

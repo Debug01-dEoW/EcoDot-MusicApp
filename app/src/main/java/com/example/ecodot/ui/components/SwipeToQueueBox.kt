@@ -1,4 +1,6 @@
 package com.example.ecodot.ui.components
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.PlaylistAdd
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -7,8 +9,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -82,7 +82,7 @@ fun SwipeToQueueBox(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.PlaylistAdd,
+                        imageVector = SimpIcons.PlaylistAdd,
                         contentDescription = "Add to Queue",
                         tint = if (isReady) Color.White else Color.White.copy(alpha = 0.7f),
                         modifier = Modifier.size(20.dp)

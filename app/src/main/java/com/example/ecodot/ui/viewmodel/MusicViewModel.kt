@@ -62,7 +62,9 @@ import com.example.ecodot.data.remote.LrcLibResponse
 import com.example.ecodot.data.remote.VideoInfo
 import androidx.compose.ui.graphics.Color
 import android.os.Bundle
-import com.google.gson.Gson
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import androidx.palette.graphics.Palette
@@ -1593,7 +1595,9 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
                 mediaController?.sessionExtras?.let { applyStreamTelemetryExtras(it) }
                 
                 // Initial sync upon connect
-                val json = Gson().toJson(_playbackQueue.value)
+                val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
+                val queueType = Types.newParameterizedType(List::class.java, Track::class.java)
+                val json = moshi.adapter<List<Track>>(queueType).toJson(_playbackQueue.value)
                 _controller.value?.sendCustomCommand(
                     SessionCommand(EcoDotSessionService.ACTION_UPDATE_QUEUE, Bundle.EMPTY),
                     Bundle().apply { putString("queue_json", json) }
@@ -3758,19 +3762,23 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             try {
                 // 1. Create custom theme JSON based on mood
-                val theme = when (mood) {
-                    "Chill" -> com.google.gson.Gson().toJson(com.example.ecodot.util.CustomCover("#FFF857A6", "#FFFF5858", false, listOf("daily", mood.lowercase())))
-                    "Focus" -> com.google.gson.Gson().toJson(com.example.ecodot.util.CustomCover("#FF00C9FF", "#FF92FE9D", false, listOf("daily", mood.lowercase())))
-                    "Workout" -> com.google.gson.Gson().toJson(com.example.ecodot.util.CustomCover("#FFFF007F", "#FF3F00FF", false, listOf("daily", mood.lowercase())))
-                    "Party" -> com.google.gson.Gson().toJson(com.example.ecodot.util.CustomCover("#FF7F00FF", "#FFE100FF", false, listOf("daily", mood.lowercase())))
-                    "Sleep" -> com.google.gson.Gson().toJson(com.example.ecodot.util.CustomCover("#FF0B3C5D", "#FF328CC1", false, listOf("daily", mood.lowercase())))
-                    "Study" -> com.google.gson.Gson().toJson(com.example.ecodot.util.CustomCover("#FF1D2731", "#FF007A87", false, listOf("daily", mood.lowercase())))
-                    "Upbeat" -> com.google.gson.Gson().toJson(com.example.ecodot.util.CustomCover("#FFF9D423", "#FFFF4E50", false, listOf("daily", mood.lowercase())))
-                    "Romance" -> com.google.gson.Gson().toJson(com.example.ecodot.util.CustomCover("#FFFF2658", "#FF86002A", false, listOf("daily", mood.lowercase())))
-                    "Gaming" -> com.google.gson.Gson().toJson(com.example.ecodot.util.CustomCover("#FF00F2FE", "#FF4FACFE", false, listOf("daily", mood.lowercase())))
-                    "Acoustic" -> com.google.gson.Gson().toJson(com.example.ecodot.util.CustomCover("#FFB8A9C9", "#FF5B92E5", false, listOf("daily", mood.lowercase())))
-                    else -> com.google.gson.Gson().toJson(com.example.ecodot.util.CustomCover("#FF1DB954", "#FF070708", false, listOf("daily")))
-                }
+                val moodPalette = mapOf(
+                    "Chill" to ("#FFF857A6" to "#FFFF5858"),
+                    "Focus" to ("#FF00C9FF" to "#FF92FE9D"),
+                    "Workout" to ("#FFFF007F" to "#FF3F00FF"),
+                    "Party" to ("#FF7F00FF" to "#FFE100FF"),
+                    "Sleep" to ("#FF0B3C5D" to "#FF328CC1"),
+                    "Study" to ("#FF1D2731" to "#FF007A87"),
+                    "Upbeat" to ("#FFF9D423" to "#FFFF4E50"),
+                    "Romance" to ("#FFFF2658" to "#FF86002A"),
+                    "Gaming" to ("#FF00F2FE" to "#FF4FACFE"),
+                    "Acoustic" to ("#FFB8A9C9" to "#FF5B92E5")
+                )
+                val (startHex, endHex) = moodPalette[mood] ?: ("#FF1DB954" to "#FF070708")
+                val coverTags = if (moodPalette.containsKey(mood)) listOf("daily", mood.lowercase()) else listOf("daily")
+                val theme = com.example.ecodot.util.PlaylistCustomizer.serializeCustomCover(
+                    com.example.ecodot.util.CustomCover(startHex, endHex, false, coverTags)
+                )
 
                 val playlistId = repository.createPlaylist(name, "Your personalized daily $mood mix using $strategy strategy.")
                 val playlists = repository.allPlaylists.first()

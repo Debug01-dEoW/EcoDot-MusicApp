@@ -46,9 +46,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.*
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -246,6 +243,10 @@ fun NowPlayingScreen(
     val canvasPlayer by viewModel.canvasPlayer.collectAsState()
     val playerStyle by viewModel.playerStyle.collectAsState()
     val context = androidx.compose.ui.platform.LocalContext.current
+
+    LaunchedEffect(currentTrack?.id) {
+        currentTrack?.takeIf { it.isYouTube }?.let { viewModel.ensureVideoInfoLoaded(it.id) }
+    }
 
     var showPlayerStyleSheet by remember { mutableStateOf(false) }
     var showAudioOutputSheet by remember { mutableStateOf(false) }
@@ -554,6 +555,8 @@ fun NowPlayingScreen(
                 onNext = { viewModel.skipNext() },
                 onSeekTo = { viewModel.seekTo(it) },
                 onSelectQueueIndex = { idx -> viewModel.skipToQueueItem(idx) },
+                onMoveQueueItem = { fromIdx, toIdx -> viewModel.moveQueueItem(fromIdx, toIdx) },
+                onRemoveQueueItem = { absIdx, qTrack -> viewModel.removeFromQueue(absIdx, qTrack) },
                 onToggleLike = { viewModel.likeCurrentTrack() },
                 onToggleShuffle = { viewModel.toggleShuffle() },
                 onToggleRepeat = { viewModel.cycleRepeatMode() },
@@ -628,10 +631,8 @@ fun NowPlayingScreen(
                 modifier = Modifier.fillMaxSize()
             )
         } else if (activeTrackForStyle != null && playerStyle == com.example.ecodot.data.local.prefs.PlayerStyle.SPOTIFY) {
-            val artistStatsSummary = remember(activeTrackForStyle.artist, artistUiState.subscribers) {
-                getArtistStats(activeTrackForStyle.artist, artistUiState.subscribers).let { (monthly, _) ->
-                    "$monthly monthly listeners"
-                }
+            val artistStatsSummary = remember(artistUiState.subscribers) {
+                artistUiState.subscribers?.trim().orEmpty()
             }
             SpotifyStyleContent(
                 track = activeTrackForStyle,
@@ -858,7 +859,7 @@ fun NowPlayingScreen(
                             onBackClick()
                         }) {
                             Icon(
-                                Icons.Rounded.KeyboardArrowDown,
+                                SimpIcons.KeyboardArrowDown,
                                 contentDescription = "Minimize",
                                 tint = Color.White,
                                 modifier = Modifier.size(28.dp)
@@ -936,7 +937,7 @@ fun NowPlayingScreen(
                             }
                             IconButton(onClick = { showPlayerStyleSheet = true }) {
                                 Icon(
-                                    Icons.Rounded.Style,
+                                    SimpIcons.Style,
                                     contentDescription = "Switch player style",
                                     tint = Color.White.copy(alpha = 0.9f),
                                     modifier = Modifier.size(21.dp)
@@ -944,7 +945,7 @@ fun NowPlayingScreen(
                             }
                             IconButton(onClick = { currentTrack?.let { optionsMenuTrack = it } }) {
                                 Icon(
-                                    Icons.Rounded.MoreVert,
+                                    SimpIcons.MoreVert,
                                     contentDescription = "Options",
                                     tint = Color.White,
                                     modifier = Modifier.size(24.dp)
@@ -1221,8 +1222,8 @@ fun NowPlayingScreen(
                                                 .crossfade(true)
                                                 .build(),
                                             contentDescription = track.title,
-                                            placeholder = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Rounded.MusicNote),
-                                            error = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Rounded.MusicNote),
+                                            placeholder = androidx.compose.ui.graphics.vector.rememberVectorPainter(SimpIcons.MusicNote),
+                                            error = androidx.compose.ui.graphics.vector.rememberVectorPainter(SimpIcons.MusicNote),
                                             onError = {
                                                 com.example.ecodot.data.remote.YouTubeParser.getFallbackThumbUrl(currentArtworkUrl)?.let { fallback ->
                                                     currentArtworkUrl = fallback
@@ -1488,7 +1489,7 @@ fun NowPlayingScreen(
                                         label = "heart_scale"
                                     )
                                     Icon(
-                                        imageVector = if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                        imageVector = if (isLiked) SimpIcons.Favorite else SimpIcons.FavoriteBorder,
                                         contentDescription = "Like",
                                         tint = if (isLiked) Color(0xFFFF1744) else Color.White,
                                         modifier = Modifier
@@ -1715,7 +1716,7 @@ fun NowPlayingScreen(
                                                 modifier = Modifier.size(32.dp)
                                             ) {
                                                 Icon(
-                                                    Icons.Rounded.Share,
+                                                    SimpIcons.Share,
                                                     contentDescription = "Share",
                                                     tint = Color.White,
                                                     modifier = Modifier.size(17.dp)
@@ -1734,7 +1735,7 @@ fun NowPlayingScreen(
                                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                                 ) {
                                                     Icon(
-                                                        Icons.Rounded.Fullscreen,
+                                                        SimpIcons.Fullscreen,
                                                         contentDescription = "Expand",
                                                         tint = Color.White,
                                                         modifier = Modifier.size(15.dp)
@@ -1799,10 +1800,15 @@ fun NowPlayingScreen(
                     // 7. About the Artist Card
                     item {
                         Spacer(modifier = Modifier.height(24.dp))
-                        val stats = remember(track.artist, artistUiState.subscribers) {
-                            getArtistStats(track.artist, artistUiState.subscribers)
-                        }
-                        
+                        val subscriberBadge = artistUiState.subscribers
+                            ?.takeIf { it.isNotBlank() }
+                            ?.uppercase()
+                            ?: if (track.isYouTube) "YOUTUBE MUSIC ARTIST" else "LOCAL ARTIST"
+                        val artistSubline = artistUiState.subscribers
+                            ?.takeIf { it.isNotBlank() }
+                            ?: track.album.takeIf { it.isNotBlank() && !it.equals("Unknown Album", true) }
+                            ?: "EcoDot Library"
+
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1835,14 +1841,14 @@ fun NowPlayingScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Rounded.Person,
+                                        imageVector = SimpIcons.Person,
                                         contentDescription = null,
                                         tint = Color.White.copy(alpha = 0.06f),
                                         modifier = Modifier.size(100.dp)
                                     )
                                 }
                             }
-                            
+
                             // Dark gradient overlay
                             Box(
                                 modifier = Modifier
@@ -1857,7 +1863,7 @@ fun NowPlayingScreen(
                                         )
                                     )
                             )
-                            
+
                             Column(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -1869,7 +1875,6 @@ fun NowPlayingScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // Seeded World Rank Badge
                                     Box(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(percent = 50))
@@ -1878,7 +1883,7 @@ fun NowPlayingScreen(
                                             .padding(horizontal = 10.dp, vertical = 4.dp)
                                     ) {
                                         Text(
-                                            text = stats.second.uppercase(),
+                                            text = subscriberBadge,
                                             style = MaterialTheme.typography.labelSmall.copy(
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 9.sp,
@@ -1887,7 +1892,7 @@ fun NowPlayingScreen(
                                             color = Color.White
                                         )
                                     }
-                                    
+
                                     Text(
                                         text = "ABOUT THE ARTIST",
                                         style = MaterialTheme.typography.labelSmall.copy(
@@ -1898,7 +1903,7 @@ fun NowPlayingScreen(
                                         color = Color.White.copy(alpha = 0.5f)
                                     )
                                 }
-                                
+
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Text(
                                         text = track.artist,
@@ -1907,7 +1912,7 @@ fun NowPlayingScreen(
                                         color = Color.White
                                     )
                                     Text(
-                                        text = stats.first,
+                                        text = artistSubline,
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = Color.White.copy(alpha = 0.7f),
                                         fontWeight = FontWeight.Medium
@@ -1927,7 +1932,7 @@ fun NowPlayingScreen(
                         }
                     }
 
-                    // 8. Credits Card
+                    // 8. Credits Card (synced from video metadata & description)
                     item {
                         Spacer(modifier = Modifier.height(20.dp))
                         Text(
@@ -1940,11 +1945,31 @@ fun NowPlayingScreen(
                                 .fillMaxWidth()
                                 .padding(horizontal = 24.dp, vertical = 8.dp)
                         )
-                        
-                        val songCredits = remember(track.title, track.artist) {
-                            getSeededCredits(track.title, track.artist)
+
+                        val syncedInfo = videoInfo?.takeIf { it.videoId == track.id }
+                        val parsedDescriptionCredits = remember(syncedInfo?.description) {
+                            syncedInfo?.description
+                                ?.takeIf { it.isNotBlank() }
+                                ?.let { com.example.ecodot.ui.components.player.parseYouTubeDescription(it).first }
+                                .orEmpty()
                         }
-                        
+                        val songCredits = remember(track.id, syncedInfo, parsedDescriptionCredits) {
+                            if (parsedDescriptionCredits.isNotEmpty()) {
+                                parsedDescriptionCredits
+                            } else {
+                                buildList {
+                                    add("Performing Artist" to track.artist)
+                                    syncedInfo?.channelName
+                                        ?.takeIf { it.isNotBlank() && !it.equals(track.artist, ignoreCase = true) }
+                                        ?.let { add("Channel" to it) }
+                                    track.album
+                                        .takeIf { it.isNotBlank() && !it.equals("Unknown Album", true) }
+                                        ?.let { add("Album" to it) }
+                                    add("Source" to if (track.isYouTube) "YouTube Music" else "Local Storage")
+                                }
+                            }
+                        }
+
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -2048,7 +2073,7 @@ fun NowPlayingScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(onClick = { viewModel.likeCurrentTrack() }) {
                                 Icon(
-                                    imageVector = if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                    imageVector = if (isLiked) SimpIcons.Favorite else SimpIcons.FavoriteBorder,
                                     contentDescription = "Like",
                                     tint = if (isLiked) EcoDotRed else Color.White,
                                     modifier = Modifier.size(24.dp)
@@ -2098,15 +2123,10 @@ fun NowPlayingScreen(
 
     // QUEUE BOTTOM SHEET
     if (showQueueSheet) {
-        // Local mutable copy for instant visual reordering without waiting for ViewModel
         val upcomingBase = playbackQueue.drop(currentQueueIndex + 1)
-        // draggedIndex: index within upcomingBase of the item being dragged (-1 = none)
-        var draggedFromIndex by remember { mutableIntStateOf(-1) }
-        var draggedToIndex by remember { mutableIntStateOf(-1) }
-        // Raw cumulative drag in pixels
-        var dragAccumPx by remember { mutableFloatStateOf(0f) }
-        // Item height in px, measured once
-        var itemHeightPx by remember { mutableFloatStateOf(72f) }
+        val dragState = rememberQueueDragReorderState(itemCount = upcomingBase.size) { fromRel, toRel ->
+            viewModel.moveQueueItem(currentQueueIndex + 1 + fromRel, currentQueueIndex + 1 + toRel)
+        }
         val queueListState = rememberLazyListState()
         val coroutineScope = rememberCoroutineScope()
 
@@ -2150,7 +2170,7 @@ fun NowPlayingScreen(
                                 }
                             }
                             IconButton(onClick = { optionsMenuTrack = track }) {
-                                Icon(Icons.Rounded.MoreVert, contentDescription = null, tint = Color.White.copy(alpha = 0.5f))
+                                Icon(SimpIcons.MoreVert, contentDescription = null, tint = Color.White.copy(alpha = 0.5f))
                             }
                         }
                     }
@@ -2185,119 +2205,38 @@ fun NowPlayingScreen(
                     ) { i ->
                         val relativeIndex = i % upcomingBase.size
                         val track = upcomingBase[relativeIndex]
-                        // Only the first cycle (occurrence=0) is the real queue; rest are endless repeats
                         val isEndlessRepeat = (i / upcomingBase.size) > 0
-                        // absoluteIndex only valid for first cycle
                         val absoluteIndex = currentQueueIndex + 1 + relativeIndex
-
-                        // Drag visual: this item is "floated" if it's the dragged one
-                        val isDragged = draggedFromIndex == relativeIndex && !isEndlessRepeat
-
-                        // Items between from..to should visually shift to make room
-                        val isShifted = !isEndlessRepeat && draggedFromIndex != -1 && draggedToIndex != -1 && run {
-                            val lo = minOf(draggedFromIndex, draggedToIndex)
-                            val hi = maxOf(draggedFromIndex, draggedToIndex)
-                            relativeIndex in lo..hi && relativeIndex != draggedFromIndex
-                        }
-                        val shiftAmount = if (isShifted) {
-                            if (draggedToIndex > draggedFromIndex) -itemHeightPx else itemHeightPx
-                        } else 0f
+                        val isDragged = !isEndlessRepeat && dragState.isDragged(relativeIndex)
                         val animatedShift by animateFloatAsState(
-                            targetValue = shiftAmount,
+                            targetValue = if (isEndlessRepeat) 0f else dragState.shiftAmountPx(relativeIndex),
                             animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
                             label = "shift_anim_$relativeIndex"
                         )
 
                         val uniqueItemKey = "${track.id}_${relativeIndex}_${i / upcomingBase.size}"
                         key(uniqueItemKey) {
-                            // Swipe state — created once per unique key.
-                            // isDragged captured via rememberUpdatedState so the lambda always sees the latest value.
-                            val isDraggedState = rememberUpdatedState<Boolean>(isDragged)
-                            val dismissState = rememberSwipeToDismissBoxState(
-                                confirmValueChange = { value ->
-                                    if (!isEndlessRepeat && !isDraggedState.value &&
-                                        (value == SwipeToDismissBoxValue.EndToStart || value == SwipeToDismissBoxValue.StartToEnd)
-                                    ) {
-                                        viewModel.removeFromQueue(absoluteIndex, track)
-                                        true
-                                    } else false
-                                },
-                                positionalThreshold = { total -> total * 0.35f }
-                            )
-
-                            SwipeToDismissBox(
-                                state = dismissState,
-                                modifier = Modifier.animateItem(),
-                                backgroundContent = {
-                                    val fraction = runCatching { dismissState.requireOffset() }
-                                        .getOrDefault(0f)
-                                        .let { (kotlin.math.abs(it) / 300f).coerceIn(0f, 1f) }
-                                    val bgColor = Color(
-                                        red = (0.17f * fraction).coerceIn(0f, 1f),
-                                        green = 0f,
-                                        blue = 0f,
-                                        alpha = fraction
-                                    )
-                                    val iconAlpha = fraction.coerceIn(0f, 1f)
-                                    val iconAlign = if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd)
-                                        Alignment.CenterStart else Alignment.CenterEnd
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(bgColor)
-                                            .padding(horizontal = 24.dp),
-                                        contentAlignment = iconAlign
-                                    ) {
-                                        Icon(
-                                            Icons.Rounded.Delete,
-                                            contentDescription = "Remove from Queue",
-                                            tint = Color.White.copy(alpha = iconAlpha)
-                                        )
-                                    }
-                                }
+                            QueueSwipeRemoveBox(
+                                enabled = !isEndlessRepeat,
+                                isDragged = isDragged,
+                                onRemove = { viewModel.removeFromQueue(absoluteIndex, track) },
+                                modifier = Modifier.animateItem()
                             ) {
                                 QueueTrackRow(
                                     track = track,
                                     isDragged = isDragged,
                                     animatedShiftPx = animatedShift,
-                                    dragOffsetPx = if (isDragged) dragAccumPx else 0f,
+                                    dragOffsetPx = if (isDragged) dragState.dragAccumPx else 0f,
                                     accentColor = accentColor,
                                     onTrackClick = { if (!isEndlessRepeat) viewModel.skipToQueueItem(absoluteIndex) },
-                                    onOptionsClick = { optionsMenuTrack = track },
-                                    onItemHeightMeasured = { h -> if (h > 0f) itemHeightPx = h },
-                                    onDragStart = {
-                                        if (!isEndlessRepeat) {
-                                            draggedFromIndex = relativeIndex
-                                            draggedToIndex = relativeIndex
-                                            dragAccumPx = 0f
-                                        }
+                                    onOptionsClick = {
+                                        optionsMenuQueueIndex = if (!isEndlessRepeat) absoluteIndex else null
+                                        optionsMenuTrack = track
                                     },
-                                    onDrag = { dy ->
-                                        if (draggedFromIndex != -1) {
-                                            dragAccumPx += dy
-                                            val rawSteps = dragAccumPx / itemHeightPx
-                                            val steps = if (rawSteps > 0) (rawSteps + 0.5f).toInt()
-                                                        else (rawSteps - 0.5f).toInt()
-                                            val newTarget = (draggedFromIndex + steps)
-                                                .coerceIn(0, upcomingBase.size - 1)
-                                            draggedToIndex = newTarget
-                                        }
-                                    },
-                                    onDragEnd = {
-                                        val from = draggedFromIndex
-                                        val to = draggedToIndex
-                                        draggedFromIndex = -1
-                                        draggedToIndex = -1
-                                        dragAccumPx = 0f
-                                        if (from != -1 && from != to) {
-                                            viewModel.moveQueueItem(
-                                                currentQueueIndex + 1 + from,
-                                                currentQueueIndex + 1 + to
-                                            )
-                                        }
-                                    }
+                                    onItemHeightMeasured = { dragState.updateItemHeight(it) },
+                                    onDragStart = { if (!isEndlessRepeat) dragState.onDragStart(relativeIndex) },
+                                    onDrag = { dy -> dragState.onDrag(dy) },
+                                    onDragEnd = { dragState.onDragEnd() }
                                 )
                             }
                         }
@@ -2361,7 +2300,7 @@ fun NowPlayingScreen(
                             }
                             IconButton(onClick = { viewModel.addToQueue(track) }) {
                                 Icon(
-                                    Icons.Rounded.AddCircleOutline,
+                                    SimpIcons.AddCircleOutline,
                                     contentDescription = "Add to Queue",
                                     tint = accentColor
                                 )

@@ -1,4 +1,26 @@
 package com.example.ecodot.ui.components
+import com.example.ecodot.ui.theme.Add
+import com.example.ecodot.ui.theme.Album
+import com.example.ecodot.ui.theme.ArrowBack
+import com.example.ecodot.ui.theme.Cancel
+import com.example.ecodot.ui.theme.ChevronRight
+import com.example.ecodot.ui.theme.ContentCut
+import com.example.ecodot.ui.theme.Delete
+import com.example.ecodot.ui.theme.Download
+import com.example.ecodot.ui.theme.DownloadDone
+import com.example.ecodot.ui.theme.Favorite
+import com.example.ecodot.ui.theme.FavoriteBorder
+import com.example.ecodot.ui.theme.Movie
+import com.example.ecodot.ui.theme.MusicNote
+import com.example.ecodot.ui.theme.Person
+import com.example.ecodot.ui.theme.PlayArrow
+import com.example.ecodot.ui.theme.PlayCircle
+import com.example.ecodot.ui.theme.PlaylistAdd
+import com.example.ecodot.ui.theme.QueueMusic
+import com.example.ecodot.ui.theme.QueuePlayNext
+import com.example.ecodot.ui.theme.RemoveCircleOutline
+import com.example.ecodot.ui.theme.Style
+import com.example.ecodot.ui.theme.Timer
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
@@ -11,30 +33,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Album
-import androidx.compose.material.icons.rounded.Cancel
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.ContentCut
-import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.DownloadDone
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
-import androidx.compose.material.icons.rounded.Movie
-import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.PlayCircle
-import androidx.compose.material.icons.rounded.PlaylistAdd
-import androidx.compose.material.icons.rounded.QueuePlayNext
-import androidx.compose.material.icons.rounded.RemoveCircleOutline
-import androidx.compose.material.icons.rounded.Style
-import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -175,7 +173,7 @@ fun TrackOptionsBottomSheet(
                         ) {
                             if (isDownloaded) {
                                 Icon(
-                                    imageVector = Icons.Rounded.DownloadDone,
+                                    imageVector = SimpIcons.DownloadDone,
                                     contentDescription = null,
                                     tint = SpotifyGreenAccent,
                                     modifier = Modifier.size(13.dp)
@@ -199,7 +197,7 @@ fun TrackOptionsBottomSheet(
                 }
                 IconButton(onClick = onLikeToggle) {
                     Icon(
-                        imageVector = if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                        imageVector = if (isLiked) SimpIcons.Favorite else SimpIcons.FavoriteBorder,
                         contentDescription = if (isLiked) "Remove from Liked Songs" else "Like",
                         tint = if (isLiked) EcoDotRed else Color.White.copy(alpha = 0.72f)
                     )
@@ -227,7 +225,7 @@ fun TrackOptionsBottomSheet(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                Icons.AutoMirrored.Rounded.ArrowBack,
+                                SimpIcons.ArrowBack,
                                 contentDescription = "Back",
                                 tint = Color.White
                             )
@@ -251,7 +249,7 @@ fun TrackOptionsBottomSheet(
                         ) {
                             if (sleepTimerRemaining != null) {
                                 SheetActionRow(
-                                    icon = Icons.Rounded.Cancel,
+                                    icon = SimpIcons.Cancel,
                                     title = "Turn Off Sleep Timer",
                                     subtitle = "Active — $timerStatusText",
                                     iconTint = EcoDotRed,
@@ -267,7 +265,7 @@ fun TrackOptionsBottomSheet(
                             val durations = listOf(5, 15, 30, 45, 60)
                             durations.forEach { minutes ->
                                 SheetActionRow(
-                                    icon = Icons.Rounded.Timer,
+                                    icon = SimpIcons.Timer,
                                     title = "$minutes minutes",
                                     onClick = {
                                         onSetSleepTimer(minutes)
@@ -278,7 +276,7 @@ fun TrackOptionsBottomSheet(
                             }
 
                             SheetActionRow(
-                                icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                                icon = SimpIcons.QueueMusic,
                                 title = "End of current track",
                                 onClick = {
                                     onSetSleepTimerAtEndOfTrack()
@@ -300,7 +298,7 @@ fun TrackOptionsBottomSheet(
                             horizontalArrangement = Arrangement.spacedBy(if (onRemoveFromQueue != null) 8.dp else 10.dp)
                         ) {
                             QuickActionTile(
-                                icon = Icons.Rounded.QueuePlayNext,
+                                icon = SimpIcons.QueuePlayNext,
                                 label = "Play Next",
                                 onClick = {
                                     onPlayNext()
@@ -309,7 +307,7 @@ fun TrackOptionsBottomSheet(
                                 modifier = Modifier.weight(1f)
                             )
                             QuickActionTile(
-                                icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                                icon = SimpIcons.QueueMusic,
                                 label = "Add Queue",
                                 onClick = {
                                     onAddToQueue()
@@ -319,7 +317,7 @@ fun TrackOptionsBottomSheet(
                             )
                             if (onRemoveFromQueue != null) {
                                 QuickActionTile(
-                                    icon = Icons.Rounded.RemoveCircleOutline,
+                                    icon = SimpIcons.RemoveCircleOutline,
                                     label = "Remove",
                                     onClick = {
                                         onRemoveFromQueue()
@@ -329,7 +327,7 @@ fun TrackOptionsBottomSheet(
                                 )
                             }
                             QuickActionTile(
-                                icon = Icons.Rounded.PlaylistAdd,
+                                icon = SimpIcons.PlaylistAdd,
                                 label = "Playlist",
                                 onClick = { onAddToPlaylist() },
                                 modifier = Modifier.weight(1f)
@@ -340,7 +338,7 @@ fun TrackOptionsBottomSheet(
                         SheetActionCard {
                             if (onPlayNow != null) {
                                 SheetActionRow(
-                                    icon = Icons.Rounded.PlayArrow,
+                                    icon = SimpIcons.PlayArrow,
                                     title = "Play Now",
                                     onClick = {
                                         onPlayNow()
@@ -352,7 +350,7 @@ fun TrackOptionsBottomSheet(
 
                             if (onRemoveFromQueue != null) {
                                 SheetActionRow(
-                                    icon = Icons.Rounded.RemoveCircleOutline,
+                                    icon = SimpIcons.RemoveCircleOutline,
                                     title = "Remove from Queue",
                                     onClick = {
                                         onRemoveFromQueue()
@@ -363,7 +361,7 @@ fun TrackOptionsBottomSheet(
                             }
 
                             SheetActionRow(
-                                icon = if (isLiked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                icon = if (isLiked) SimpIcons.Favorite else SimpIcons.FavoriteBorder,
                                 iconTint = if (isLiked) EcoDotRed else Color.White,
                                 title = if (isLiked) "Remove from Liked Songs" else "Save to Liked Songs",
                                 onClick = {
@@ -374,7 +372,7 @@ fun TrackOptionsBottomSheet(
 
                             SheetHairlineDivider()
                             SheetActionRow(
-                                icon = Icons.Rounded.PlaylistAdd,
+                                icon = SimpIcons.PlaylistAdd,
                                 title = "Add to Playlist",
                                 onClick = { onAddToPlaylist() }
                             )
@@ -384,7 +382,7 @@ fun TrackOptionsBottomSheet(
                                 when {
                                     isDownloaded -> {
                                         SheetActionRow(
-                                            icon = Icons.Rounded.Delete,
+                                            icon = SimpIcons.Delete,
                                             iconTint = Color(0xFFFF6B6B),
                                             title = "Remove Download",
                                             titleColor = Color(0xFFFF6B6B),
@@ -428,7 +426,7 @@ fun TrackOptionsBottomSheet(
                                     }
                                     else -> {
                                         SheetActionRow(
-                                            icon = Icons.Rounded.Download,
+                                            icon = SimpIcons.Download,
                                             title = "Download Track",
                                             subtitle = "Listen offline in high quality",
                                             onClick = {
@@ -443,7 +441,7 @@ fun TrackOptionsBottomSheet(
                             if (onRemoveFromPlaylist != null) {
                                 SheetHairlineDivider()
                                 SheetActionRow(
-                                    icon = Icons.Rounded.RemoveCircleOutline,
+                                    icon = SimpIcons.RemoveCircleOutline,
                                     iconTint = Color(0xFFFF6B6B),
                                     title = "Remove from this playlist",
                                     titleColor = Color(0xFFFF6B6B),
@@ -465,7 +463,7 @@ fun TrackOptionsBottomSheet(
                         SheetActionCard {
                             if (showVideoSwitch) {
                                 SheetActionRow(
-                                    icon = if (isVideoMode) Icons.Rounded.MusicNote else Icons.Rounded.PlayCircle,
+                                    icon = if (isVideoMode) SimpIcons.MusicNote else SimpIcons.PlayCircle,
                                     title = if (isVideoMode) "Switch to Song (Audio)" else "Switch to Music Video",
                                     onClick = {
                                         onToggleVideoMode?.invoke()
@@ -476,7 +474,7 @@ fun TrackOptionsBottomSheet(
                             }
 
                             SheetActionRow(
-                                icon = Icons.Rounded.Timer,
+                                icon = SimpIcons.Timer,
                                 iconTint = if (sleepTimerRemaining != null) SpotifyGreenAccent else Color.White,
                                 title = "Sleep Timer",
                                 trailingBadge = timerStatusText,
@@ -489,7 +487,7 @@ fun TrackOptionsBottomSheet(
                                 SheetHairlineDivider()
                                 val hasCanvas = isCanvasActive
                                 SheetActionRow(
-                                    icon = if (hasCanvas) Icons.Rounded.Cancel else Icons.Rounded.Movie,
+                                    icon = if (hasCanvas) SimpIcons.Cancel else SimpIcons.Movie,
                                     title = if (hasCanvas) "Disable Looping Canvas" else "Enable Looping Canvas",
                                     onClick = {
                                         if (hasCanvas) onSetCanvasUrl?.invoke("DISABLED")
@@ -502,7 +500,7 @@ fun TrackOptionsBottomSheet(
                             if (showStyleOption) {
                                 SheetHairlineDivider()
                                 SheetActionRow(
-                                    icon = Icons.Rounded.Style,
+                                    icon = SimpIcons.Style,
                                     title = "Now Playing Style",
                                     subtitle = "Spotify, Vinyl, Apple Music & more",
                                     onClick = {
@@ -527,7 +525,7 @@ fun TrackOptionsBottomSheet(
                             if (showRingtoneOption) {
                                 SheetHairlineDivider()
                                 SheetActionRow(
-                                    icon = Icons.Rounded.ContentCut,
+                                    icon = SimpIcons.ContentCut,
                                     title = "Set as Ringtone",
                                     onClick = {
                                         onSetAsRingtone?.invoke()
@@ -544,7 +542,7 @@ fun TrackOptionsBottomSheet(
                             SheetActionCard {
                                 if (showAlbum) {
                                     SheetActionRow(
-                                        icon = Icons.Rounded.Album,
+                                        icon = SimpIcons.Album,
                                         title = "Go to Album",
                                         subtitle = track.album,
                                         showChevron = true,
@@ -559,7 +557,7 @@ fun TrackOptionsBottomSheet(
                                 }
                                 if (showArtist) {
                                     SheetActionRow(
-                                        icon = Icons.Rounded.Person,
+                                        icon = SimpIcons.Person,
                                         title = "Go to Artist",
                                         subtitle = track.artist,
                                         showChevron = true,
@@ -692,7 +690,7 @@ private fun SheetActionRow(
         if (showChevron) {
             Spacer(modifier = Modifier.width(4.dp))
             Icon(
-                imageVector = Icons.Rounded.ChevronRight,
+                imageVector = SimpIcons.ChevronRight,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = 0.35f),
                 modifier = Modifier.size(18.dp)
@@ -776,7 +774,7 @@ fun AddToPlaylistDialog(
                             .background(EcoDotRed.copy(alpha = 0.15f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Rounded.Add, contentDescription = null, tint = EcoDotRed)
+                        Icon(SimpIcons.Add, contentDescription = null, tint = EcoDotRed)
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Text("Create New Playlist", color = EcoDotRed, fontWeight = FontWeight.Bold)
@@ -815,7 +813,7 @@ fun AddToPlaylistDialog(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        Icons.AutoMirrored.Rounded.QueueMusic,
+                                        SimpIcons.QueueMusic,
                                         contentDescription = null,
                                         tint = Color.White.copy(alpha = 0.6f)
                                     )
@@ -917,7 +915,7 @@ fun AlbumOptionsBottomSheet(
             // Actions
             ListItem(
                 headlineContent = { Text("Play Album", color = Color.White) },
-                leadingContent = { Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = Color.White) },
+                leadingContent = { Icon(SimpIcons.PlayArrow, contentDescription = null, tint = Color.White) },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                 modifier = Modifier.clickable { onPlayAlbum(); onDismiss() }
             )
@@ -926,7 +924,7 @@ fun AlbumOptionsBottomSheet(
                 headlineContent = { Text(if (isSaved) "Remove from Library" else "Save Album", color = Color.White) },
                 leadingContent = { 
                     Icon(
-                        imageVector = if (isSaved) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, 
+                        imageVector = if (isSaved) SimpIcons.Favorite else SimpIcons.FavoriteBorder, 
                         contentDescription = null, 
                         tint = if (isSaved) EcoDotRed else Color.White
                     ) 
@@ -937,7 +935,7 @@ fun AlbumOptionsBottomSheet(
 
             ListItem(
                 headlineContent = { Text("Go to Artist", color = Color.White) },
-                leadingContent = { Icon(Icons.Rounded.Person, contentDescription = null, tint = Color.White) },
+                leadingContent = { Icon(SimpIcons.Person, contentDescription = null, tint = Color.White) },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                 modifier = Modifier.clickable { onGoToArtist(); onDismiss() }
             )
@@ -994,7 +992,7 @@ fun PlaylistOptionsBottomSheet(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.AutoMirrored.Rounded.QueueMusic,
+                            SimpIcons.QueueMusic,
                             contentDescription = null,
                             tint = Color.White.copy(alpha = 0.6f),
                             modifier = Modifier.size(24.dp)
@@ -1035,14 +1033,14 @@ fun PlaylistOptionsBottomSheet(
             // Actions
             ListItem(
                 headlineContent = { Text("Play Playlist", color = Color.White) },
-                leadingContent = { Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = Color.White) },
+                leadingContent = { Icon(SimpIcons.PlayArrow, contentDescription = null, tint = Color.White) },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                 modifier = Modifier.clickable { onPlayPlaylist(); onDismiss() }
             )
 
             ListItem(
                 headlineContent = { Text("Add to Queue", color = Color.White) },
-                leadingContent = { Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = null, tint = Color.White) },
+                leadingContent = { Icon(SimpIcons.QueueMusic, contentDescription = null, tint = Color.White) },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                 modifier = Modifier.clickable { onAddToQueue(); onDismiss() }
             )
@@ -1051,7 +1049,7 @@ fun PlaylistOptionsBottomSheet(
                 if (onEditPlaylist != null) {
                     ListItem(
                         headlineContent = { Text("Edit Playlist", color = Color.White) },
-                        leadingContent = { Icon(Icons.Rounded.PlaylistAdd, contentDescription = null, tint = Color.White) },
+                        leadingContent = { Icon(SimpIcons.PlaylistAdd, contentDescription = null, tint = Color.White) },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         modifier = Modifier.clickable { onEditPlaylist(); onDismiss() }
                     )
@@ -1059,7 +1057,7 @@ fun PlaylistOptionsBottomSheet(
                 if (onDeletePlaylist != null) {
                     ListItem(
                         headlineContent = { Text("Delete Playlist", color = EcoDotRed) },
-                        leadingContent = { Icon(Icons.Rounded.Delete, contentDescription = null, tint = EcoDotRed) },
+                        leadingContent = { Icon(SimpIcons.Delete, contentDescription = null, tint = EcoDotRed) },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         modifier = Modifier.clickable { onDeletePlaylist(); onDismiss() }
                     )

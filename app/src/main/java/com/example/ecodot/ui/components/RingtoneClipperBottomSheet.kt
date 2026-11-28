@@ -1,4 +1,9 @@
 package com.example.ecodot.ui.components
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.ContentCut
+import com.example.ecodot.ui.theme.MusicNote
+import com.example.ecodot.ui.theme.Pause
+import com.example.ecodot.ui.theme.PlayArrow
 
 import android.content.Context
 import android.content.Intent
@@ -12,12 +17,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.ContentCut
-import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -123,7 +122,7 @@ fun RingtoneClipperBottomSheet(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.ContentCut,
+                        imageVector = SimpIcons.ContentCut,
                         contentDescription = null,
                         tint = EcoDotRed,
                         modifier = Modifier.size(20.dp)
@@ -165,7 +164,7 @@ fun RingtoneClipperBottomSheet(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.MusicNote,
+                            imageVector = SimpIcons.MusicNote,
                             contentDescription = null,
                             tint = Color.White.copy(alpha = 0.6f)
                         )
@@ -236,7 +235,7 @@ fun RingtoneClipperBottomSheet(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = if (isPreviewPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    imageVector = if (isPreviewPlaying) SimpIcons.Pause else SimpIcons.PlayArrow,
                     contentDescription = "Preview Clip",
                     tint = if (isPreviewPlaying) Color.White else Color.White,
                     modifier = Modifier.size(28.dp)

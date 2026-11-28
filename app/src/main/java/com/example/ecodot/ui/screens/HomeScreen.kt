@@ -1,6 +1,9 @@
 @file:OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 
 package com.example.ecodot.ui.screens
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.ArrowDropDown
+import com.example.ecodot.ui.theme.PlayArrow
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
@@ -50,9 +53,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowDropDown
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -803,7 +803,7 @@ fun HomeScreen(
                                                     color = Color.White
                                                 )
                                                 Icon(
-                                                    imageVector = Icons.Rounded.ArrowDropDown,
+                                                    imageVector = SimpIcons.ArrowDropDown,
                                                     contentDescription = "Select country",
                                                     tint = Color.White.copy(alpha = 0.8f),
                                                     modifier = Modifier.size(20.dp)
@@ -1369,7 +1369,7 @@ fun HomeScreen(
                 onPlayPlaylist = {
                     if (tracks.isNotEmpty()) viewModel.playQueue(tracks, startIndex = 0)
                 },
-                onAddToQueue = { tracks.forEach { viewModel.addToQueue(it) } },
+                onAddToQueue = { if (tracks.isNotEmpty()) viewModel.addTracksToQueue(tracks) },
                 onEditPlaylist = {
                     longPressedPlaylist = null
                     navController.navigate("library")
@@ -1629,7 +1629,7 @@ fun SimpMusicCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
+                    imageVector = SimpIcons.PlayArrow,
                     contentDescription = "Play",
                     tint = Color.White,
                     modifier = Modifier.size(17.dp)
@@ -1737,7 +1737,7 @@ fun MusicVideoCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
+                    imageVector = SimpIcons.PlayArrow,
                     contentDescription = "Play Video",
                     tint = Color.White,
                     modifier = Modifier.size(22.dp)

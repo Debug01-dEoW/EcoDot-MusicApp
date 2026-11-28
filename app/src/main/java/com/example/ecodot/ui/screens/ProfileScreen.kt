@@ -1,4 +1,20 @@
 package com.example.ecodot.ui.screens
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.Add
+import com.example.ecodot.ui.theme.ArrowBackIos
+import com.example.ecodot.ui.theme.CameraAlt
+import com.example.ecodot.ui.theme.Close
+import com.example.ecodot.ui.theme.Crop
+import com.example.ecodot.ui.theme.DeleteOutline
+import com.example.ecodot.ui.theme.Edit
+import com.example.ecodot.ui.theme.Person
+import com.example.ecodot.ui.theme.PhotoLibrary
+import com.example.ecodot.ui.theme.Refresh
+import com.example.ecodot.ui.theme.RotateRight
+import com.example.ecodot.ui.theme.Settings
+import com.example.ecodot.ui.theme.Verified
+import com.example.ecodot.ui.theme.ZoomIn
+import com.example.ecodot.ui.theme.ZoomOut
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -33,22 +49,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBackIos
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.CameraAlt
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Crop
-import androidx.compose.material.icons.rounded.DeleteOutline
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.PhotoLibrary
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.RotateRight
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Verified
-import androidx.compose.material.icons.rounded.ZoomIn
-import androidx.compose.material.icons.rounded.ZoomOut
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -199,7 +199,7 @@ fun ProfileScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Rounded.ArrowBackIos,
+                            imageVector = SimpIcons.ArrowBackIos,
                             contentDescription = "Back",
                             tint = Color.White,
                             modifier = Modifier.size(19.dp)
@@ -215,7 +215,7 @@ fun ProfileScreen(
                 }
                 IconButton(onClick = { navController.navigate("settings") }) {
                     Icon(
-                        imageVector = Icons.Rounded.Settings,
+                        imageVector = SimpIcons.Settings,
                         contentDescription = "Settings",
                         tint = Color.White.copy(alpha = 0.86f),
                         modifier = Modifier.size(21.dp)
@@ -274,7 +274,7 @@ fun ProfileScreen(
                                 )
                             } else {
                                 Icon(
-                                    imageVector = Icons.Rounded.Person,
+                                    imageVector = SimpIcons.Person,
                                     contentDescription = null,
                                     tint = Color.White.copy(alpha = 0.72f),
                                     modifier = Modifier.size(48.dp)
@@ -293,7 +293,7 @@ fun ProfileScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.CameraAlt,
+                            imageVector = SimpIcons.CameraAlt,
                             contentDescription = "Adjust photo",
                             tint = Color.White.copy(alpha = 0.9f),
                             modifier = Modifier.size(15.dp)
@@ -321,7 +321,7 @@ fun ProfileScreen(
                     if (userProfile?.isPro == true) {
                         Spacer(modifier = Modifier.width(6.dp))
                         Icon(
-                            imageVector = Icons.Rounded.Verified,
+                            imageVector = SimpIcons.Verified,
                             contentDescription = "Verified",
                             tint = Color.White.copy(alpha = 0.78f),
                             modifier = Modifier.size(17.dp)
@@ -337,19 +337,19 @@ fun ProfileScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     ProfilePillButton(
-                        icon = Icons.Rounded.Edit,
+                        icon = SimpIcons.Edit,
                         label = "Edit profile",
                         onClick = { showEditProfile = true }
                     )
                     if (!avatarUri.isNullOrBlank()) {
                         ProfilePillButton(
-                            icon = Icons.Rounded.Crop,
+                            icon = SimpIcons.Crop,
                             label = "Adjust photo",
                             onClick = openAdjustCurrentPhoto
                         )
                     } else {
                         ProfilePillButton(
-                            icon = Icons.Rounded.PhotoLibrary,
+                            icon = SimpIcons.PhotoLibrary,
                             label = "Add photo",
                             onClick = { imagePicker.launch("image/*") }
                         )
@@ -405,7 +405,7 @@ fun ProfileScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.Add,
+                                    imageVector = SimpIcons.Add,
                                     contentDescription = null,
                                     tint = Color.White.copy(alpha = 0.65f),
                                     modifier = Modifier.size(16.dp)
@@ -459,7 +459,7 @@ fun ProfileScreen(
                         .padding(bottom = 28.dp)
                 ) {
                     PhotoMenuRow(
-                        icon = Icons.Rounded.Crop,
+                        icon = SimpIcons.Crop,
                         label = "Adjust picture",
                         onClick = {
                             showPhotoActionSheet = false
@@ -472,7 +472,7 @@ fun ProfileScreen(
                         modifier = Modifier.padding(start = 52.dp)
                     )
                     PhotoMenuRow(
-                        icon = Icons.Rounded.PhotoLibrary,
+                        icon = SimpIcons.PhotoLibrary,
                         label = "Choose new photo",
                         onClick = {
                             showPhotoActionSheet = false
@@ -485,7 +485,7 @@ fun ProfileScreen(
                         modifier = Modifier.padding(start = 52.dp)
                     )
                     PhotoMenuRow(
-                        icon = Icons.Rounded.DeleteOutline,
+                        icon = SimpIcons.DeleteOutline,
                         label = "Remove photo",
                         tint = Color(0xFFE5534B),
                         onClick = {
@@ -719,7 +719,7 @@ private fun AdjustProfilePictureDialog(
             ) {
                 IconButton(enabled = !isSaving, onClick = onDismiss) {
                     Icon(
-                        imageVector = Icons.Rounded.Close,
+                        imageVector = SimpIcons.Close,
                         contentDescription = "Cancel",
                         tint = Color.White
                     )
@@ -934,7 +934,7 @@ private fun AdjustProfilePictureDialog(
                         }
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.ZoomOut,
+                            imageVector = SimpIcons.ZoomOut,
                             contentDescription = "Zoom out",
                             tint = Color.White.copy(alpha = 0.72f),
                             modifier = Modifier.size(20.dp)
@@ -979,7 +979,7 @@ private fun AdjustProfilePictureDialog(
                         }
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.ZoomIn,
+                            imageVector = SimpIcons.ZoomIn,
                             contentDescription = "Zoom in",
                             tint = Color.White.copy(alpha = 0.72f),
                             modifier = Modifier.size(20.dp)
@@ -993,7 +993,7 @@ private fun AdjustProfilePictureDialog(
                     horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
                 ) {
                     ProfilePillButton(
-                        icon = Icons.Rounded.RotateRight,
+                        icon = SimpIcons.RotateRight,
                         label = "Rotate 90°",
                         onClick = {
                             quarterTurns = (quarterTurns + 1) % 4
@@ -1001,7 +1001,7 @@ private fun AdjustProfilePictureDialog(
                         }
                     )
                     ProfilePillButton(
-                        icon = Icons.Rounded.Refresh,
+                        icon = SimpIcons.Refresh,
                         label = "Reset",
                         onClick = {
                             zoom = 1f
@@ -1092,7 +1092,7 @@ private fun EditProfileSheet(
                             modifier = Modifier.fillMaxSize()
                         )
                     } else {
-                        Icon(Icons.Rounded.Person, contentDescription = null, tint = Color.White.copy(alpha = 0.78f))
+                        Icon(SimpIcons.Person, contentDescription = null, tint = Color.White.copy(alpha = 0.78f))
                     }
                 }
                 Spacer(modifier = Modifier.width(14.dp))

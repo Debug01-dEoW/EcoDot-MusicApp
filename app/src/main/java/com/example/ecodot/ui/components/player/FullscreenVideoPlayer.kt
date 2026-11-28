@@ -16,11 +16,6 @@ import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBackIos
-import androidx.compose.material.icons.rounded.KeyboardDoubleArrowLeft
-import androidx.compose.material.icons.rounded.KeyboardDoubleArrowRight
-import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.*
@@ -195,7 +190,7 @@ fun FullscreenVideoPlayer(
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.KeyboardDoubleArrowLeft,
+                                imageVector = SimpIcons.KeyboardDoubleArrowLeft,
                                 contentDescription = null,
                                 tint = Color.White,
                                 modifier = Modifier.size(20.dp)
@@ -261,7 +256,7 @@ fun FullscreenVideoPlayer(
                             )
                             Spacer(Modifier.width(4.dp))
                             Icon(
-                                imageVector = Icons.Rounded.KeyboardDoubleArrowRight,
+                                imageVector = SimpIcons.KeyboardDoubleArrowRight,
                                 contentDescription = null,
                                 tint = Color.White,
                                 modifier = Modifier.size(20.dp)
@@ -330,7 +325,7 @@ fun FullscreenVideoPlayer(
                             modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.ArrowBackIos,
+                                imageVector = SimpIcons.ArrowBackIos,
                                 contentDescription = "Back",
                                 tint = Color.White,
                                 modifier = Modifier.size(20.dp)
@@ -358,7 +353,7 @@ fun FullscreenVideoPlayer(
                                 modifier = Modifier.size(36.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.MoreVert,
+                                    imageVector = SimpIcons.MoreVert,
                                     contentDescription = "Options",
                                     tint = Color.White,
                                     modifier = Modifier.size(22.dp)

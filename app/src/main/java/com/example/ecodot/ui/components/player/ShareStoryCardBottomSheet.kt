@@ -1,4 +1,8 @@
 package com.example.ecodot.ui.components.player
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.Close
+import com.example.ecodot.ui.theme.FormatQuote
+import com.example.ecodot.ui.theme.Share
 
 import android.content.Context
 import android.content.Intent
@@ -10,8 +14,6 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -93,7 +95,7 @@ fun ShareStoryCardBottomSheet(
                 )
                 IconButton(onClick = onDismiss) {
                     Icon(
-                        imageVector = Icons.Rounded.Close,
+                        imageVector = SimpIcons.Close,
                         contentDescription = "Close",
                         tint = Color.White.copy(alpha = 0.6f)
                     )
@@ -178,7 +180,7 @@ fun ShareStoryCardBottomSheet(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.FormatQuote,
+                                imageVector = SimpIcons.FormatQuote,
                                 contentDescription = null,
                                 tint = EcoDotRed.copy(alpha = 0.8f),
                                 modifier = Modifier.size(28.dp)
@@ -329,7 +331,7 @@ fun ShareStoryCardBottomSheet(
                 shape = RoundedCornerShape(25.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.Share,
+                    imageVector = SimpIcons.Share,
                     contentDescription = null,
                     tint = Color(0xFF121214),
                     modifier = Modifier.size(20.dp)

@@ -1,4 +1,10 @@
 package com.example.ecodot.ui.screens
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.Close
+import com.example.ecodot.ui.theme.Pause
+import com.example.ecodot.ui.theme.PlayArrow
+import com.example.ecodot.ui.theme.SkipNext
+import com.example.ecodot.ui.theme.SkipPrevious
 
 import android.content.ComponentName
 import android.os.Build
@@ -20,8 +26,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -332,7 +336,7 @@ fun LockscreenLyricsScreen(
                         .border(1.dp, Color.White.copy(alpha = 0.1f), CircleShape)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Close,
+                        imageVector = SimpIcons.Close,
                         contentDescription = "Unlock",
                         tint = Color.White
                     )
@@ -412,7 +416,7 @@ fun LockscreenLyricsScreen(
                     modifier = Modifier.size(52.dp).background(Color.White.copy(alpha = 0.05f), CircleShape)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.SkipPrevious,
+                        imageVector = SimpIcons.SkipPrevious,
                         contentDescription = "Previous",
                         tint = Color.White,
                         modifier = Modifier.size(28.dp)
@@ -429,7 +433,7 @@ fun LockscreenLyricsScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        imageVector = if (isPlaying) SimpIcons.Pause else SimpIcons.PlayArrow,
                         contentDescription = "Play/Pause",
                         tint = Color.Black,
                         modifier = Modifier.size(36.dp)
@@ -442,7 +446,7 @@ fun LockscreenLyricsScreen(
                     modifier = Modifier.size(52.dp).background(Color.White.copy(alpha = 0.05f), CircleShape)
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.SkipNext,
+                        imageVector = SimpIcons.SkipNext,
                         contentDescription = "Next",
                         tint = Color.White,
                         modifier = Modifier.size(28.dp)

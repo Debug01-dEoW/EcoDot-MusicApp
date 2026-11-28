@@ -23,10 +23,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -336,7 +332,7 @@ fun PlaylistDetailScreen(
                             border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.15f)),
                             modifier = Modifier.fillMaxWidth().height(48.dp)
                         ) {
-                            Icon(Icons.Rounded.Image, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            Icon(SimpIcons.Image, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text("Choose from Gallery", color = Color.White, fontWeight = FontWeight.SemiBold)
                         }
@@ -549,7 +545,7 @@ fun PlaylistDetailScreen(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Rounded.Favorite,
+                                            imageVector = SimpIcons.Favorite,
                                             contentDescription = "Liked Songs",
                                             tint = Color.White,
                                             modifier = Modifier.size(78.dp)
@@ -569,7 +565,7 @@ fun PlaylistDetailScreen(
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Rounded.DownloadDone,
+                                            imageVector = SimpIcons.DownloadDone,
                                             contentDescription = "Downloads",
                                             tint = Color.White,
                                             modifier = Modifier.size(70.dp)
@@ -612,7 +608,7 @@ fun PlaylistDetailScreen(
                                 )
                                 if (customCover?.isPrivate == true) {
                                     Icon(
-                                        Icons.Rounded.Lock,
+                                        SimpIcons.Lock,
                                         contentDescription = "Private",
                                         tint = Color.White.copy(alpha = 0.65f),
                                         modifier = Modifier.size(18.dp)
@@ -671,7 +667,7 @@ fun PlaylistDetailScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Rounded.GraphicEq,
+                                        imageVector = SimpIcons.GraphicEq,
                                         contentDescription = null,
                                         tint = Color.Black,
                                         modifier = Modifier.size(13.dp)
@@ -721,7 +717,7 @@ fun PlaylistDetailScreen(
                                         }
                                         allDownloaded -> {
                                             Icon(
-                                                imageVector = Icons.Rounded.DownloadForOffline,
+                                                imageVector = SimpIcons.DownloadForOffline,
                                                 contentDescription = "All songs downloaded",
                                                 tint = spotifyGreen,
                                                 modifier = Modifier.size(26.dp)
@@ -729,7 +725,7 @@ fun PlaylistDetailScreen(
                                         }
                                         else -> {
                                             Icon(
-                                                imageVector = Icons.Rounded.DownloadForOffline,
+                                                imageVector = SimpIcons.DownloadForOffline,
                                                 contentDescription = "Download playlist",
                                                 tint = Color.White.copy(alpha = 0.72f),
                                                 modifier = Modifier.size(26.dp)
@@ -742,7 +738,7 @@ fun PlaylistDetailScreen(
                             if (localTracks.size > 1) {
                                 IconButton(onClick = { isEditMode = !isEditMode }) {
                                     Icon(
-                                        imageVector = if (isEditMode) Icons.Rounded.Check else Icons.Rounded.SwapVert,
+                                        imageVector = if (isEditMode) SimpIcons.Check else SimpIcons.SwapVert,
                                         contentDescription = if (isEditMode) "Done reordering" else "Reorder tracks",
                                         tint = if (isEditMode) spotifyGreen else Color.White.copy(alpha = 0.72f),
                                         modifier = Modifier.size(24.dp)
@@ -752,7 +748,7 @@ fun PlaylistDetailScreen(
 
                             IconButton(onClick = { showPlaylistOptionsSheet = true }) {
                                 Icon(
-                                    imageVector = Icons.Rounded.MoreVert,
+                                    imageVector = SimpIcons.MoreVert,
                                     contentDescription = "Playlist options",
                                     tint = Color.White.copy(alpha = 0.72f),
                                     modifier = Modifier.size(24.dp)
@@ -764,7 +760,7 @@ fun PlaylistDetailScreen(
                             if (localTracks.isNotEmpty()) {
                                 IconButton(onClick = { viewModel.shufflePlaylist(activePlaylist) }) {
                                     Icon(
-                                        imageVector = Icons.Rounded.Shuffle,
+                                        imageVector = SimpIcons.Shuffle,
                                         contentDescription = "Shuffle",
                                         tint = Color.White.copy(alpha = 0.85f),
                                         modifier = Modifier.size(26.dp)
@@ -785,7 +781,7 @@ fun PlaylistDetailScreen(
                                 ) {
                                     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                                         Icon(
-                                            imageVector = if (isThisPlaylistActive && isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                            imageVector = if (isThisPlaylistActive && isPlaying) SimpIcons.Pause else SimpIcons.PlayArrow,
                                             contentDescription = if (isThisPlaylistActive && isPlaying) "Pause" else "Play",
                                             tint = Color.Black,
                                             modifier = Modifier.size(32.dp)
@@ -838,7 +834,7 @@ fun PlaylistDetailScreen(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
-                                imageVector = Icons.Rounded.MusicNote,
+                                imageVector = SimpIcons.MusicNote,
                                 contentDescription = null,
                                 tint = Color.White.copy(alpha = 0.16f),
                                 modifier = Modifier.size(56.dp)
@@ -942,7 +938,7 @@ fun PlaylistDetailScreen(
                 if (isEditMode) isEditMode = false else onBack()
             }) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                    imageVector = SimpIcons.ArrowBack,
                     contentDescription = "Back",
                     tint = Color.White
                 )
@@ -966,7 +962,7 @@ fun PlaylistDetailScreen(
             } else {
                 IconButton(onClick = { showEditDialog = true }) {
                     Icon(
-                        imageVector = Icons.Rounded.Edit,
+                        imageVector = SimpIcons.Edit,
                         contentDescription = "Edit playlist",
                         tint = Color.White.copy(alpha = 0.85f),
                         modifier = Modifier.size(21.dp)
@@ -1081,14 +1077,14 @@ fun PlaylistDetailScreen(
                 HorizontalDivider(color = Color.White.copy(alpha = 0.08f), modifier = Modifier.padding(vertical = 6.dp))
 
                 PlaylistSheetActionItem(
-                    icon = Icons.Rounded.QueuePlayNext,
+                    icon = SimpIcons.QueuePlayNext,
                     label = "Play Next"
                 ) {
                     viewModel.playPlaylistNext(activePlaylist)
                     showPlaylistOptionsSheet = false
                 }
                 PlaylistSheetActionItem(
-                    icon = Icons.AutoMirrored.Rounded.QueueMusic,
+                    icon = SimpIcons.QueueMusic,
                     label = "Add Playlist to Queue"
                 ) {
                     viewModel.addPlaylistToQueue(activePlaylist)
@@ -1096,7 +1092,7 @@ fun PlaylistDetailScreen(
                 }
                 if (localTracks.size > 1) {
                     PlaylistSheetActionItem(
-                        icon = Icons.Rounded.SwapVert,
+                        icon = SimpIcons.SwapVert,
                         label = if (isEditMode) "Finish Reordering" else "Reorder Tracks"
                     ) {
                         isEditMode = !isEditMode
@@ -1104,7 +1100,7 @@ fun PlaylistDetailScreen(
                     }
                 }
                 PlaylistSheetActionItem(
-                    icon = Icons.Rounded.Edit,
+                    icon = SimpIcons.Edit,
                     label = "Edit Playlist Details"
                 ) {
                     showPlaylistOptionsSheet = false
@@ -1112,7 +1108,7 @@ fun PlaylistDetailScreen(
                 }
                 if (!isSystemPlaylist) {
                     PlaylistSheetActionItem(
-                        icon = Icons.Rounded.DeleteOutline,
+                        icon = SimpIcons.DeleteOutline,
                         label = "Delete Playlist",
                         tint = Color(0xFFFF6B6B)
                     ) {
@@ -1296,7 +1292,7 @@ private fun PlaylistTrackItem(
                         )
                     } else if (isDownloaded) {
                         Icon(
-                            imageVector = Icons.Rounded.DownloadForOffline,
+                            imageVector = SimpIcons.DownloadForOffline,
                             contentDescription = "Downloaded",
                             tint = spotifyGreen,
                             modifier = Modifier
@@ -1319,7 +1315,7 @@ private fun PlaylistTrackItem(
 
             if (isEditMode) {
                 Icon(
-                    imageVector = Icons.Rounded.DragIndicator,
+                    imageVector = SimpIcons.DragIndicator,
                     contentDescription = "Drag to reorder",
                     tint = Color.White.copy(alpha = 0.55f),
                     modifier = Modifier
@@ -1340,7 +1336,7 @@ private fun PlaylistTrackItem(
             } else {
                 IconButton(onClick = onMoreClick) {
                     Icon(
-                        imageVector = Icons.Rounded.MoreVert,
+                        imageVector = SimpIcons.MoreVert,
                         contentDescription = "Track options",
                         tint = Color.White.copy(alpha = 0.65f)
                     )

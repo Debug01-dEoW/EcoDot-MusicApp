@@ -1,4 +1,8 @@
 package com.example.ecodot.ui.components
+import com.example.ecodot.ui.theme.SimpIcons
+import com.example.ecodot.ui.theme.Add
+import com.example.ecodot.ui.theme.Check
+import com.example.ecodot.ui.theme.Close
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -8,10 +12,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -102,7 +102,7 @@ fun AddToPlaylistBottomSheet(
                     modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
-                        Icons.Rounded.Close,
+                        SimpIcons.Close,
                         contentDescription = "Close",
                         tint = Color.White.copy(alpha = 0.6f)
                     )
@@ -128,7 +128,7 @@ fun AddToPlaylistBottomSheet(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Rounded.Add,
+                        SimpIcons.Add,
                         contentDescription = "New Playlist",
                         tint = Color.Black,
                         modifier = Modifier.size(24.dp)
@@ -212,7 +212,7 @@ fun AddToPlaylistBottomSheet(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    Icons.Rounded.Check,
+                                    SimpIcons.Check,
                                     contentDescription = "Added",
                                     tint = Color.Black,
                                     modifier = Modifier.size(16.dp)

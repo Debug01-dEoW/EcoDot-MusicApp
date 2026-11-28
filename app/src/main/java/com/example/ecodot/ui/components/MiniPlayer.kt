@@ -1,4 +1,7 @@
 package com.example.ecodot.ui.components
+import com.example.ecodot.ui.theme.Favorite
+import com.example.ecodot.ui.theme.FavoriteBorder
+import com.example.ecodot.ui.theme.MusicNote
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
@@ -20,10 +23,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
-import androidx.compose.material.icons.rounded.MusicNote
 import com.example.ecodot.ui.theme.SimpIcons
 import com.example.ecodot.ui.theme.Pause
 import com.example.ecodot.ui.theme.PlayArrow
@@ -247,8 +246,8 @@ fun MiniPlayer(
                                 .crossfade(true)
                                 .build(),
                             contentDescription = null,
-                            placeholder = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Rounded.MusicNote),
-                            error = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Rounded.MusicNote),
+                            placeholder = androidx.compose.ui.graphics.vector.rememberVectorPainter(SimpIcons.MusicNote),
+                            error = androidx.compose.ui.graphics.vector.rememberVectorPainter(SimpIcons.MusicNote),
                             onError = {
                                 val fallback = miniArtworkUrl?.replace("maxresdefault", "hqdefault")
                                 if (fallback != null && fallback != miniArtworkUrl) {
@@ -352,7 +351,7 @@ fun MiniPlayer(
                 ) {
                     Crossfade(targetState = isLiked, label = "mini_like_crossfade") { liked ->
                         Icon(
-                            imageVector = if (liked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                            imageVector = if (liked) SimpIcons.Favorite else SimpIcons.FavoriteBorder,
                             contentDescription = "Like",
                             tint = if (liked) Color(0xFFFF3B5C) else Color.White,
                             modifier = Modifier.size(22.dp)
