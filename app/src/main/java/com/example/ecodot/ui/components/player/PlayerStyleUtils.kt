@@ -140,50 +140,23 @@ object PlayerStyleMath {
         return Color(red = r, green = g, blue = b, alpha = 1f)
     }
 
-    const val MIN_VALID_AUDIO_BITRATE_BPS = 16_000
-    const val MIN_VALID_HIGH_SAMPLE_RATE_HZ = 32_000
-    const val MIN_VALID_SAMPLE_RATE_HZ = 8_000
-
-    data class AudioTelemetrySelection(
-        val bitrateBps: Int,
-        val sampleRateHz: Int
-    )
+    /**
+     * Normalizes stream bitrate values from mixed extractors/muxers into bits per second (bps).
+     * NewPipeExtractor reports `AudioStream.averageBitrate`/`bitrate` in kbps (e.g. 128, 160),
+     * whereas InnerTube and ExoPlayer Formats use bps (e.g. 128_000, 160_000).
+     */
+    fun normalizeBitrateBps(rawBitrate: Int): Int {
+        if (rawBitrate <= 0) return 0
+        return if (rawBitrate in 1..2000) rawBitrate * 1000 else rawBitrate
+    }
 
     /**
-     * Picks reliable audio bitrate & sample rate, filtering out bogus container headers
-     * (< 16 kbps that previously rendered as "1 kbps") or downsampled init decoder rates.
+     * Formats normalized bitrate into human-readable `"160 kbps"` labels.
      */
-    fun selectValidAudioTelemetry(
-        selectedTrackBitrate: Int = 0,
-        selectedTrackAvgBitrate: Int = 0,
-        decoderBitrate: Int = 0,
-        resolvedBitrateBps: Int = 0,
-        selectedTrackSampleRate: Int = 0,
-        decoderSampleRate: Int = 0,
-        resolvedSampleRateHz: Int = 0
-    ): AudioTelemetrySelection {
-        val chosenBps = listOf(
-            selectedTrackAvgBitrate,
-            selectedTrackBitrate,
-            resolvedBitrateBps,
-            decoderBitrate
-        ).firstOrNull { it >= MIN_VALID_AUDIO_BITRATE_BPS } ?: 0
-
-        val chosenSampleRate = when {
-            selectedTrackSampleRate >= MIN_VALID_HIGH_SAMPLE_RATE_HZ -> selectedTrackSampleRate
-            decoderSampleRate >= 44_100 -> decoderSampleRate
-            resolvedSampleRateHz >= MIN_VALID_HIGH_SAMPLE_RATE_HZ -> resolvedSampleRateHz
-            else -> listOf(
-                selectedTrackSampleRate,
-                decoderSampleRate,
-                resolvedSampleRateHz
-            ).firstOrNull { it >= MIN_VALID_SAMPLE_RATE_HZ } ?: 0
-        }
-
-        return AudioTelemetrySelection(
-            bitrateBps = chosenBps,
-            sampleRateHz = chosenSampleRate
-        )
+    fun formatBitrateKbpsLabel(rawBitrateBps: Int): String? {
+        val bps = normalizeBitrateBps(rawBitrateBps)
+        if (bps <= 0) return null
+        return "${(bps / 1000).coerceAtLeast(1)} kbps"
     }
 
     /**
@@ -197,6 +170,7 @@ object PlayerStyleMath {
         fallbackQuality: AudioQuality,
         isLocalOrDownloaded: Boolean = false
     ): String {
+        val normalizedBps = normalizeBitrateBps(bitrateBps)
         val codecTag = when {
             codecs?.contains("opus", ignoreCase = true) == true || mimeType?.contains("opus", true) == true -> "Opus"
             codecs?.contains("mp4a", ignoreCase = true) == true || mimeType?.contains("mp4a", true) == true -> "AAC"
@@ -210,7 +184,7 @@ object PlayerStyleMath {
             }
         }
         val kbps = when {
-            bitrateBps >= MIN_VALID_AUDIO_BITRATE_BPS -> "${bitrateBps / 1000} kbps"
+            normalizedBps > 0 -> "${(normalizedBps / 1000).coerceAtLeast(32)} kbps"
             fallbackQuality == AudioQuality.HIGH_AAC -> "256 kbps"
             fallbackQuality == AudioQuality.HIGH -> "256 kbps"
             fallbackQuality == AudioQuality.NORMAL -> "128 kbps"
@@ -225,42 +199,21 @@ object PlayerStyleMath {
     }
 
     /**
-     * Formats real-time playing stream bitrate and sample rate like Apple Music (`140 kbps · 48 kHz`).
-     * Returns null when neither valid bitrate (>= 16 kbps) nor valid sample rate is available yet.
+     * Formats real-time playing stream bitrate and sample rate (`140 kbps · 48 kHz`).
+     * Normalizes mixed kbps/bps units and returns null when neither value is available.
      */
     fun formatRealTimeAudioDetail(bitrateBps: Int, sampleRateHz: Int): String? {
         val parts = mutableListOf<String>()
-        if (bitrateBps >= MIN_VALID_AUDIO_BITRATE_BPS) {
-            parts.add("${bitrateBps / 1000} kbps")
-        }
-        if (sampleRateHz >= MIN_VALID_SAMPLE_RATE_HZ) {
-            parts.add(formatSampleRateKhz(sampleRateHz))
+        formatBitrateKbpsLabel(bitrateBps)?.let { parts.add(it) }
+        if (sampleRateHz >= 8000) {
+            val khz = if (sampleRateHz % 1000 == 0) {
+                "${sampleRateHz / 1000} kHz"
+            } else {
+                "${(sampleRateHz / 100) / 10.0} kHz"
+            }
+            parts.add(khz)
         }
         return if (parts.isEmpty()) null else parts.joinToString(" · ")
-    }
-
-    fun formatSampleRateKhz(sampleRateHz: Int): String {
-        if (sampleRateHz < MIN_VALID_SAMPLE_RATE_HZ) return "—"
-        return if (sampleRateHz % 1000 == 0) {
-            "${sampleRateHz / 1000} kHz"
-        } else {
-            "${(sampleRateHz / 100) / 10.0} kHz"
-        }
-    }
-
-    /**
-     * Normalizes raw bitrate text (e.g. "150,931", "0", "160 kbps") or bps integer into "150 kbps" or "—".
-     */
-    fun formatBitrateKbps(rawBitrate: String?, fallbackBps: Int = 0): String {
-        val parsedDigits = rawBitrate?.trim().orEmpty()
-        val numeric = parsedDigits.filter { it.isDigit() }.toLongOrNull() ?: 0L
-        val effectiveBps = when {
-            parsedDigits.contains("kbps", ignoreCase = true) && numeric >= 16L -> numeric * 1000L
-            numeric >= MIN_VALID_AUDIO_BITRATE_BPS -> numeric
-            fallbackBps >= MIN_VALID_AUDIO_BITRATE_BPS -> fallbackBps.toLong()
-            else -> 0L
-        }
-        return if (effectiveBps >= MIN_VALID_AUDIO_BITRATE_BPS) "${effectiveBps / 1000} kbps" else "—"
     }
 
     /**
@@ -281,41 +234,10 @@ object PlayerStyleMath {
      * Parses comma-separated favorite genres into clean unique display pills.
      */
     fun parseFavoriteGenres(rawGenres: String): List<String> =
-        rawGenres.split(",", "\n", ";")
-            .map { normalizeGenreTag(it) }
+        rawGenres.split(",")
+            .map { it.trim() }
             .filter { it.isNotEmpty() }
             .distinctBy { it.lowercase() }
-
-    /**
-     * Normalizes a single custom genre/tag entry and caps length to keep UI pills safe.
-     */
-    fun normalizeGenreTag(raw: String, maxLength: Int = 32): String =
-        raw.trim()
-            .replace(Regex("\\s+"), " ")
-            .take(maxLength.coerceAtLeast(1))
-
-    /**
-     * Merges one or more comma/semicolon-separated custom tags into [existing] without duplicates.
-     */
-    fun mergeFavoriteGenres(
-        existing: List<String>,
-        rawInput: String,
-        maxTags: Int = 24
-    ): List<String> {
-        val result = existing
-            .map { normalizeGenreTag(it) }
-            .filter { it.isNotEmpty() }
-            .distinctBy { it.lowercase() }
-            .toMutableList()
-        val incoming = parseFavoriteGenres(rawInput)
-        for (tag in incoming) {
-            if (result.size >= maxTags) break
-            if (result.none { it.equals(tag, ignoreCase = true) }) {
-                result.add(tag)
-            }
-        }
-        return result
-    }
 
     /**
      * Bilinear smoothstep resample + HSL saturation lift used by AppleMusicMeshBackdrop.

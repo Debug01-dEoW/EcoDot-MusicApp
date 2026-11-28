@@ -3,6 +3,7 @@ package com.example.ecodot.data.remote
 import android.util.Log
 import com.example.ecodot.data.local.prefs.AudioQuality
 import com.example.ecodot.data.local.prefs.VideoQuality
+import com.example.ecodot.ui.components.player.PlayerStyleMath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -18,13 +19,7 @@ data class ResolvedAudioTelemetry(
     val sampleRateHz: Int,
     val codec: String?,
     val mimeType: String? = null,
-    val itag: Int? = null,
-    val viewCount: Long = -1L,
-    val likeCount: Long = -1L,
-    val description: String? = null,
-    val title: String? = null,
-    val uploaderName: String? = null,
-    val durationSec: Long = -1L
+    val itag: Int? = null
 )
 
 class YouTubeStreamResolver(private val client: OkHttpClient) {
@@ -52,9 +47,38 @@ class YouTubeStreamResolver(private val client: OkHttpClient) {
         }
     }
 
-    private fun getStreamBitrate(stream: AudioStream): Int {
-        val avg = stream.averageBitrate
-        return if (avg > 0) avg else stream.bitrate
+    private fun getStreamBitrateBps(stream: AudioStream): Int {
+        val rawAvg = stream.averageBitrate
+        val raw = if (rawAvg > 0) rawAvg else stream.bitrate
+        val fallbackItagBitrate = stream.itagItem?.avgBitrate ?: 0
+        return PlayerStyleMath.normalizeBitrateBps(if (raw > 0) raw else fallbackItagBitrate)
+    }
+
+    private fun getStreamSampleRateHz(stream: AudioStream): Int {
+        val itagRate = stream.itagItem?.sampleRate?.takeIf { it > 0 }
+        return itagRate ?: if (isOpusStream(stream)) 48_000 else 44_100
+    }
+
+    private fun selectBestAudioStream(
+        audioStreams: List<AudioStream>,
+        quality: AudioQuality
+    ): AudioStream? = when (quality) {
+        AudioQuality.HIGH -> {
+            audioStreams.filter(::isOpusStream).maxByOrNull { getStreamBitrateBps(it) }
+                ?: audioStreams.maxByOrNull { getStreamBitrateBps(it) }
+        }
+        AudioQuality.HIGH_AAC -> {
+            audioStreams.filter(::isAacStream).maxByOrNull { getStreamBitrateBps(it) }
+                ?: audioStreams.maxByOrNull { getStreamBitrateBps(it) }
+        }
+        AudioQuality.NORMAL -> {
+            audioStreams.minByOrNull {
+                kotlin.math.abs(getStreamBitrateBps(it) - 128_000)
+            } ?: audioStreams.firstOrNull()
+        }
+        AudioQuality.LOW -> {
+            audioStreams.minByOrNull { getStreamBitrateBps(it) }
+        }
     }
 
     private fun isAacStream(stream: AudioStream): Boolean {
@@ -68,59 +92,6 @@ class YouTubeStreamResolver(private val client: OkHttpClient) {
             stream.format == org.schabi.newpipe.extractor.MediaFormat.WEBMA ||
             stream.format == org.schabi.newpipe.extractor.MediaFormat.OPUS ||
             stream.codec?.contains("opus", ignoreCase = true) == true
-    }
-
-    private fun pickAudioStream(audioStreams: List<AudioStream>, quality: AudioQuality): AudioStream? =
-        when (quality) {
-            AudioQuality.HIGH -> {
-                audioStreams.filter(::isOpusStream).maxByOrNull { getStreamBitrate(it) }
-                    ?: audioStreams.maxByOrNull { getStreamBitrate(it) }
-            }
-            AudioQuality.HIGH_AAC -> {
-                audioStreams.filter(::isAacStream).maxByOrNull { getStreamBitrate(it) }
-                    ?: audioStreams.maxByOrNull { getStreamBitrate(it) }
-            }
-            AudioQuality.NORMAL -> {
-                audioStreams.minByOrNull {
-                    kotlin.math.abs(getStreamBitrate(it) - 128000)
-                } ?: audioStreams.firstOrNull()
-            }
-            AudioQuality.LOW -> {
-                audioStreams.minByOrNull { getStreamBitrate(it) }
-            }
-        }
-
-    private fun inferSampleRateHz(stream: AudioStream): Int {
-        val itagRate = stream.itagItem?.sampleRate ?: 0
-        if (itagRate >= 8_000) return itagRate
-        return if (isAacStream(stream)) 44_100 else 48_000
-    }
-
-    private fun cacheTelemetry(
-        videoId: String,
-        streamInfo: StreamInfo,
-        chosenStream: AudioStream
-    ): ResolvedAudioTelemetry {
-        val resolvedBitrate = getStreamBitrate(chosenStream)
-        val mimeType = chosenStream.format?.mimeType
-            ?: if (isAacStream(chosenStream)) "audio/mp4" else "audio/webm"
-        val cleanCodec = chosenStream.codec?.takeIf { it.isNotBlank() }
-            ?: if (isAacStream(chosenStream)) "mp4a.40.2" else "opus"
-        val telemetry = ResolvedAudioTelemetry(
-            bitrateBps = resolvedBitrate,
-            sampleRateHz = inferSampleRateHz(chosenStream),
-            codec = cleanCodec,
-            mimeType = mimeType,
-            itag = chosenStream.itag.takeIf { it > 0 },
-            viewCount = streamInfo.viewCount,
-            likeCount = streamInfo.likeCount,
-            description = streamInfo.description?.content,
-            title = streamInfo.name,
-            uploaderName = streamInfo.uploaderName,
-            durationSec = streamInfo.duration
-        )
-        resolvedAudioTelemetry[videoId] = telemetry
-        return telemetry
     }
 
     private fun getVideoResolution(stream: VideoStream): Int {
@@ -144,14 +115,22 @@ class YouTubeStreamResolver(private val client: OkHttpClient) {
                 return@withContext null
             }
 
-            val chosenStream = pickAudioStream(audioStreams, quality)
+            val chosenStream = selectBestAudioStream(audioStreams, quality)
+
             val url = chosenStream?.content
             if (!url.isNullOrEmpty()) {
-                val meta = cacheTelemetry(videoId, streamInfo, chosenStream)
-                Log.d(
-                    TAG,
-                    "Resolved unthrottled audio stream for $videoId: bitrate=${chosenStream.bitrate}, avg=${meta.bitrateBps}, itag=${meta.itag}, views=${meta.viewCount}"
-                )
+                val resolvedBitrate = getStreamBitrateBps(chosenStream)
+                val resolvedRate = getStreamSampleRateHz(chosenStream)
+                if (resolvedBitrate > 0 || chosenStream.itag > 0) {
+                    resolvedAudioTelemetry[videoId] = ResolvedAudioTelemetry(
+                        bitrateBps = resolvedBitrate,
+                        sampleRateHz = resolvedRate,
+                        codec = chosenStream.codec,
+                        mimeType = chosenStream.format?.mimeType,
+                        itag = chosenStream.itag.takeIf { it > 0 }
+                    )
+                }
+                Log.d(TAG, "Resolved unthrottled audio stream for $videoId: rawAvg=${chosenStream.averageBitrate}, bps=$resolvedBitrate, rate=$resolvedRate, itag=${chosenStream.itag}")
                 return@withContext url
             }
             null
@@ -162,42 +141,65 @@ class YouTubeStreamResolver(private val client: OkHttpClient) {
     }
 
     /**
-     * Returns synced NewPipe metadata + chosen audio stream specs (bitrate, codec, mime, itag, views, likes).
+     * Fetches real YouTube metadata + matching audio stream specs via NewPipeExtractor for Song Info.
      */
-    suspend fun resolveStreamMetadata(
-        videoId: String,
-        quality: AudioQuality
-    ): ResolvedAudioTelemetry? = withContext(Dispatchers.IO) {
-        val existing = resolvedAudioTelemetry[videoId]
-        if (existing != null && existing.bitrateBps >= 16_000 && existing.itag != null && existing.viewCount >= 0L) {
-            return@withContext existing
-        }
+    suspend fun resolveTrackMetadata(videoId: String, quality: AudioQuality): VideoInfo? = withContext(Dispatchers.IO) {
         try {
             ensureInitialized()
             val watchUrl = "https://www.youtube.com/watch?v=$videoId"
             val streamInfo = StreamInfo.getInfo(ServiceList.YouTube, watchUrl)
-            val audioStreams = streamInfo.audioStreams
-            val chosenStream = if (!audioStreams.isNullOrEmpty()) pickAudioStream(audioStreams, quality) else null
-            if (chosenStream != null) {
-                cacheTelemetry(videoId, streamInfo, chosenStream)
-            } else {
-                ResolvedAudioTelemetry(
-                    bitrateBps = existing?.bitrateBps ?: 0,
-                    sampleRateHz = existing?.sampleRateHz ?: 48_000,
-                    codec = existing?.codec,
-                    mimeType = existing?.mimeType,
-                    itag = existing?.itag,
-                    viewCount = streamInfo.viewCount,
-                    likeCount = streamInfo.likeCount,
-                    description = streamInfo.description?.content,
-                    title = streamInfo.name,
-                    uploaderName = streamInfo.uploaderName,
-                    durationSec = streamInfo.duration
-                ).also { resolvedAudioTelemetry[videoId] = it }
-            }
+            val audioStreams = streamInfo.audioStreams.orEmpty()
+            val chosenStream = selectBestAudioStream(audioStreams, quality)
+
+            val cachedTelemetry = resolvedAudioTelemetry[videoId]
+            val bitrateBps = chosenStream?.let { getStreamBitrateBps(it) }?.takeIf { it > 0 }
+                ?: cachedTelemetry?.bitrateBps?.takeIf { it > 0 }
+                ?: 0
+            val sampleRateHz = chosenStream?.let { getStreamSampleRateHz(it) }?.takeIf { it > 0 }
+                ?: cachedTelemetry?.sampleRateHz?.takeIf { it > 0 }
+                ?: 48_000
+            val codec = chosenStream?.codec?.takeIf { it.isNotBlank() }
+                ?: cachedTelemetry?.codec?.takeIf { it.isNotBlank() }
+                ?: if (quality == AudioQuality.HIGH_AAC) "mp4a.40.2" else "opus"
+            val mimeType = chosenStream?.format?.mimeType?.takeIf { it.isNotBlank() }
+                ?: cachedTelemetry?.mimeType?.takeIf { it.isNotBlank() }
+                ?: if (codec.contains("mp4a", ignoreCase = true)) "audio/mp4" else "audio/webm"
+            val itagStr = chosenStream?.itag?.takeIf { it > 0 }?.toString()
+                ?: cachedTelemetry?.itag?.takeIf { it > 0 }?.toString()
+                ?: "—"
+
+            val viewCountRaw = streamInfo.viewCount
+            val likeCountRaw = streamInfo.likeCount
+            val durationSec = streamInfo.duration.coerceAtLeast(0L)
+            val rawDesc = streamInfo.description?.content.orEmpty()
+                .replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "\n")
+                .replace(Regex("<[^>]+>"), "")
+                .replace("&amp;", "&")
+                .replace("&#39;", "'")
+                .replace("&quot;", "\"")
+                .trim()
+
+            VideoInfo(
+                videoId = videoId,
+                title = streamInfo.name.orEmpty(),
+                artist = streamInfo.uploaderName.orEmpty(),
+                album = "",
+                viewCount = if (viewCountRaw >= 0L) "%,d".format(viewCountRaw) else "—",
+                likeCount = if (likeCountRaw > 0L) "%,d".format(likeCountRaw) else "—",
+                description = rawDesc,
+                mimeType = mimeType,
+                codec = codec,
+                bitrate = PlayerStyleMath.formatBitrateKbpsLabel(bitrateBps) ?: "—",
+                itag = itagStr,
+                durationSeconds = if (durationSec > 0L) "%d:%02d".format(durationSec / 60, durationSec % 60) else "—",
+                sampleRate = if (sampleRateHz % 1000 == 0) "${sampleRateHz / 1000} kHz" else "${(sampleRateHz / 100) / 10.0} kHz",
+                channelName = streamInfo.uploaderName.orEmpty(),
+                likeCountRaw = likeCountRaw,
+                viewCountRaw = viewCountRaw
+            )
         } catch (e: Exception) {
-            Log.w(TAG, "resolveStreamMetadata failed for $videoId: ${e.message}")
-            existing
+            Log.w(TAG, "resolveTrackMetadata via NewPipe failed for $videoId: ${e.message}")
+            null
         }
     }
 

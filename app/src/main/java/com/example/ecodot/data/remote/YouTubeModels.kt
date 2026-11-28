@@ -337,14 +337,17 @@ data class VideoInfo(
     val artist: String,
     val album: String,
     val viewCount: String,         // e.g. "186,591,170"
-    val likeCount: String,         // e.g. "1,358,153" or ""
+    val likeCount: String,         // e.g. "1,358,153"
     val description: String,       // Full YouTube description
     val mimeType: String,          // e.g. "audio/webm"
     val codec: String,             // e.g. "opus"
-    val bitrate: String,           // e.g. "138 kbps"
+    val bitrate: String,           // e.g. "134 kbps"
     val itag: String,              // e.g. "251"
     val durationSeconds: String,   // e.g. "3:19"
-    val sampleRate: String = ""    // e.g. "48 kHz"
+    val sampleRate: String = "48 kHz",
+    val channelName: String = "",
+    val likeCountRaw: Long = -1L,
+    val viewCountRaw: Long = -1L
 )
 
 @JsonClass(generateAdapter = true)

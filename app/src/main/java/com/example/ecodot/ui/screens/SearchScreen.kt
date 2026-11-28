@@ -931,13 +931,11 @@ fun SearchScreen(
             selectedCount = pickedTracks.size,
             onDismiss = { showSelectionSheet = false },
             onPlayNext = {
-                pickedTracks.asReversed().forEach { viewModel.playNext(it) }
-                Toast.makeText(context, "Playing ${pickedTracks.size} songs next", Toast.LENGTH_SHORT).show()
+                viewModel.playTracksNext(pickedTracks)
                 exitSelectionMode()
             },
             onAddToQueue = {
-                pickedTracks.forEach { viewModel.addToQueue(it) }
-                Toast.makeText(context, "Added ${pickedTracks.size} songs to queue", Toast.LENGTH_SHORT).show()
+                viewModel.addTracksToQueue(pickedTracks)
                 exitSelectionMode()
             },
             onAddToPlaylist = { showBatchPlaylistPicker = true },
@@ -979,10 +977,9 @@ fun SearchScreen(
         val isDownloaded = track.id in downloadedIds
         val downloadProgress = downloadProgressMap[track.id]
         val isLiked = track.id in likedTrackIds
-        val queueState by viewModel.playbackQueue.collectAsState()
-        val isInQueue = remember(queueState, track.id) { queueState.any { it.id == track.id } }
         val isActiveTrack = currentTrack?.id == track.id
         val trackInVideoMode = isActiveTrack && (isVideoMode || viewModel.isTrackVideo(track))
+        val isInQueue = viewModel.playbackQueue.collectAsState().value.any { it.id == track.id }
 
         TrackOptionsBottomSheet(
             track = track,

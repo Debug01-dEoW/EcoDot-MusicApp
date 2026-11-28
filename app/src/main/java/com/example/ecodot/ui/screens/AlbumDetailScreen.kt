@@ -382,9 +382,8 @@ fun AlbumDetailScreen(
         val isDownloaded = downloadedTracks.any { it.id == track.id }
         val downloadProgress = downloadProgressMap[track.id]
         val isLiked by musicViewModel.isTrackLiked(track.id).collectAsState(initial = false)
-        val queueState by musicViewModel.playbackQueue.collectAsState()
-        val isInQueue = remember(queueState, track.id) { queueState.any { it.id == track.id } }
-        
+        val isInQueue = musicViewModel.playbackQueue.collectAsState().value.any { it.id == track.id }
+
         com.example.ecodot.ui.components.TrackOptionsBottomSheet(
             track = track,
             onDismiss = { optionsMenuTrack = null },

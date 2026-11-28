@@ -422,5 +422,56 @@ class LyricsRepository {
         s = s.replace(Regex("\\s+"), " ").trim()
         return s
     }
+
+    companion object {
+        private val LRC_TIME_REGEX = Regex("\\[(\\d+):(\\d{2})(?:[.:](\\d{2,3}))?\\]")
+        private val LRC_METADATA_REGEX = Regex("^\\[[a-zA-Z]{1,10}:.*\\]$")
+
+        /**
+         * Shared LRC parser used by UI, background session notifications, and lockscreen lyrics.
+         * Skips metadata tags (`[ti:...]`) and collapses accidental identical overlapping echoes (`<= 250ms`).
+         */
+        fun parseLrcLines(lrcContent: String): List<com.example.ecodot.ui.viewmodel.LyricLine> {
+            val rawLines = mutableListOf<com.example.ecodot.ui.viewmodel.LyricLine>()
+            lrcContent.lines().forEach { line ->
+                val trimmed = line.trim()
+                if (trimmed.isEmpty()) return@forEach
+                val matches = LRC_TIME_REGEX.findAll(trimmed).toList()
+                if (matches.isEmpty()) {
+                    return@forEach
+                }
+                if (LRC_METADATA_REGEX.matches(trimmed)) return@forEach
+                val lastMatch = matches.last()
+                val text = trimmed.substring(lastMatch.range.last + 1).trim()
+                matches.forEach { match ->
+                    val min = match.groupValues[1].toLongOrNull() ?: 0L
+                    val sec = match.groupValues[2].toLongOrNull() ?: 0L
+                    val msStr = match.groupValues[3]
+                    val ms = when (msStr.length) {
+                        2 -> (msStr.toLongOrNull() ?: 0L) * 10
+                        3 -> msStr.toLongOrNull() ?: 0L
+                        else -> 0L
+                    }
+                    val timeMs = (min * 60 + sec) * 1000 + ms
+                    rawLines.add(com.example.ecodot.ui.viewmodel.LyricLine(timeMs, text))
+                }
+            }
+            val sorted = rawLines.sortedBy { it.timeMs }
+            val cleaned = ArrayList<com.example.ecodot.ui.viewmodel.LyricLine>(sorted.size)
+            for (line in sorted) {
+                val prev = cleaned.lastOrNull()
+                val sameTextAsPrev = prev != null &&
+                    line.text.isNotEmpty() &&
+                    prev.text.equals(line.text, ignoreCase = true)
+                val nearIdenticalTime = prev != null && kotlin.math.abs(line.timeMs - prev.timeMs) <= 250L
+                val consecutiveBlank = prev != null && prev.text.isEmpty() && line.text.isEmpty()
+                if ((sameTextAsPrev && nearIdenticalTime) || consecutiveBlank) {
+                    continue
+                }
+                cleaned.add(line)
+            }
+            return cleaned
+        }
+    }
 }
 

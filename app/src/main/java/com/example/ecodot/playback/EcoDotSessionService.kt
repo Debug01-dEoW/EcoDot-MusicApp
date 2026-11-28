@@ -103,6 +103,7 @@ class EcoDotSessionService : MediaSessionService() {
         const val ACTION_CLEAR_URL_CACHE = "CLEAR_URL_CACHE"
         const val ACTION_UPDATE_QUEUE    = "UPDATE_QUEUE"
         const val ACTION_UPDATE_INDEX    = "UPDATE_INDEX"
+        const val ACTION_INVALIDATE_STAGED_NEXT = "INVALIDATE_STAGED_NEXT"
         const val ACTION_SET_SLEEP_TIMER = "SET_SLEEP_TIMER"
         const val ACTION_CANCEL_SLEEP_TIMER = "CANCEL_SLEEP_TIMER"
         const val EXTRA_IS_CROSSFADING = "is_crossfading"
@@ -120,6 +121,7 @@ class EcoDotSessionService : MediaSessionService() {
     @Volatile private var lastStreamCodecs: String? = null
 
     override fun onCreate() {
+        com.example.ecodot.EcoDotApplication.ensureKoinStarted(applicationContext)
         super.onCreate()
 
         val httpDataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
@@ -521,23 +523,27 @@ class EcoDotSessionService : MediaSessionService() {
             com.example.ecodot.data.remote.YouTubeStreamResolver.resolvedAudioTelemetry[it]
         }
 
-        val selectedTelemetry = com.example.ecodot.ui.components.player.PlayerStyleMath.selectValidAudioTelemetry(
-            selectedTrackBitrate = selectedTrackFormat?.bitrate ?: 0,
-            selectedTrackAvgBitrate = selectedTrackFormat?.averageBitrate ?: 0,
-            decoderBitrate = decoderAudioFormat?.bitrate ?: 0,
-            resolvedBitrateBps = resolverMeta?.bitrateBps ?: 0,
-            selectedTrackSampleRate = selectedTrackFormat?.sampleRate ?: 0,
-            decoderSampleRate = decoderAudioFormat?.sampleRate ?: 0,
-            resolvedSampleRateHz = resolverMeta?.sampleRateHz ?: 0
-        )
+        val rawSampleRate = selectedTrackFormat?.sampleRate?.takeIf { it > 0 }
+            ?: decoderAudioFormat?.sampleRate?.takeIf { it > 0 }
+            ?: resolverMeta?.sampleRateHz
+            ?: 0
+        // HE-AAC decoders report half-rate core sampling (22.05/24 kHz); prefer full SBR rate from container/resolver when known.
+        val sampleRate = if (rawSampleRate in 1..24_000 && (resolverMeta?.sampleRateHz ?: 0) >= 44_100) {
+            resolverMeta?.sampleRateHz ?: rawSampleRate
+        } else if (rawSampleRate <= 0) {
+            resolverMeta?.sampleRateHz ?: 0
+        } else {
+            rawSampleRate
+        }
 
-        val sampleRate = selectedTelemetry.sampleRateHz
-        var bitrate = selectedTelemetry.bitrateBps
+        val rawBitrate = selectedTrackFormat?.bitrate?.takeIf { it > 0 }
+            ?: selectedTrackFormat?.averageBitrate?.takeIf { it > 0 }
+            ?: decoderAudioFormat?.bitrate?.takeIf { it > 0 }
+            ?: resolverMeta?.bitrateBps
+            ?: 0
+        var bitrate = com.example.ecodot.ui.components.player.PlayerStyleMath.normalizeBitrateBps(rawBitrate)
 
-        if (bitrate < com.example.ecodot.ui.components.player.PlayerStyleMath.MIN_VALID_AUDIO_BITRATE_BPS &&
-            mediaId != null &&
-            player.duration > 0
-        ) {
+        if (bitrate <= 0 && mediaId != null && player.duration > 0) {
             val uriStr = player.currentMediaItem?.localConfiguration?.uri?.toString().orEmpty()
             val localPath = when {
                 uriStr.startsWith("file://") -> android.net.Uri.parse(uriStr).path
@@ -555,12 +561,8 @@ class EcoDotSessionService : MediaSessionService() {
 
         lastStreamBitrateBps = bitrate
         lastStreamSampleRateHz = sampleRate
-        lastStreamMimeType = selectedTrackFormat?.sampleMimeType
-            ?: decoderAudioFormat?.sampleMimeType
-            ?: resolverMeta?.mimeType
-        lastStreamCodecs = selectedTrackFormat?.codecs
-            ?: decoderAudioFormat?.codecs
-            ?: resolverMeta?.codec
+        lastStreamMimeType = selectedTrackFormat?.sampleMimeType ?: decoderAudioFormat?.sampleMimeType
+        lastStreamCodecs = selectedTrackFormat?.codecs ?: decoderAudioFormat?.codecs ?: resolverMeta?.codec
         emitSessionExtras()
     }
 
@@ -1021,6 +1023,7 @@ class EcoDotSessionService : MediaSessionService() {
                 .add(SessionCommand(ACTION_CLEAR_URL_CACHE, Bundle.EMPTY))
                 .add(SessionCommand(ACTION_UPDATE_QUEUE,    Bundle.EMPTY))
                 .add(SessionCommand(ACTION_UPDATE_INDEX,    Bundle.EMPTY))
+                .add(SessionCommand(ACTION_INVALIDATE_STAGED_NEXT, Bundle.EMPTY))
                 .add(SessionCommand(ACTION_SET_SLEEP_TIMER, Bundle.EMPTY))
                 .add(SessionCommand(ACTION_CANCEL_SLEEP_TIMER, Bundle.EMPTY))
                 .build()
@@ -1082,13 +1085,10 @@ class EcoDotSessionService : MediaSessionService() {
                     lastPreCachedTrackId = null
                     clearStagedCrossfade()
                 }
-                ACTION_UPDATE_QUEUE -> {
-                    lastPreCachedTrackId = null
-                    if (!isCrossfading) {
-                        clearStagedCrossfade()
-                    }
+                ACTION_INVALIDATE_STAGED_NEXT -> {
+                    clearStagedCrossfade()
                 }
-                ACTION_UPDATE_INDEX -> { /* index tracked natively by player timeline */ }
+                ACTION_UPDATE_QUEUE, ACTION_UPDATE_INDEX -> { /* no-op */ }
                 ACTION_SET_SLEEP_TIMER -> {
                     val minutes = args.getInt("minutes", 0)
                     val endOfTrack = args.getBoolean("endOfTrack", false)

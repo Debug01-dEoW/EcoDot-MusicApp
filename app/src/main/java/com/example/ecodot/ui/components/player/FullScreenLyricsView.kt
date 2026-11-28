@@ -18,7 +18,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -266,22 +265,47 @@ fun AnimatedLyricsGradientBackground(
 }
 
 /**
- * Shared auto-centering scroll effect for both inline/tab lyrics and FullScreenLyricsView.
+ * LyricsPanel for inline now playing card and fallback lyrics display.
+ * Renders with SimpMusic's Apple Music blurred line focus and tap-to-seek.
  */
 @Composable
-private fun SyncedLyricAutoCenterEffect(
-    listState: LazyListState,
-    currentLineIndex: Int,
-    isDragging: Boolean,
-    isSelectionMode: Boolean = false
+fun LyricsPanel(
+    syncedLyrics: List<LyricLine>,
+    currentPosition: Long,
+    plainLyrics: String?,
+    isLyricsLoading: Boolean,
+    onSeek: (Long) -> Unit,
+    isFullScreen: Boolean = false,
+    backgroundColor: Color = Color.Transparent,
+    accentColor: Color = Color(0xFF79DA9F),
+    positionProvider: (() -> Long)? = null,
+    useExpandedTypography: Boolean = isFullScreen,
+    showAttributionFooter: Boolean = isFullScreen,
+    isSelectionMode: Boolean = false,
+    selectedLines: Set<Int> = emptySet(),
+    onToggleSelectLine: ((Int) -> Unit)? = null,
+    onInteraction: (() -> Unit)? = null,
+    verticalContentPadding: PaddingValues? = null,
+    horizontalLinePadding: Dp = if (useExpandedTypography) 28.dp else 20.dp,
+    listState: androidx.compose.foundation.lazy.LazyListState = rememberLazyListState()
 ) {
+    val isDragging by listState.interactionSource.collectIsDraggedAsState()
+    val currentPositionState = rememberUpdatedState(currentPosition)
+    val currentLineIndex by remember(syncedLyrics, positionProvider) {
+        derivedStateOf {
+            val pos = positionProvider?.invoke() ?: currentPositionState.value
+            syncedLyrics.indexOfLast { it.timeMs <= pos }
+        }
+    }
+
     LaunchedEffect(currentLineIndex, isDragging, isSelectionMode) {
         if (currentLineIndex >= 0 && !isDragging && !isSelectionMode) {
             delay(16)
             val layoutInfo = listState.layoutInfo
-            val itemInfo = layoutInfo.visibleItemsInfo.firstOrNull { it.index == currentLineIndex }
+            val visibleItems = layoutInfo.visibleItemsInfo
+            val itemInfo = visibleItems.firstOrNull { it.index == currentLineIndex }
             if (itemInfo != null) {
-                val center = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2
+                val center = layoutInfo.viewportEndOffset / 2
                 val childCenter = itemInfo.offset + itemInfo.size / 2
                 val scrollDelta = (childCenter - center).toFloat()
                 if (abs(scrollDelta) > 1f) {
@@ -292,143 +316,141 @@ private fun SyncedLyricAutoCenterEffect(
             }
         }
     }
-}
 
-/**
- * Shared synced/unsynced lyrics list used identically by AppleMusicLyricsBody,
- * inline style cards (LyricsPanel), and FullScreenLyricsView.
- */
-@Composable
-fun SyncedLyricsList(
-    syncedLyrics: List<LyricLine>,
-    plainLyrics: String?,
-    isLyricsLoading: Boolean,
-    listState: LazyListState,
-    currentLineIndex: Int,
-    isDragging: Boolean,
-    accentColor: Color,
-    fontSize: TextUnit,
-    lineHeight: TextUnit,
-    lineSpacing: Dp,
-    horizontalPadding: Dp,
-    lineVerticalPadding: Dp,
-    contentPadding: PaddingValues,
-    isSelectionMode: Boolean = false,
-    selectedLines: Set<Int> = emptySet(),
-    showAttributionFooter: Boolean = true,
-    onLineClick: (Int, LyricLine) -> Unit
-) {
-    if (isLyricsLoading && syncedLyrics.isEmpty() && plainLyrics.isNullOrEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(
-                color = Color.White.copy(alpha = 0.6f),
-                modifier = Modifier.size(30.dp),
-                strokeWidth = 2.5.dp
+    val fontSize = if (useExpandedTypography) AppleMusicLyricFontSize else 22.sp
+    val lineHeight = if (useExpandedTypography) AppleMusicLyricLineHeight else 28.sp
+    val gap = if (useExpandedTypography) AppleMusicLyricGap else 12.dp
+    val resolvedContentPadding = verticalContentPadding ?: PaddingValues(
+        vertical = if (isFullScreen) 240.dp else if (useExpandedTypography) 110.dp else 40.dp
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(backgroundColor)
+            .appleMusicVerticalFadeEdges(
+                topFade = if (useExpandedTypography) 32.dp else 24.dp,
+                bottomFade = 24.dp
             )
-        }
-    } else if (syncedLyrics.isEmpty()) {
-        val scrollState = rememberScrollState()
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(scrollState)
-                .padding(horizontal = horizontalPadding, vertical = 28.dp)
-        ) {
-            Text(
-                text = if (!plainLyrics.isNullOrBlank()) plainLyrics
-                else if (isLyricsLoading) "Searching for lyrics..."
-                else "No lyrics available.",
-                style = MaterialTheme.typography.displaySmall.copy(
-                    fontWeight = FontWeight.Medium,
-                    fontSize = fontSize,
-                    lineHeight = lineHeight
-                ),
-                color = Color.White.copy(alpha = 0.72f),
-                textAlign = TextAlign.Start
-            )
-            if (showAttributionFooter && !plainLyrics.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(24.dp))
-                LyricsAttributionFooter(synced = false)
+    ) {
+        if (isLyricsLoading && syncedLyrics.isEmpty() && plainLyrics.isNullOrEmpty()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(
+                    color = Color.White.copy(alpha = 0.5f),
+                    modifier = Modifier.size(if (useExpandedTypography) 32.dp else 28.dp),
+                    strokeWidth = 2.5.dp
+                )
             }
-        }
-    } else {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = contentPadding,
-            verticalArrangement = Arrangement.spacedBy(lineSpacing)
-        ) {
-            itemsIndexed(syncedLyrics, key = { index, line -> "lyric_${index}_${line.timeMs}" }) { index, line ->
-                val isCurrent = index == currentLineIndex
-                val isSelected = index in selectedLines
-                val distanceFromCurrent = if (currentLineIndex >= 0) index - currentLineIndex else 0
+        } else if (syncedLyrics.isEmpty()) {
+            val scrollState = rememberScrollState()
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = horizontalLinePadding, vertical = if (useExpandedTypography) 40.dp else 24.dp)
+            ) {
+                Text(
+                    text = if (!plainLyrics.isNullOrEmpty()) plainLyrics
+                    else if (isLyricsLoading) "Searching for lyrics..."
+                    else "No lyrics available.",
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontWeight = FontWeight.Medium,
+                        fontSize = fontSize,
+                        lineHeight = lineHeight
+                    ),
+                    color = Color.White.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Start
+                )
+                if (showAttributionFooter && !plainLyrics.isNullOrEmpty()) {
+                    LyricsAttributionFooter(synced = false)
+                }
+            }
+        } else {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = resolvedContentPadding,
+                verticalArrangement = Arrangement.spacedBy(gap)
+            ) {
+                itemsIndexed(syncedLyrics, key = { index, _ -> "lyric_$index" }) { index, line ->
+                    val isCurrent = index == currentLineIndex
+                    val isSelected = isSelectionMode && index in selectedLines
+                    val distanceFromCurrent = if (currentLineIndex >= 0) index - currentLineIndex else 0
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .appleMusicLyricFocus(
-                            distanceFromCurrent = distanceFromCurrent,
-                            isDragging = isDragging,
-                            hasActiveLine = currentLineIndex >= 0,
-                            fontSize = fontSize
-                        )
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (isSelected) accentColor.copy(alpha = 0.16f) else Color.Transparent)
-                        .then(
-                            if (isSelected) Modifier.border(1.dp, accentColor.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
-                            else Modifier
-                        )
-                        .clickable { onLineClick(index, line) }
-                        .padding(vertical = lineVerticalPadding, horizontal = horizontalPadding),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = line.text,
-                            style = MaterialTheme.typography.displaySmall.copy(
-                                fontWeight = if (isCurrent || isSelected) FontWeight.Bold else FontWeight.Medium,
-                                fontSize = fontSize,
-                                lineHeight = lineHeight,
-                                letterSpacing = (-0.2).sp
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .appleMusicLyricFocus(
+                                distanceFromCurrent = distanceFromCurrent,
+                                isDragging = isDragging,
+                                hasActiveLine = currentLineIndex >= 0,
+                                fontSize = fontSize
+                            )
+                            .clip(RoundedCornerShape(if (useExpandedTypography) 12.dp else 8.dp))
+                            .background(if (isSelected) accentColor.copy(alpha = 0.16f) else Color.Transparent)
+                            .then(
+                                if (isSelected) Modifier.border(1.dp, accentColor.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                                else Modifier
+                            )
+                            .clickable {
+                                onInteraction?.invoke()
+                                if (isSelectionMode && onToggleSelectLine != null) {
+                                    onToggleSelectLine(index)
+                                } else {
+                                    onSeek(line.timeMs)
+                                }
+                            }
+                            .padding(
+                                vertical = if (useExpandedTypography) 8.dp else 4.dp,
+                                horizontal = horizontalLinePadding
                             ),
-                            color = when {
-                                isSelected -> accentColor
-                                isCurrent -> Color.White
-                                else -> AppleMusicInactiveLineColor
-                            },
-                            modifier = Modifier.weight(1f),
-                            textAlign = TextAlign.Start
-                        )
-                        if (isSelectionMode && isSelected) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Box(
-                                modifier = Modifier
-                                    .size(22.dp)
-                                    .clip(CircleShape)
-                                    .background(accentColor),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Rounded.Check,
-                                    contentDescription = null,
-                                    tint = Color.Black,
-                                    modifier = Modifier.size(14.dp)
-                                )
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = line.text,
+                                style = MaterialTheme.typography.displaySmall.copy(
+                                    fontWeight = if (isCurrent || isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    fontSize = fontSize,
+                                    lineHeight = lineHeight,
+                                    letterSpacing = (-0.2).sp
+                                ),
+                                color = when {
+                                    isSelected -> accentColor
+                                    isCurrent -> Color.White
+                                    else -> AppleMusicInactiveLineColor
+                                },
+                                modifier = Modifier.weight(1f),
+                                textAlign = TextAlign.Start
+                            )
+                            if (isSelectionMode && isSelected) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(22.dp)
+                                        .clip(CircleShape)
+                                        .background(accentColor),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Check,
+                                        contentDescription = null,
+                                        tint = Color.Black,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            if (showAttributionFooter) {
-                item(key = "lyrics_footer") {
-                    LyricsAttributionFooter(
-                        synced = true,
-                        modifier = Modifier.padding(horizontal = horizontalPadding, vertical = 20.dp)
-                    )
+                if (showAttributionFooter) {
+                    item(key = "lyrics_attribution_footer") {
+                        LyricsAttributionFooter(synced = true)
+                    }
                 }
             }
         }
@@ -436,12 +458,11 @@ fun SyncedLyricsList(
 }
 
 @Composable
-private fun LyricsAttributionFooter(
-    synced: Boolean,
-    modifier: Modifier = Modifier
-) {
+private fun LyricsAttributionFooter(synced: Boolean) {
     Column(
-        modifier = modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 28.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.End
     ) {
         Text(
@@ -461,75 +482,6 @@ private fun LyricsAttributionFooter(
             ),
             color = Color.White.copy(alpha = 0.35f),
             textAlign = TextAlign.End
-        )
-    }
-}
-
-/**
- * LyricsPanel for inline now playing cards and Apple Music inline lyrics tab.
- * Uses the same Apple Music typography, blurred focus, dynamic centering, and LRCLIB footer
- * as FullScreenLyricsView so both views feel cohesive and consistent.
- */
-@Composable
-fun LyricsPanel(
-    syncedLyrics: List<LyricLine>,
-    currentPosition: Long,
-    plainLyrics: String?,
-    isLyricsLoading: Boolean,
-    onSeek: (Long) -> Unit,
-    isFullScreen: Boolean = false,
-    useAppleMusicScale: Boolean = isFullScreen,
-    showAttributionFooter: Boolean = isFullScreen,
-    backgroundColor: Color = Color.Transparent,
-    accentColor: Color = Color(0xFF79DA9F),
-    positionProvider: (() -> Long)? = null
-) {
-    val listState = rememberLazyListState()
-    val isDragging by listState.interactionSource.collectIsDraggedAsState()
-    val currentPositionState = rememberUpdatedState(currentPosition)
-    val currentLineIndex by remember(syncedLyrics, positionProvider) {
-        derivedStateOf {
-            val pos = positionProvider?.invoke() ?: currentPositionState.value
-            syncedLyrics.indexOfLast { it.timeMs <= pos }
-        }
-    }
-
-    SyncedLyricAutoCenterEffect(
-        listState = listState,
-        currentLineIndex = currentLineIndex,
-        isDragging = isDragging
-    )
-
-    val fontSize = if (useAppleMusicScale) 26.sp else 21.sp
-    val lineHeight = if (useAppleMusicScale) 33.sp else 28.sp
-    val gap = if (useAppleMusicScale) 14.dp else 11.dp
-    val hPad = if (useAppleMusicScale) 22.dp else 16.dp
-    val vPad = if (useAppleMusicScale) 6.dp else 4.dp
-
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(backgroundColor)
-            .appleMusicVerticalFadeEdges(topFade = 24.dp, bottomFade = 24.dp)
-    ) {
-        val centerPadTop = (maxHeight * 0.34f).coerceIn(72.dp, 220.dp)
-        val centerPadBottom = (maxHeight * 0.40f).coerceIn(84.dp, 240.dp)
-        SyncedLyricsList(
-            syncedLyrics = syncedLyrics,
-            plainLyrics = plainLyrics,
-            isLyricsLoading = isLyricsLoading,
-            listState = listState,
-            currentLineIndex = currentLineIndex,
-            isDragging = isDragging,
-            accentColor = accentColor,
-            fontSize = fontSize,
-            lineHeight = lineHeight,
-            lineSpacing = gap,
-            horizontalPadding = hPad,
-            lineVerticalPadding = vPad,
-            contentPadding = PaddingValues(top = centerPadTop, bottom = centerPadBottom),
-            showAttributionFooter = showAttributionFooter,
-            onLineClick = { _, line -> onSeek(line.timeMs) }
         )
     }
 }
@@ -661,8 +613,7 @@ fun FullScreenLyricsView(
     isLyricsLoading: Boolean,
     currentPosition: Long,
     onClose: () -> Unit,
-    positionProvider: (() -> Long)? = null,
-    onOpenOptionsMenu: (() -> Unit)? = null
+    positionProvider: (() -> Long)? = null
 ) {
     val accentColor by viewModel.accentColor.collectAsState()
     val isPlaying by viewModel.isPlaying.collectAsState()
@@ -704,22 +655,8 @@ fun FullScreenLyricsView(
     }
 
     val listState = rememberLazyListState()
-    val isDragging by listState.interactionSource.collectIsDraggedAsState()
     val currentPositionState = rememberUpdatedState(currentPosition)
-    val readPosition = positionProvider ?: { currentPositionState.value }
-    val currentLineIndex by remember(syncedLyrics, positionProvider) {
-        derivedStateOf {
-            syncedLyrics.indexOfLast { it.timeMs <= readPosition() }
-        }
-    }
-
-    // Smooth auto-centering
-    SyncedLyricAutoCenterEffect(
-        listState = listState,
-        currentLineIndex = currentLineIndex,
-        isDragging = isDragging,
-        isSelectionMode = isSelectionMode
-    )
+    val readPosition: () -> Long = positionProvider ?: { currentPositionState.value }
 
     // Effective ambient color: ensure songs with dark covers still get a rich ambient hue
     val effectiveBgColor = remember(dominantColor, accentColor) {
@@ -852,13 +789,12 @@ fun FullScreenLyricsView(
                 }
             }
 
-            // ── Center Lyrics Body ──────────────────────────────────────────
-            BoxWithConstraints(
+            // Center Lyrics Body (shared with inline Apple Music Lyrics)
+            Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
                     .nestedScroll(scrollWakesControls)
-                    .appleMusicVerticalFadeEdges(topFade = 32.dp, bottomFade = 24.dp)
                     .clickable(
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() }
@@ -867,38 +803,34 @@ fun FullScreenLyricsView(
                         interactionTick++
                     }
             ) {
-                val topCenterPad = (maxHeight * 0.36f).coerceIn(140.dp, 240.dp)
-                val bottomCenterPad = (maxHeight * 0.42f).coerceIn(160.dp, 260.dp)
-                SyncedLyricsList(
+                LyricsPanel(
                     syncedLyrics = syncedLyrics,
+                    currentPosition = currentPosition,
                     plainLyrics = plainLyrics,
                     isLyricsLoading = isLyricsLoading,
-                    listState = listState,
-                    currentLineIndex = currentLineIndex,
-                    isDragging = isDragging,
+                    onSeek = { viewModel.seekTo(it) },
+                    isFullScreen = true,
+                    backgroundColor = Color.Transparent,
                     accentColor = accentColor,
-                    fontSize = AppleMusicLyricFontSize,
-                    lineHeight = AppleMusicLyricLineHeight,
-                    lineSpacing = AppleMusicLyricGap,
-                    horizontalPadding = 28.dp,
-                    lineVerticalPadding = 8.dp,
-                    contentPadding = PaddingValues(top = topCenterPad, bottom = bottomCenterPad),
+                    positionProvider = readPosition,
+                    useExpandedTypography = true,
+                    showAttributionFooter = true,
                     isSelectionMode = isSelectionMode,
                     selectedLines = selectedLines,
-                    showAttributionFooter = true,
-                    onLineClick = { index, line ->
+                    onToggleSelectLine = { index ->
+                        selectedLines = if (index in selectedLines) {
+                            selectedLines - index
+                        } else {
+                            (selectedLines + index).take(5).toSet()
+                        }
+                    },
+                    onInteraction = {
                         interactionTick++
                         showControlButtons = true
-                        if (isSelectionMode) {
-                            selectedLines = if (index in selectedLines) {
-                                selectedLines - index
-                            } else {
-                                (selectedLines + index).take(5).toSet()
-                            }
-                        } else {
-                            viewModel.seekTo(line.timeMs)
-                        }
-                    }
+                    },
+                    verticalContentPadding = PaddingValues(top = 220.dp, bottom = 260.dp),
+                    horizontalLinePadding = 28.dp,
+                    listState = listState
                 )
             }
 
@@ -1050,13 +982,7 @@ fun FullScreenLyricsView(
 
                     // Far Right: More options 3-dots button (Image 2 exact)
                     IconButton(
-                        onClick = {
-                            if (onOpenOptionsMenu != null) {
-                                onOpenOptionsMenu()
-                            } else {
-                                showTrackOptions = true
-                            }
-                        },
+                        onClick = { showTrackOptions = true },
                         modifier = Modifier.size(44.dp)
                     ) {
                         Icon(
@@ -1128,31 +1054,40 @@ fun FullScreenLyricsView(
             }
         }
 
-        // Track Options Bottom Sheet (fallback if parent didn't pass an integrated sheet handler)
+        // Track Options Bottom Sheet
         if (showTrackOptions && currentTrack != null) {
-            val queueState by viewModel.playbackQueue.collectAsState()
-            val downloadedTracks by viewModel.downloadedTracks.collectAsState()
-            val downloadProgressMap by viewModel.downloadProgress.collectAsState()
-            val sleepTimerRemaining by viewModel.sleepTimerRemaining.collectAsState()
-            val isInQueue = remember(queueState, currentTrack.id) { queueState.any { it.id == currentTrack.id } }
+            val isInQueue = viewModel.playbackQueue.collectAsState().value.any { it.id == currentTrack.id }
             TrackOptionsBottomSheet(
                 track = currentTrack,
                 onDismiss = { showTrackOptions = false },
-                onPlayNext = { viewModel.playNext(currentTrack) },
-                onAddToQueue = { viewModel.addToQueue(currentTrack) },
-                onRemoveFromQueue = if (isInQueue) { { viewModel.removeTrackFromQueue(currentTrack) } } else null,
-                onGoToAlbum = { showTrackOptions = false },
-                onGoToArtist = { showTrackOptions = false },
-                isDownloaded = downloadedTracks.any { it.id == currentTrack.id },
-                downloadProgress = downloadProgressMap[currentTrack.id],
-                onDownload = { viewModel.downloadTrack(currentTrack) },
-                onDeleteDownload = { viewModel.deleteDownload(currentTrack) },
-                isLiked = isLiked,
-                onLikeToggle = { viewModel.toggleTrackLike(currentTrack) },
-                onSetSleepTimer = { viewModel.setSleepTimer(it) },
-                onSetSleepTimerAtEndOfTrack = { viewModel.setSleepTimerAtEndOfTrack() },
-                onCancelSleepTimer = { viewModel.cancelSleepTimer() },
-                sleepTimerRemaining = sleepTimerRemaining
+                onPlayNext = {
+                    viewModel.playNext(currentTrack)
+                    showTrackOptions = false
+                },
+                onAddToQueue = {
+                    viewModel.addToQueue(currentTrack)
+                    showTrackOptions = false
+                },
+                onRemoveFromQueue = if (isInQueue) {
+                    {
+                        viewModel.removeTrackFromQueue(currentTrack)
+                        showTrackOptions = false
+                    }
+                } else null,
+                onGoToAlbum = {
+                    showTrackOptions = false
+                },
+                onGoToArtist = {
+                    showTrackOptions = false
+                },
+                onDownload = {
+                    viewModel.downloadTrack(currentTrack)
+                    showTrackOptions = false
+                },
+                onLikeToggle = {
+                    viewModel.toggleTrackLike(currentTrack)
+                },
+                isLiked = isLiked
             )
         }
     }

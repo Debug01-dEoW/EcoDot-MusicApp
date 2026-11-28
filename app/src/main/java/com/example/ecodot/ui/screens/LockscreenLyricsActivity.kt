@@ -214,30 +214,8 @@ class LockscreenLyricsActivity : ComponentActivity() {
         }
     }
 
-    private fun parseLrc(lrcContent: String): List<LyricLine> {
-        val lines = mutableListOf<LyricLine>()
-        val timeRegex = Regex("\\[(\\d+):(\\d{2})(?:[.:](\\d{2,3}))?\\]")
-        lrcContent.lines().forEach { line ->
-            val matches = timeRegex.findAll(line).toList()
-            if (matches.isNotEmpty()) {
-                val lastMatch = matches.last()
-                val text = line.substring(lastMatch.range.last + 1).trim()
-                matches.forEach { match ->
-                    val min = match.groupValues[1].toLongOrNull() ?: 0L
-                    val sec = match.groupValues[2].toLongOrNull() ?: 0L
-                    val msStr = match.groupValues[3]
-                    val ms = when (msStr.length) {
-                        2 -> (msStr.toLongOrNull() ?: 0L) * 10
-                        3 -> msStr.toLongOrNull() ?: 0L
-                        else -> 0L
-                    }
-                    val time = min * 60 * 1000L + sec * 1000L + ms
-                    lines.add(LyricLine(time, text))
-                }
-            }
-        }
-        return lines.sortedBy { it.timeMs }
-    }
+    private fun parseLrc(lrcContent: String): List<LyricLine> =
+        com.example.ecodot.data.remote.LyricsRepository.parseLrcLines(lrcContent)
 
     private fun startPositionUpdater() {
         positionJob?.cancel()

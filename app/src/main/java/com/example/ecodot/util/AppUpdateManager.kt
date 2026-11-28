@@ -1,9 +1,5 @@
 package com.example.ecodot.util
 
-import android.Manifest
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInfo
@@ -12,8 +8,6 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.util.Log
-import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.example.ecodot.data.local.prefs.UserPreferencesManager
 import kotlinx.coroutines.Dispatchers
@@ -142,83 +136,11 @@ class AppUpdateManager(private val context: Context) {
 
         if (updateInfo != null) {
             _status.value = UpdateStatus.Available(updateInfo)
-            showUpdateAvailableNotification(updateInfo, force = force)
         } else {
             _status.value = UpdateStatus.UpToDate
         }
 
         return@withContext updateInfo
-    }
-
-    private fun showUpdateAvailableNotification(info: AppUpdateInfo, force: Boolean) {
-        if (!force && info.versionCode > 0L && prefs.lastNotifiedUpdateVersionCode >= info.versionCode) {
-            return
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val granted = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-            if (!granted) return
-        }
-
-        runCatching {
-            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-                ?: return
-            val channelId = "ecodot_updates"
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val channel = NotificationChannel(
-                    channelId,
-                    "App Updates",
-                    NotificationManager.IMPORTANCE_DEFAULT
-                ).apply {
-                    description = "Notifications when a new EcoDot update is ready"
-                }
-                manager.createNotificationChannel(channel)
-            }
-
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            }
-            val pendingIntent = launchIntent?.let {
-                PendingIntent.getActivity(
-                    context,
-                    UPDATE_NOTIFICATION_ID,
-                    it,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-            }
-
-            val displayVer = if (info.versionName.startsWith("v", ignoreCase = true)) {
-                info.versionName
-            } else {
-                "v${info.versionName}"
-            }
-            val summaryText = info.sections.firstOrNull()?.items?.firstOrNull()
-                ?.replace("**", "")
-                ?.replace("`", "")
-                ?: info.description
-                ?: "Tap to view new features and install EcoDot $displayVer."
-
-            val notification = NotificationCompat.Builder(context, channelId)
-                .setSmallIcon(com.example.ecodot.R.drawable.ic_update_notification)
-                .setContentTitle("EcoDot $displayVer Update Available")
-                .setContentText("New features & bug fixes are ready to install.")
-                .setStyle(NotificationCompat.BigTextStyle().bigText(summaryText))
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setAutoCancel(true)
-                .apply {
-                    if (pendingIntent != null) setContentIntent(pendingIntent)
-                }
-                .build()
-
-            manager.notify(UPDATE_NOTIFICATION_ID, notification)
-            if (info.versionCode > 0L) {
-                prefs.lastNotifiedUpdateVersionCode = info.versionCode
-            }
-        }.onFailure { e ->
-            Log.w(tag, "Could not show update notification: ${e.message}")
-        }
     }
 
     private fun checkDirectJson(url: String): AppUpdateInfo? {
@@ -587,13 +509,31 @@ class AppUpdateManager(private val context: Context) {
      * Compares remote version with current local app version.
      * Checks versionCode first; if equal or 0, parses semantic version string.
      */
-    private fun isVersionNewer(remoteVersionCode: Long, remoteVersionName: String): Boolean =
-        Companion.isVersionNewer(
-            remoteVersionCode = remoteVersionCode,
-            remoteVersionName = remoteVersionName,
-            localVersionCode = currentVersionCode,
-            localVersionName = currentVersionName
-        )
+    private fun isVersionNewer(remoteVersionCode: Long, remoteVersionName: String): Boolean {
+        val localCode = currentVersionCode
+        if (remoteVersionCode > 0 && localCode > 0) {
+            if (remoteVersionCode > localCode) return true
+            if (remoteVersionCode < localCode) return false
+        }
+
+        // Semver fallback comparison: e.g. "1.1.0" vs "1.0"
+        return compareSemVer(remoteVersionName, currentVersionName) > 0
+    }
+
+    private fun compareSemVer(v1: String, v2: String): Int {
+        val s1 = v1.removePrefix("v").split(".", "-", "_")
+        val s2 = v2.removePrefix("v").split(".", "-", "_")
+        val length = maxOf(s1.size, s2.size)
+
+        for (i in 0 until length) {
+            val num1 = s1.getOrNull(i)?.filter { it.isDigit() }?.toIntOrNull() ?: 0
+            val num2 = s2.getOrNull(i)?.filter { it.isDigit() }?.toIntOrNull() ?: 0
+            if (num1 != num2) {
+                return num1.compareTo(num2)
+            }
+        }
+        return 0
+    }
 
     /**
      * Download the APK with progress streaming.
@@ -720,36 +660,6 @@ class AppUpdateManager(private val context: Context) {
     }
 
     companion object {
-        private const val UPDATE_NOTIFICATION_ID = 12701
-
-        fun isVersionNewer(
-            remoteVersionCode: Long,
-            remoteVersionName: String,
-            localVersionCode: Long,
-            localVersionName: String
-        ): Boolean {
-            if (remoteVersionCode > 0L && localVersionCode > 0L) {
-                if (remoteVersionCode > localVersionCode) return true
-                if (remoteVersionCode < localVersionCode) return false
-            }
-            return compareSemVer(remoteVersionName, localVersionName) > 0
-        }
-
-        fun compareSemVer(v1: String, v2: String): Int {
-            val s1 = v1.removePrefix("v").split(".", "-", "_")
-            val s2 = v2.removePrefix("v").split(".", "-", "_")
-            val length = maxOf(s1.size, s2.size)
-
-            for (i in 0 until length) {
-                val num1 = s1.getOrNull(i)?.filter { it.isDigit() }?.toIntOrNull() ?: 0
-                val num2 = s2.getOrNull(i)?.filter { it.isDigit() }?.toIntOrNull() ?: 0
-                if (num1 != num2) {
-                    return num1.compareTo(num2)
-                }
-            }
-            return 0
-        }
-
         private val atxHeaderRegex = Regex("""^(#{1,6})\s+(.+)$""")
         private val canonicalHeaderRegex = Regex(
             """^(?:\*{2})?(New|Improved|Fixed|What's Changed|What Changed|New Contributors|Contributors|Improvements|Bug Fixes|Features)(?:\*{2}|:)?\s*$""",

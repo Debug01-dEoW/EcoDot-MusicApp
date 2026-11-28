@@ -569,6 +569,10 @@ fun NowPlayingScreen(
                     optionsMenuQueueIndex = null
                     optionsMenuTrack = it
                 },
+                onOpenQueueItemOptions = { qTrack, absIdx ->
+                    optionsMenuQueueIndex = absIdx
+                    optionsMenuTrack = qTrack
+                },
                 onOpenArtist = navigateArtistFromPlayer,
                 onOpenOutputSheet = { showAudioOutputSheet = true },
                 formatDuration = { viewModel.formatDuration(it) },
@@ -617,10 +621,7 @@ fun NowPlayingScreen(
                 onOpenTrackInfo = { showInfoSheet = true },
                 onOpenSleepTimer = { showSleepTimerSheet = true },
                 onOpenStylePicker = { showPlayerStyleSheet = true },
-                onOpenOptionsMenu = {
-                    optionsMenuQueueIndex = null
-                    optionsMenuTrack = it
-                },
+                onOpenOptionsMenu = { optionsMenuTrack = it },
                 onOpenArtist = navigateArtistFromPlayer,
                 onOpenOutputSheet = { showAudioOutputSheet = true },
                 formatDuration = { viewModel.formatDuration(it) },
@@ -678,10 +679,7 @@ fun NowPlayingScreen(
                 onOpenShareLyrics = { showShareStorySheet = true },
                 onOpenTrackInfo = { showInfoSheet = true },
                 onOpenStylePicker = { showPlayerStyleSheet = true },
-                onOpenOptionsMenu = {
-                    optionsMenuQueueIndex = null
-                    optionsMenuTrack = it
-                },
+                onOpenOptionsMenu = { optionsMenuTrack = it },
                 onOpenArtist = navigateArtistFromPlayer,
                 onOpenOutputSheet = { showAudioOutputSheet = true },
                 formatDuration = { viewModel.formatDuration(it) },
@@ -2267,10 +2265,7 @@ fun NowPlayingScreen(
                                     dragOffsetPx = if (isDragged) dragAccumPx else 0f,
                                     accentColor = accentColor,
                                     onTrackClick = { if (!isEndlessRepeat) viewModel.skipToQueueItem(absoluteIndex) },
-                                    onOptionsClick = {
-                                        optionsMenuQueueIndex = if (!isEndlessRepeat) absoluteIndex else null
-                                        optionsMenuTrack = track
-                                    },
+                                    onOptionsClick = { optionsMenuTrack = track },
                                     onItemHeightMeasured = { h -> if (h > 0f) itemHeightPx = h },
                                     onDragStart = {
                                         if (!isEndlessRepeat) {
@@ -2398,13 +2393,7 @@ fun NowPlayingScreen(
             isLyricsLoading = isLyricsLoading,
             currentPosition = 0L,
             positionProvider = positionProvider,
-            onClose = { showFullScreenLyrics = false },
-            onOpenOptionsMenu = {
-                currentTrack?.let {
-                    optionsMenuQueueIndex = null
-                    optionsMenuTrack = it
-                }
-            }
+            onClose = { showFullScreenLyrics = false }
         )
     }
 
@@ -2412,7 +2401,8 @@ fun NowPlayingScreen(
         val isDownloaded = downloadedTracks.any { it.id == track.id }
         val downloadProgress = downloadProgressMap[track.id]
         val isLikedTrack by viewModel.isTrackLiked(track.id).collectAsState(initial = false)
-        val isInQueue = remember(playbackQueue, track.id) { playbackQueue.any { it.id == track.id } }
+        val queueIdx = optionsMenuQueueIndex
+        val isInQueue = queueIdx != null || viewModel.playbackQueue.collectAsState().value.any { it.id == track.id }
 
         TrackOptionsBottomSheet(
             track = track,
@@ -2423,7 +2413,13 @@ fun NowPlayingScreen(
             onPlayNext = { viewModel.playNext(track) },
             onAddToQueue = { viewModel.addToQueue(track) },
             onRemoveFromQueue = if (isInQueue) {
-                { viewModel.removeTrackFromQueue(track, preferredIndex = optionsMenuQueueIndex) }
+                {
+                    if (queueIdx != null) {
+                        viewModel.removeFromQueue(queueIdx, track)
+                    } else {
+                        viewModel.removeTrackFromQueue(track)
+                    }
+                }
             } else null,
             onGoToAlbum = { 
                 optionsMenuTrack = null

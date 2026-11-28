@@ -487,8 +487,7 @@ fun BrowseScreen(
             val isDownloaded = downloadedTracks.any { it.id == track.id }
             val downloadProgress = downloadProgressMap[track.id]
             val isLiked by viewModel.isTrackLiked(track.id).collectAsState(initial = false)
-            val queueState by viewModel.playbackQueue.collectAsState()
-            val isInQueue = remember(queueState, track.id) { queueState.any { it.id == track.id } }
+            val isInQueue = viewModel.playbackQueue.collectAsState().value.any { it.id == track.id }
 
             TrackOptionsBottomSheet(
                 track = track,

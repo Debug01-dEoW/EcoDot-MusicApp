@@ -109,14 +109,4 @@ class AppUpdateManagerTest {
             sections[0].items[0]
         )
     }
-
-    @Test
-    fun isVersionNewer_notifiesBothV126AndPreviousV127WhilePreventingLoopAfterUpdate() {
-        // Users on v1.26v (code 26) get notified for v1.27v (code 28)
-        assertTrue(AppUpdateManager.isVersionNewer(28L, "1.27v", 26L, "1.26v"))
-        // Users on earlier v1.27v (code 27) ALSO get notified for updated v1.27v (code 28)
-        assertTrue(AppUpdateManager.isVersionNewer(28L, "1.27v", 27L, "1.27v"))
-        // Once updated to build 28, no repeated prompt loop occurs
-        assertFalse(AppUpdateManager.isVersionNewer(28L, "1.27v", 28L, "1.27v"))
-    }
 }

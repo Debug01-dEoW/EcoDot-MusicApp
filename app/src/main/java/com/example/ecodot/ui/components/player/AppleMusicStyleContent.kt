@@ -198,7 +198,8 @@ fun AppleMusicStyleContent(
     onOpenOutputSheet: () -> Unit,
     formatDuration: (Long) -> String,
     modifier: Modifier = Modifier,
-    positionProvider: (() -> Long)? = null
+    positionProvider: (() -> Long)? = null,
+    onOpenQueueItemOptions: ((Track, Int) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -400,6 +401,7 @@ fun AppleMusicStyleContent(
                             bottomPaddingDp = bottomClusterHeightDp,
                             onToggleLike = onToggleLike,
                             onOpenOptions = onOpenOptionsMenu,
+                            onOpenQueueItemOptions = onOpenQueueItemOptions,
                             onOpenArtist = onOpenArtist,
                             onOpenTrackInfo = onOpenTrackInfo,
                             onOpenPlaylistPicker = onOpenPlaylistPicker,
@@ -1248,7 +1250,6 @@ private fun AppleMusicLyricsBody(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp)
         ) {
             LyricsPanel(
                 syncedLyrics = syncedLyrics,
@@ -1257,77 +1258,77 @@ private fun AppleMusicLyricsBody(
                 isLyricsLoading = isLyricsLoading,
                 onSeek = onSeekTo,
                 isFullScreen = false,
-                useAppleMusicScale = true,
+                useExpandedTypography = true,
                 showAttributionFooter = true,
+                verticalContentPadding = PaddingValues(top = 110.dp, bottom = 110.dp),
+                horizontalLinePadding = 28.dp,
                 backgroundColor = Color.Transparent,
                 accentColor = if (accentColor == Color.Black) Color.White else accentColor,
                 positionProvider = positionProvider
             )
         }
 
-        // Dedicated non-overlapping toolbar above scrubber: never obscures lyric lines
+        // Dedicated non-overlapping action strip so lyrics never collide with Share / Fullscreen buttons
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 24.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Surface(
                 shape = CircleShape,
-                color = AppleCapsuleBg,
-                modifier = Modifier
-                    .height(34.dp)
-                    .clip(CircleShape)
-                    .clickable(onClick = onOpenShareLyrics)
+                color = AppleCapsuleBg
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Share,
-                        contentDescription = "Share lyrics",
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = "Share",
-                        fontFamily = poppinsFamily,
-                        fontSize = 11.5.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
-                    )
-                }
+                Text(
+                    text = when {
+                        syncedLyrics.isNotEmpty() -> "Line synced · LRCLIB"
+                        !plainLyrics.isNullOrBlank() -> "Unsynced · LRCLIB"
+                        isLyricsLoading -> "Loading lyrics…"
+                        else -> "No synced lyrics"
+                    },
+                    fontFamily = poppinsFamily,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White.copy(alpha = 0.78f),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            Surface(
-                shape = CircleShape,
-                color = AppleCapsuleBg,
-                modifier = Modifier
-                    .height(34.dp)
-                    .clip(CircleShape)
-                    .clickable(onClick = onOpenFullLyrics)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Surface(
+                    shape = CircleShape,
+                    color = AppleCapsuleBg,
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onOpenShareLyrics)
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.OpenInFull,
-                        contentDescription = "Fullscreen lyrics",
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = "Full screen",
-                        fontFamily = poppinsFamily,
-                        fontSize = 11.5.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Rounded.Share,
+                            contentDescription = "Share lyrics",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+                Surface(
+                    shape = CircleShape,
+                    color = AppleCapsuleBg,
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onOpenFullLyrics)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Rounded.OpenInFull,
+                            contentDescription = "Fullscreen lyrics",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
         }
@@ -1441,6 +1442,7 @@ private fun AppleMusicQueueBody(
     bottomPaddingDp: Int,
     onToggleLike: () -> Unit,
     onOpenOptions: (Track) -> Unit,
+    onOpenQueueItemOptions: ((Track, Int) -> Unit)? = null,
     onOpenArtist: () -> Unit,
     onOpenTrackInfo: () -> Unit,
     onOpenPlaylistPicker: () -> Unit,
@@ -1616,7 +1618,7 @@ private fun AppleMusicQueueBody(
                             )
                         }
                         IconButton(
-                            onClick = { onOpenOptions(qTrack) },
+                            onClick = { onOpenQueueItemOptions?.invoke(qTrack, absoluteIdx) ?: onOpenOptions(qTrack) },
                             modifier = Modifier.size(34.dp)
                         ) {
                             Icon(

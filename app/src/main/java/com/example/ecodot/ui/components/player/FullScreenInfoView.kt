@@ -63,22 +63,14 @@ fun parseYouTubeDescription(desc: String): Pair<List<Pair<String, String>>, Stri
 }
 
 fun formatNumberShort(numStr: String?): String {
-    if (numStr.isNullOrBlank()) return "—"
+    if (numStr.isNullOrBlank()) return "0"
     val digits = numStr.filter { it.isDigit() }.toLongOrNull() ?: return numStr
-    if (digits <= 0L) return "—"
     return when {
         digits >= 1_000_000_000 -> String.format("%.1fB", digits.toFloat() / 1_000_000_000f)
         digits >= 1_000_000 -> String.format("%.1fM", digits.toFloat() / 1_000_000f)
         digits >= 1_000 -> String.format("%.1fK", digits.toFloat() / 1_000f)
         else -> digits.toString()
     }
-}
-
-private fun formatDurationLabel(ms: Long, fallbackFormatted: String?): String {
-    if (!fallbackFormatted.isNullOrBlank() && fallbackFormatted != "0:00") return fallbackFormatted
-    if (ms <= 0L) return "—"
-    val sec = ms / 1000L
-    return "%d:%02d".format(sec / 60L, sec % 60L)
 }
 
 @Composable
@@ -272,11 +264,19 @@ fun FullScreenInfoView(
 ) {
     val videoInfo by viewModel.videoInfo.collectAsState()
     val isVideoInfoLoading by viewModel.isVideoInfoLoading.collectAsState()
+    val streamTelemetry by viewModel.activeStreamTelemetry.collectAsState()
+    val activeStreamLabel by viewModel.activeStreamLabel.collectAsState()
     val accentColor by viewModel.accentColor.collectAsState()
-    val liveStreamLabel by viewModel.activeStreamLabel.collectAsState()
-    val liveDurationMs by viewModel.duration.collectAsState()
-    val downloadedTracks by viewModel.downloadedTracks.collectAsState()
-    
+    val playbackSource by viewModel.playbackSource.collectAsState()
+    val isVideoMode by viewModel.isVideoMode.collectAsState()
+
+    LaunchedEffect(currentTrack?.id) {
+        val track = currentTrack ?: return@LaunchedEffect
+        if (track.isYouTube) {
+            viewModel.ensureVideoInfoLoaded(track.id)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -293,7 +293,7 @@ fun FullScreenInfoView(
                 contentScale = ContentScale.Crop
             )
         }
-        
+
         // Pure black OLED gradient overlay
         Box(
             modifier = Modifier
@@ -327,280 +327,359 @@ fun FullScreenInfoView(
                             modifier = Modifier.size(32.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = "Song Info",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = Color.White,
+                        modifier = Modifier.weight(1f)
                     )
+                    if (currentTrack?.isYouTube == true) {
+                        IconButton(
+                            onClick = { viewModel.ensureVideoInfoLoaded(currentTrack.id, forceRefresh = true) },
+                            enabled = !isVideoInfoLoading
+                        ) {
+                            Icon(
+                                Icons.Rounded.Refresh,
+                                contentDescription = "Refresh Song Info",
+                                tint = Color.White.copy(alpha = if (isVideoInfoLoading) 0.4f else 0.85f)
+                            )
+                        }
+                    }
                 }
             }
         ) { padding ->
-            if (isVideoInfoLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = Color.White.copy(0.7f))
+            currentTrack?.let { track ->
+                val info = videoInfo?.takeIf { it.videoId == track.id }
+                val resolverMeta = remember(track.id, streamTelemetry) {
+                    com.example.ecodot.data.remote.YouTubeStreamResolver.resolvedAudioTelemetry[track.id]
                 }
-            } else {
-                currentTrack?.let { track ->
-                    val info = videoInfo
-                    val resolverMeta = remember(track.id, liveStreamLabel) {
-                        com.example.ecodot.data.remote.YouTubeStreamResolver.resolvedAudioTelemetry[track.id]
-                    }
-                    val isOffline = remember(downloadedTracks, track.id, track.path, track.isYouTube) {
-                        !track.isYouTube || track.path.startsWith("/") || downloadedTracks.any { it.id == track.id }
-                    }
 
-                    val viewsLong = info?.viewCount?.filter { it.isDigit() }?.toLongOrNull()
-                        ?: resolverMeta?.viewCount?.takeIf { it > 0L }
-                    val likesLong = info?.likeCount?.filter { it.isDigit() }?.toLongOrNull()
-                        ?: resolverMeta?.likeCount?.takeIf { it > 0L }
+                // Merge live ExoPlayer telemetry with stream metadata so Song Info reflects active playback.
+                val liveBitrateBps = streamTelemetry.bitrateBps.takeIf { it > 0 }
+                    ?: resolverMeta?.bitrateBps?.takeIf { it > 0 }
+                    ?: 0
+                val displayBitrate = PlayerStyleMath.formatBitrateKbpsLabel(liveBitrateBps)
+                    ?: info?.bitrate?.takeIf { it.isNotBlank() && it != "0" && it != "—" }
+                    ?: "—"
 
-                    val viewsStr = when {
-                        viewsLong != null && viewsLong > 0L -> formatNumberShort(viewsLong.toString())
-                        isOffline && !track.isYouTube -> "Local"
-                        else -> "—"
-                    }
-                    val likesStr = when {
-                        likesLong != null && likesLong > 0L -> formatNumberShort(likesLong.toString())
-                        else -> "—"
-                    }
-                    val durationStr = formatDurationLabel(
-                        ms = liveDurationMs.takeIf { it > 0L } ?: track.duration,
-                        fallbackFormatted = info?.durationSeconds
-                    )
+                val liveCodec = streamTelemetry.codec?.takeIf { it.isNotBlank() }
+                    ?: resolverMeta?.codec?.takeIf { it.isNotBlank() }
+                    ?: info?.codec?.takeIf { it.isNotBlank() && it != "—" }
+                    ?: if (!track.isYouTube) track.path.substringAfterLast('.', "").lowercase().ifBlank { "local" } else "—"
 
-                    val syncedCodec = info?.codec?.takeIf { it.isNotBlank() }
-                        ?: resolverMeta?.codec?.takeIf { it.isNotBlank() }
-                        ?: if (isOffline) "aac" else "opus"
-                    val liveParts = liveStreamLabel?.split("·")?.map { it.trim() }.orEmpty()
-                    val liveBitratePart = liveParts.firstOrNull { it.contains("kbps", ignoreCase = true) }
-                    val liveRatePart = liveParts.firstOrNull { it.contains("kHz", ignoreCase = true) }
+                val liveMimeType = (streamTelemetry.mimeType ?: resolverMeta?.mimeType ?: info?.mimeType)
+                    ?.substringBefore(";")
+                    ?.trim()
+                    ?.takeIf { it.isNotBlank() && it != "—" }
+                    ?: if (!track.isYouTube) "audio/${track.path.substringAfterLast('.', "file").lowercase()}" else "—"
 
-                    val syncedBitrate = PlayerStyleMath.formatBitrateKbps(
-                        rawBitrate = info?.bitrate?.takeIf { it.isNotBlank() } ?: liveBitratePart,
-                        fallbackBps = resolverMeta?.bitrateBps ?: 0
-                    )
-                    val syncedMime = (info?.mimeType?.takeIf { it.isNotBlank() }
-                        ?: resolverMeta?.mimeType
-                        ?: if (syncedCodec.contains("mp4a", true) || syncedCodec.contains("aac", true)) "audio/mp4" else "audio/webm")
-                        .split(";").firstOrNull()?.trim().orEmpty().ifBlank { "audio/webm" }
-                    val syncedItag = info?.itag?.takeIf { it.isNotBlank() && it != "—" }
-                        ?: resolverMeta?.itag?.takeIf { it > 0 }?.toString()
-                        ?: if (isOffline) "Offline" else "—"
-                    val syncedSampleRate = info?.sampleRate?.takeIf { it.isNotBlank() }
-                        ?: liveRatePart
-                        ?: PlayerStyleMath.formatSampleRateKhz(resolverMeta?.sampleRateHz ?: 0)
-                    val syncedSource = when {
-                        downloadedTracks.any { it.id == track.id } -> "Downloaded"
-                        !track.isYouTube -> "Device Audio"
-                        else -> "YouTube Stream"
-                    }
+                val liveSampleRateHz = streamTelemetry.sampleRateHz.takeIf { it > 0 }
+                    ?: resolverMeta?.sampleRateHz?.takeIf { it > 0 }
+                    ?: 0
+                val displaySampleRate = if (liveSampleRateHz > 0) {
+                    val khz = liveSampleRateHz / 1000.0
+                    if (liveSampleRateHz % 1000 == 0) "${liveSampleRateHz / 1000} kHz"
+                    else String.format(java.util.Locale.US, "%.1f kHz", khz)
+                } else {
+                    info?.sampleRate?.takeIf { it.isNotBlank() } ?: "—"
+                }
 
-                    // Seed deterministic musical attributes
-                    val musicSeed = remember(track.title, track.artist) {
-                        val r = java.util.Random(track.title.hashCode().toLong() + track.artist.hashCode().toLong())
-                        val bpm = 75 + r.nextInt(100) // 75 to 175 bpm
-                        val keys = listOf("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
-                        val key = keys[r.nextInt(keys.size)]
-                        val scales = listOf("Major", "Minor")
-                        val scale = scales[r.nextInt(scales.size)]
-                        val energy = 40 + r.nextInt(55) // 40% to 95%
-                        Triple(bpm, "$key $scale", "$energy%")
-                    }
-                    val deterministicBpm = musicSeed.first
-                    val deterministicKey = musicSeed.second
-                    val deterministicEnergy = musicSeed.third
+                val displayItag = streamTelemetry.itag?.takeIf { it.isNotBlank() && it != "0" }
+                    ?: resolverMeta?.itag?.takeIf { it > 0 }?.toString()
+                    ?: info?.itag?.takeIf { it.isNotBlank() && it != "0" && it != "—" }
+                    ?: if (!track.isYouTube) "Local" else "—"
 
-                    Column(
+                val isTrackLiked by viewModel.isTrackLiked(track.id).collectAsState(initial = false)
+                val viewsDisplay = when {
+                    !track.isYouTube -> "Local File"
+                    info != null && info.viewCountRaw > 0L -> formatNumberShort(info.viewCountRaw.toString())
+                    info != null && info.viewCount.isNotBlank() && info.viewCount != "0" && info.viewCount != "—" -> info.viewCount
+                    isVideoInfoLoading -> "…"
+                    else -> "—"
+                }
+
+                val likesDisplay = when {
+                    !track.isYouTube -> if (isTrackLiked) "Liked" else "Library"
+                    info != null && info.likeCountRaw > 0L -> formatNumberShort(info.likeCountRaw.toString())
+                    info != null && info.likeCount.isNotBlank() && info.likeCount != "0" && info.likeCount != "—" -> info.likeCount
+                    isVideoInfoLoading -> "…"
+                    else -> "—"
+                }
+
+                val durationDisplay = formatTrackDuration(track.duration)
+                    ?: info?.durationSeconds?.takeIf { it.isNotBlank() && it != "—" }
+                    ?: "—"
+
+                val sourceDisplay = when {
+                    !track.isYouTube -> "Offline Storage"
+                    isVideoMode -> "YouTube Video"
+                    else -> "YouTube Music"
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(padding)
-                            .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 24.dp, vertical = 16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .size(104.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .border(1.dp, Color.White.copy(0.12f), RoundedCornerShape(14.dp))
                     ) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        // Cover art card (high-end visual layout)
-                        Box(
-                            modifier = Modifier
-                                .size(100.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .border(1.dp, Color.White.copy(0.1f), RoundedCornerShape(12.dp))
-                        ) {
-                            AsyncImage(
-                                model = track.albumArtUri,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
+                        AsyncImage(
+                            model = track.albumArtUri,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = track.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (track.isExplicit || track.title.contains("explicit", true) || track.album.contains("explicit", true)) {
+                            ExplicitBadge(modifier = Modifier.padding(end = 6.dp))
                         }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = track.title,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            text = track.artist,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(0.65f),
                             textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            if (track.isExplicit || track.title.contains("explicit", true) || track.album.contains("explicit", true)) {
-                                ExplicitBadge(modifier = Modifier.padding(end = 6.dp))
-                            }
-                            Text(
-                                text = track.artist,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(0.6f),
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(28.dp))
-                        
-                        // 1. STATS ROW (Synced Views, Likes, Duration — zero fake dislikes)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            StatItem(icon = Icons.Rounded.PlayArrow, value = viewsStr, label = "Views")
-                            StatItem(icon = Icons.Rounded.Favorite, value = likesStr, label = "Likes")
-                            StatItem(icon = Icons.Rounded.Schedule, value = durationStr, label = "Duration")
-                        }
-                        
-                        Spacer(modifier = Modifier.height(28.dp))
-                        
-                        // 2. TECH SPECS GRID (3x2 synced with active stream)
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            TechBadge(label = "CODEC", value = syncedCodec, color = accentColor, modifier = Modifier.weight(1f))
-                            TechBadge(label = "BITRATE", value = syncedBitrate, color = Color(0xFF00E676), modifier = Modifier.weight(1f))
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            TechBadge(label = "MIME TYPE", value = syncedMime, color = Color(0xFF29B6F6), modifier = Modifier.weight(1f))
-                            TechBadge(label = "ITAG", value = syncedItag, color = Color(0xFFFFB74D), modifier = Modifier.weight(1f))
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            TechBadge(label = "SAMPLE RATE", value = syncedSampleRate, color = Color(0xFFCE93D8), modifier = Modifier.weight(1f))
-                            TechBadge(label = "SOURCE", value = syncedSource, color = Color(0xFF80CBC4), modifier = Modifier.weight(1f))
-                        }
-                        
-                        Spacer(modifier = Modifier.height(28.dp))
-                        
-                        // 3. MUSICAL ATTRIBUTES PANEL
-                        MusicalAttributeCard(
-                            bpm = deterministicBpm,
-                            key = deterministicKey,
-                            energy = deterministicEnergy,
-                            accentColor = accentColor
-                        )
-                        
-                        Spacer(modifier = Modifier.height(28.dp))
-                        
-                        // 4. PARSED CREDITS SECTION & DESCRIPTION
-                        val descText = info?.description?.takeIf { it.isNotBlank() }
-                            ?: resolverMeta?.description?.takeIf { it.isNotBlank() }
-                            ?: ""
-                        val parsed = remember(descText, track.id) { parseYouTubeDescription(descText) }
-                        val credits = remember(parsed.first, track.artist, track.album, syncedSource) {
-                            parsed.first.ifEmpty {
-                                buildList {
-                                    add("Performing Artist" to track.artist)
-                                    if (track.album.isNotBlank() && !track.album.equals("Unknown", ignoreCase = true)) {
-                                        add("Album" to track.album)
-                                    }
-                                    add("Source" to syncedSource)
-                                }
-                            }
-                        }
-                        val cleanDescription = parsed.second
-                        
-                        if (credits.isNotEmpty()) {
-                            Text(
-                                text = "CREDITS",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = accentColor,
-                                letterSpacing = 1.5.sp,
-                                modifier = Modifier.align(Alignment.Start).padding(bottom = 12.dp)
-                            )
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(Color.White.copy(0.04f))
-                                    .border(1.dp, Color.White.copy(0.08f), RoundedCornerShape(16.dp))
-                                    .padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                credits.forEach { (key, value) ->
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.Top
-                                    ) {
-                                        Text(
-                                            text = key,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White.copy(0.45f),
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        Text(
-                                            text = value,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = Color.White,
-                                            modifier = Modifier.weight(2f),
-                                            textAlign = TextAlign.End
-                                        )
-                                    }
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(32.dp))
-                        }
-                        
-                        if (cleanDescription.isNotEmpty()) {
-                            Text(
-                                text = "DESCRIPTION",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = accentColor,
-                                letterSpacing = 1.5.sp,
-                                modifier = Modifier.align(Alignment.Start).padding(bottom = 12.dp)
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(Color.White.copy(0.03f))
-                                    .border(1.dp, Color.White.copy(0.06f), RoundedCornerShape(16.dp))
-                                    .padding(16.dp)
-                            ) {
-                                Text(
-                                    text = cleanDescription,
-                                    color = Color.White.copy(0.6f),
-                                    fontSize = 13.sp,
-                                    lineHeight = 20.sp,
-                                    textAlign = TextAlign.Start
-                                )
-                            }
-                        }
-                        
-                        Spacer(modifier = Modifier.height(64.dp))
                     }
+
+                    if (!activeStreamLabel.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Surface(
+                            shape = CircleShape,
+                            color = accentColor.copy(alpha = 0.14f),
+                            modifier = Modifier.border(0.5.dp, accentColor.copy(alpha = 0.35f), CircleShape)
+                        ) {
+                            Text(
+                                text = activeStreamLabel ?: "",
+                                color = Color.White.copy(alpha = 0.9f),
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // 1. REAL SYNCED STATS ROW
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        StatItem(icon = Icons.Rounded.PlayArrow, value = viewsDisplay, label = if (track.isYouTube) "Views" else "Source")
+                        StatItem(icon = Icons.Rounded.Favorite, value = likesDisplay, label = if (track.isYouTube) "Likes" else "Status")
+                        StatItem(icon = Icons.Rounded.Schedule, value = durationDisplay, label = "Duration")
+                    }
+
+                    if (isVideoInfoLoading && info == null) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth(0.45f)
+                                .height(2.dp)
+                                .clip(CircleShape),
+                            color = accentColor,
+                            trackColor = Color.White.copy(alpha = 0.1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(28.dp))
+
+                    // 2. LIVE AUDIO TECH SPECS GRID
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        TechBadge(label = "CODEC", value = liveCodec, color = accentColor, modifier = Modifier.weight(1f))
+                        TechBadge(label = "BITRATE", value = displayBitrate, color = Color(0xFF00E676), modifier = Modifier.weight(1f))
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        TechBadge(label = "MIME TYPE", value = liveMimeType, color = Color(0xFF29B6F6), modifier = Modifier.weight(1f))
+                        TechBadge(label = "SAMPLE RATE", value = displaySampleRate, color = Color(0xFFCE93D8), modifier = Modifier.weight(1f))
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        TechBadge(label = "ITAG", value = displayItag, color = Color(0xFFFFB74D), modifier = Modifier.weight(1f))
+                        TechBadge(label = "SOURCE", value = sourceDisplay, color = Color(0xFF80CBC4), modifier = Modifier.weight(1f))
+                    }
+
+                    Spacer(modifier = Modifier.height(28.dp))
+
+                    // 3. SYNCED TRACK DETAILS CARD
+                    val detailRows = buildList {
+                        val channel = info?.channelName?.takeIf { it.isNotBlank() } ?: track.artist
+                        if (channel.isNotBlank()) add("Channel" to channel)
+                        val albumName = track.album.takeIf { it.isNotBlank() && !it.equals("Unknown Album", true) }
+                        if (albumName != null) add("Album" to albumName)
+                        if (playbackSource.isNotBlank()) add("Queue Origin" to playbackSource)
+                        add("Media ID" to track.id)
+                    }
+                    if (detailRows.isNotEmpty()) {
+                        Text(
+                            text = "TRACK DETAILS",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = accentColor,
+                            letterSpacing = 1.5.sp,
+                            modifier = Modifier.align(Alignment.Start).padding(bottom = 12.dp)
+                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color.White.copy(0.04f))
+                                .border(1.dp, Color.White.copy(0.08f), RoundedCornerShape(16.dp))
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            detailRows.forEach { (key, value) ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Text(
+                                        text = key,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White.copy(0.45f),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Text(
+                                        text = value,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.White,
+                                        modifier = Modifier.weight(1.8f),
+                                        textAlign = TextAlign.End
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(28.dp))
+                    }
+
+                    // 4. PARSED CREDITS & REAL DESCRIPTION
+                    val descText = info?.description?.takeIf { it.isNotBlank() } ?: ""
+                    val parsed = remember(descText) {
+                        if (descText.isNotEmpty()) parseYouTubeDescription(descText) else emptyList<Pair<String, String>>() to ""
+                    }
+                    val credits = parsed.first
+                    val cleanDescription = parsed.second
+
+                    if (credits.isNotEmpty()) {
+                        Text(
+                            text = "CREDITS",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = accentColor,
+                            letterSpacing = 1.5.sp,
+                            modifier = Modifier.align(Alignment.Start).padding(bottom = 12.dp)
+                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color.White.copy(0.04f))
+                                .border(1.dp, Color.White.copy(0.08f), RoundedCornerShape(16.dp))
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            credits.forEach { (key, value) ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Text(
+                                        text = key,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White.copy(0.45f),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Text(
+                                        text = value,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.White,
+                                        modifier = Modifier.weight(2f),
+                                        textAlign = TextAlign.End
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(28.dp))
+                    }
+
+                    if (cleanDescription.isNotEmpty()) {
+                        Text(
+                            text = "DESCRIPTION",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = accentColor,
+                            letterSpacing = 1.5.sp,
+                            modifier = Modifier.align(Alignment.Start).padding(bottom = 12.dp)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color.White.copy(0.03f))
+                                .border(1.dp, Color.White.copy(0.06f), RoundedCornerShape(16.dp))
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = cleanDescription,
+                                color = Color.White.copy(0.65f),
+                                fontSize = 13.sp,
+                                lineHeight = 20.sp,
+                                textAlign = TextAlign.Start
+                            )
+                        }
+                    } else if (!isVideoInfoLoading && track.isYouTube) {
+                        Text(
+                            text = "No description available from stream metadata.",
+                            color = Color.White.copy(0.4f),
+                            fontSize = 12.sp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(64.dp))
                 }
             }
         }
     }
+}
+
+private fun formatTrackDuration(durationMs: Long): String? {
+    if (durationMs <= 0L) return null
+    val totalSec = durationMs / 1000L
+    val mins = totalSec / 60L
+    val secs = totalSec % 60L
+    return String.format(java.util.Locale.US, "%d:%02d", mins, secs)
 }
