@@ -4,6 +4,7 @@
 # Reflection-serialized remote, UI, and persistence models (Moshi / Room)
 -keep class com.example.ecodot.data.remote.** { *; }
 -keep class com.example.ecodot.data.local.entities.** { *; }
+-keep class com.example.ecodot.data.backup.** { *; }
 -keep class com.example.ecodot.domain.model.** { *; }
 -keep class com.example.ecodot.util.CustomCover { *; }
 -keep class com.example.ecodot.ui.viewmodel.InstantSearchItem { *; }

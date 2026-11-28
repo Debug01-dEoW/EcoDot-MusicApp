@@ -127,6 +127,38 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         appUpdateManager.dismissUpdate()
     }
 
+    private val prefsManager = com.example.ecodot.data.local.prefs.UserPreferencesManager(application)
+
+    // ── Backup & Restore Manager ──
+    private val backupManager = com.example.ecodot.data.backup.EcoDotBackupManager(
+        application,
+        database,
+        prefsManager
+    )
+
+    private val _autoBackupSchedule = MutableStateFlow(
+        com.example.ecodot.data.backup.BackupSchedule.fromKey(prefsManager.autoBackupFrequency)
+    )
+    val autoBackupSchedule: StateFlow<com.example.ecodot.data.backup.BackupSchedule> =
+        _autoBackupSchedule.asStateFlow()
+
+    private val _lastBackupTimestamp = MutableStateFlow(prefsManager.lastBackupTimestamp)
+    val lastBackupTimestamp: StateFlow<Long> = _lastBackupTimestamp.asStateFlow()
+
+    private val _lastBackupSummary = MutableStateFlow(prefsManager.lastBackupSummary)
+    val lastBackupSummary: StateFlow<String> = _lastBackupSummary.asStateFlow()
+
+    private val _autoBackupFolderLabel = MutableStateFlow(
+        backupManager.getSafFolderDisplayName(prefsManager.autoBackupTreeUri)
+    )
+    val autoBackupFolderLabel: StateFlow<String?> = _autoBackupFolderLabel.asStateFlow()
+
+    private val _isBackupInProgress = MutableStateFlow(false)
+    val isBackupInProgress: StateFlow<Boolean> = _isBackupInProgress.asStateFlow()
+
+    private val _discoveredSafBackupUri = MutableSharedFlow<Uri>(extraBufferCapacity = 1)
+    val discoveredSafBackupUri: SharedFlow<Uri> = _discoveredSafBackupUri.asSharedFlow()
+
     // ── Sleep Timer State ──
     private val _sleepTimerRemaining = MutableStateFlow<Long?>(null) // in seconds, or 0 for End of Track, or null for none
     val sleepTimerRemaining: StateFlow<Long?> = _sleepTimerRemaining.asStateFlow()
@@ -134,6 +166,175 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         startSleepTimerSync()
+        checkScheduledAutoBackup()
+    }
+
+    private fun checkScheduledAutoBackup() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = backupManager.runAutoBackupIfDue(appUpdateManager.currentVersionName)
+            if (result?.success == true) {
+                _lastBackupTimestamp.value = prefsManager.lastBackupTimestamp
+                _lastBackupSummary.value = prefsManager.lastBackupSummary
+            }
+        }
+    }
+
+    fun setAutoBackupSchedule(schedule: com.example.ecodot.data.backup.BackupSchedule) {
+        prefsManager.autoBackupFrequency = schedule.key
+        _autoBackupSchedule.value = schedule
+        if (schedule != com.example.ecodot.data.backup.BackupSchedule.OFF) {
+            checkScheduledAutoBackup()
+        }
+    }
+
+    fun setAutoBackupFolderUri(uri: Uri?) {
+        val context = getApplication<Application>()
+        if (uri == null) {
+            prefsManager.autoBackupTreeUri = null
+            _autoBackupFolderLabel.value = null
+            return
+        }
+        runCatching {
+            val flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            context.contentResolver.takePersistableUriPermission(uri, flags)
+        }
+        prefsManager.autoBackupTreeUri = uri.toString()
+        _autoBackupFolderLabel.value = backupManager.getSafFolderDisplayName(uri.toString())
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val existingBackup = backupManager.findLatestBackupInSafTree(uri)
+            if (existingBackup != null) {
+                _discoveredSafBackupUri.tryEmit(existingBackup)
+            }
+        }
+    }
+
+    fun backupNow(onComplete: ((com.example.ecodot.data.backup.BackupOperationResult) -> Unit)? = null) {
+        if (_isBackupInProgress.value) return
+        viewModelScope.launch(Dispatchers.IO) {
+            _isBackupInProgress.value = true
+            try {
+                val result = backupManager.exportAutoBackup(appUpdateManager.currentVersionName)
+                if (result.success) {
+                    _lastBackupTimestamp.value = prefsManager.lastBackupTimestamp
+                    _lastBackupSummary.value = prefsManager.lastBackupSummary
+                }
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(getApplication(), result.message, Toast.LENGTH_SHORT).show()
+                    onComplete?.invoke(result)
+                }
+            } finally {
+                _isBackupInProgress.value = false
+            }
+        }
+    }
+
+    fun backupToUri(uri: Uri, onComplete: ((com.example.ecodot.data.backup.BackupOperationResult) -> Unit)? = null) {
+        if (_isBackupInProgress.value) return
+        viewModelScope.launch(Dispatchers.IO) {
+            _isBackupInProgress.value = true
+            try {
+                val result = backupManager.exportToUri(uri, appUpdateManager.currentVersionName)
+                if (result.success) {
+                    _lastBackupTimestamp.value = prefsManager.lastBackupTimestamp
+                    _lastBackupSummary.value = prefsManager.lastBackupSummary
+                }
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(getApplication(), result.message, Toast.LENGTH_LONG).show()
+                    onComplete?.invoke(result)
+                }
+            } finally {
+                _isBackupInProgress.value = false
+            }
+        }
+    }
+
+    fun restoreFromUri(
+        uri: Uri,
+        mode: com.example.ecodot.data.backup.RestoreMode,
+        onComplete: ((com.example.ecodot.data.backup.BackupOperationResult) -> Unit)? = null
+    ) {
+        if (_isBackupInProgress.value) return
+        viewModelScope.launch(Dispatchers.IO) {
+            _isBackupInProgress.value = true
+            try {
+                val result = backupManager.restoreFromUri(uri, mode)
+                if (result.success) {
+                    withContext(Dispatchers.Main) {
+                        refreshPreferencesStateAfterRestore()
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(getApplication(), result.message, Toast.LENGTH_LONG).show()
+                    onComplete?.invoke(result)
+                }
+            } finally {
+                _isBackupInProgress.value = false
+            }
+        }
+    }
+
+    private fun refreshPreferencesStateAfterRestore() {
+        _audioQuality.value = prefsManager.audioQuality
+        _videoQuality.value = prefsManager.videoQuality
+        _offlineMode.value = prefsManager.offlineMode
+        _killServiceOnExit.value = prefsManager.killServiceOnExit
+        _crossfadeEnabled.value = prefsManager.crossfadeEnabled
+        _crossfadeDuration.value = prefsManager.crossfadeDuration
+        _crossfadeSkipAlbum.value = prefsManager.crossfadeSkipAlbum
+        _crossfadeDjMode.value = prefsManager.crossfadeDjMode
+        _normalizeVolume.value = prefsManager.normalizeVolume
+        _skipSilent.value = prefsManager.skipSilent
+        _sponsorBlockEnabled.value = prefsManager.sponsorBlockEnabled
+        _sponsorBlockCategories.value = prefsManager.sponsorBlockCategories
+        _themeMode.value = prefsManager.themeMode
+        _themeColorSource.value = prefsManager.themeColorSource
+        _customThemeColorHex.value = prefsManager.customThemeColorHex
+        _liquidGlassEnabled.value = prefsManager.liquidGlassEnabled
+        _autoCheckUpdates.value = prefsManager.autoCheckUpdates
+        _cacheLimitMb.value = prefsManager.cacheLimitMb
+        _autoCanvasEnabled.value = prefsManager.autoCanvasEnabled
+        _lockscreenLyricsEnabled.value = prefsManager.lockscreenLyricsEnabled
+        _dataSaver.value = prefsManager.dataSaver
+        _playerStyle.value = prefsManager.playerStyle
+        _eqEnabled.value = prefsManager.equalizerEnabled
+        _virtualizerStrength.value = prefsManager.virtualizerStrength
+        _bassBoostStrength.value = prefsManager.bassBoostStrength
+        _selectedEqPreset.value = prefsManager.selectedEqPreset
+        _customEqPresets.value = com.example.ecodot.domain.model.decodeCustomEqPresets(prefsManager.customEqPresetsRaw)
+
+        val bandCount = deviceEqSpec.value.bandCount
+        val decodedBands = if (prefsManager.customEqBandsRaw.isNotBlank()) {
+            com.example.ecodot.domain.model.decodeEqBands(prefsManager.customEqBandsRaw, bandCount)
+        } else {
+            val allPresets = com.example.ecodot.domain.model.DEFAULT_EQ_PRESETS + _customEqPresets.value
+            val p = allPresets.find { it.name == prefsManager.selectedEqPreset }
+            (0 until bandCount).associateWith { idx -> p?.bands?.getOrElse(idx) { 0 } ?: 0 }
+        }
+        _eqBands.value = decodedBands
+        decodedBands.forEach { (idx, level) ->
+            sendCustomCommand(EcoDotSessionService.ACTION_SET_EQ_BAND, Bundle().apply {
+                putInt("band", idx)
+                putInt("level", level)
+            })
+        }
+        sendCustomCommand(EcoDotSessionService.ACTION_SET_VIRTUALIZER, Bundle().apply {
+            putInt("strength", prefsManager.virtualizerStrength)
+        })
+        sendCustomCommand(EcoDotSessionService.ACTION_SET_BASS_BOOST, Bundle().apply {
+            putInt("strength", prefsManager.bassBoostStrength)
+        })
+        sendCustomCommand(EcoDotSessionService.ACTION_SET_EQ_ENABLED, Bundle().apply {
+            putBoolean("enabled", prefsManager.equalizerEnabled)
+        })
+        sendCustomCommand(EcoDotSessionService.ACTION_SET_NORMALIZE_VOLUME, Bundle().apply {
+            putBoolean("enabled", prefsManager.normalizeVolume)
+        })
+
+        _autoBackupSchedule.value = com.example.ecodot.data.backup.BackupSchedule.fromKey(prefsManager.autoBackupFrequency)
+        _autoBackupFolderLabel.value = backupManager.getSafFolderDisplayName(prefsManager.autoBackupTreeUri)
+        _selectedHomeCountry.value = prefsManager.selectedHomeCountry
     }
 
     private fun startSleepTimerSync() {
@@ -189,9 +390,7 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             android.os.Bundle.EMPTY
         )
     }
-    
-    private val prefsManager = com.example.ecodot.data.local.prefs.UserPreferencesManager(application)
-    
+
     private val _audioQuality = MutableStateFlow(prefsManager.audioQuality)
     val audioQuality: StateFlow<com.example.ecodot.data.local.prefs.AudioQuality> = _audioQuality.asStateFlow()
 
@@ -618,6 +817,65 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
             }
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "Removed from Downloads", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    fun downloadTracks(tracks: List<Track>) {
+        if (tracks.isEmpty()) return
+        val pending = tracks.filter { !isDownloaded(it.id) && _downloadProgress.value[it.id] == null }
+        if (pending.isEmpty()) {
+            Toast.makeText(getApplication(), "All tracks already downloaded", Toast.LENGTH_SHORT).show()
+            return
+        }
+        Toast.makeText(
+            getApplication(),
+            "Downloading ${pending.size} ${if (pending.size == 1) "track" else "tracks"}...",
+            Toast.LENGTH_SHORT
+        ).show()
+        pending.forEach { track -> downloadTrack(track) }
+    }
+
+    fun deleteTracksDownloads(tracks: List<Track>) {
+        if (tracks.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val context = getApplication<Application>().applicationContext
+            val musicDir = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
+            val downloadsPlaylist = repository.allPlaylists.firstOrNull()?.find { it.name == "Downloads" }
+            var removedCount = 0
+            tracks.forEach { track ->
+                val localFile = File(musicDir, "${track.id}.m4a")
+                if (localFile.exists() && localFile.delete()) {
+                    removedCount++
+                }
+                if (downloadsPlaylist != null) {
+                    repository.removeTrackFromPlaylist(downloadsPlaylist.id, track.id)
+                }
+            }
+            updateCacheSize()
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    context,
+                    if (removedCount > 0) "Removed $removedCount downloaded tracks" else "No downloads to remove",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    fun addTracksToPlaylist(playlistId: Long, tracks: List<Track>, playlistName: String = "playlist") {
+        if (tracks.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.saveTracks(tracks)
+            tracks.forEach { track ->
+                repository.addTrackToPlaylist(playlistId, track)
+            }
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    getApplication(),
+                    "Added ${tracks.size} tracks to $playlistName",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
@@ -1297,12 +1555,29 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     private val _eqEnabled = MutableStateFlow(prefsManager.equalizerEnabled)
     val eqEnabled: StateFlow<Boolean> = _eqEnabled.asStateFlow()
 
+    val deviceEqSpec: StateFlow<com.example.ecodot.playback.DeviceEqSpec> =
+        com.example.ecodot.playback.AudioEffectManager.deviceEqSpec
+
+    private val _customEqPresets = MutableStateFlow(
+        com.example.ecodot.domain.model.decodeCustomEqPresets(prefsManager.customEqPresetsRaw)
+    )
+    val customEqPresets: StateFlow<List<com.example.ecodot.domain.model.EqPreset>> =
+        _customEqPresets.asStateFlow()
+
     private val initialEqBands: Map<Int, Int> = run {
-        val savedPreset = com.example.ecodot.domain.model.DEFAULT_EQ_PRESETS.find { it.name == prefsManager.selectedEqPreset }
-        if (savedPreset != null) {
-            savedPreset.bands.mapIndexed { idx, value -> idx to value }.toMap()
+        val bandCount = deviceEqSpec.value.bandCount
+        val customRaw = prefsManager.customEqBandsRaw
+        if (customRaw.isNotBlank()) {
+            com.example.ecodot.domain.model.decodeEqBands(customRaw, bandCount)
         } else {
-            mapOf(0 to 0, 1 to 0, 2 to 0, 3 to 0, 4 to 0)
+            val allPresets = com.example.ecodot.domain.model.DEFAULT_EQ_PRESETS +
+                com.example.ecodot.domain.model.decodeCustomEqPresets(prefsManager.customEqPresetsRaw)
+            val savedPreset = allPresets.find { it.name == prefsManager.selectedEqPreset }
+            if (savedPreset != null) {
+                (0 until bandCount).associateWith { idx -> savedPreset.bands.getOrElse(idx) { 0 } }
+            } else {
+                (0 until bandCount).associateWith { 0 }
+            }
         }
     }
     private val _eqBands = MutableStateFlow(initialEqBands)
@@ -1316,6 +1591,9 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _virtualizerStrength = MutableStateFlow(prefsManager.virtualizerStrength)
     val virtualizerStrength: StateFlow<Int> = _virtualizerStrength.asStateFlow()
+
+    private val _bassBoostStrength = MutableStateFlow(prefsManager.bassBoostStrength)
+    val bassBoostStrength: StateFlow<Int> = _bassBoostStrength.asStateFlow()
 
 
     // History and Profile state
@@ -3684,15 +3962,17 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
     fun applyEqPreset(preset: com.example.ecodot.domain.model.EqPreset) {
         _selectedEqPreset.value = preset.name
         prefsManager.selectedEqPreset = preset.name
-        val updated = _eqBands.value.toMutableMap()
-        preset.bands.forEachIndexed { band, level ->
-            updated[band] = level
-            sendCustomCommand("SET_EQ_BAND", Bundle().apply {
+        val bandCount = deviceEqSpec.value.bandCount.coerceAtLeast(preset.bands.size)
+        val updated = (0 until bandCount).associateWith { band ->
+            val level = preset.bands.getOrElse(band) { 0 }
+            sendCustomCommand(EcoDotSessionService.ACTION_SET_EQ_BAND, Bundle().apply {
                 putInt("band", band)
                 putInt("level", level)
             })
+            level
         }
         _eqBands.value = updated
+        prefsManager.customEqBandsRaw = com.example.ecodot.domain.model.encodeEqBands(updated)
     }
 
     fun setEqBand(band: Int, level: Int, isFromPreset: Boolean = false) {
@@ -3703,26 +3983,74 @@ class MusicViewModel(application: Application) : AndroidViewModel(application) {
         val updated = _eqBands.value.toMutableMap()
         updated[band] = level
         _eqBands.value = updated
-        sendCustomCommand("SET_EQ_BAND", Bundle().apply {
+        prefsManager.customEqBandsRaw = com.example.ecodot.domain.model.encodeEqBands(updated)
+        sendCustomCommand(EcoDotSessionService.ACTION_SET_EQ_BAND, Bundle().apply {
             putInt("band", band)
             putInt("level", level)
         })
+    }
+
+    fun saveCustomEqPreset(rawName: String) {
+        val cleanName = rawName.replace("|", "/").trim()
+        if (cleanName.isBlank()) return
+        val bandCount = deviceEqSpec.value.bandCount
+        val bandsList = (0 until bandCount).map { idx -> _eqBands.value[idx] ?: 0 }
+        val newPreset = com.example.ecodot.domain.model.EqPreset(
+            name = cleanName,
+            description = "Custom user preset",
+            bands = bandsList,
+            isCustom = true
+        )
+        val updatedPresets = _customEqPresets.value.filterNot {
+            it.name.equals(cleanName, ignoreCase = true)
+        } + newPreset
+        _customEqPresets.value = updatedPresets
+        prefsManager.customEqPresetsRaw = com.example.ecodot.domain.model.encodeCustomEqPresets(updatedPresets)
+        _selectedEqPreset.value = cleanName
+        prefsManager.selectedEqPreset = cleanName
+    }
+
+    fun deleteCustomEqPreset(name: String) {
+        val updatedPresets = _customEqPresets.value.filterNot { it.name == name }
+        _customEqPresets.value = updatedPresets
+        prefsManager.customEqPresetsRaw = com.example.ecodot.domain.model.encodeCustomEqPresets(updatedPresets)
+        if (_selectedEqPreset.value == name) {
+            _selectedEqPreset.value = "Custom"
+            prefsManager.selectedEqPreset = "Custom"
+        }
+    }
+
+    fun resetEqToFlat() {
+        val flatPreset = com.example.ecodot.domain.model.DEFAULT_EQ_PRESETS.first()
+        applyEqPreset(flatPreset)
+        setVirtualizerStrength(0)
+        setBassBoostStrength(0)
     }
 
     fun toggleEq() {
         val newValue = !_eqEnabled.value
         prefsManager.equalizerEnabled = newValue
         _eqEnabled.value = newValue
-        sendCustomCommand("SET_EQ_ENABLED", Bundle().apply {
+        sendCustomCommand(EcoDotSessionService.ACTION_SET_EQ_ENABLED, Bundle().apply {
             putBoolean("enabled", newValue)
         })
     }
 
     fun setVirtualizerStrength(strength: Int) {
-        prefsManager.virtualizerStrength = strength
-        _virtualizerStrength.value = strength
-        sendCustomCommand("SET_VIRTUALIZER", Bundle().apply {
-            putInt("strength", strength)
+        val clamped = strength.coerceIn(0, 1000)
+        prefsManager.virtualizerStrength = clamped
+        _virtualizerStrength.value = clamped
+        sendCustomCommand(EcoDotSessionService.ACTION_SET_VIRTUALIZER, Bundle().apply {
+            putInt("strength", clamped)
+        })
+    }
+
+    fun setBassBoostStrength(strength: Int) {
+        val clamped = strength.coerceIn(0, 1000)
+        prefsManager.bassBoostStrength = clamped
+        _bassBoostStrength.value = clamped
+        sendCustomCommand(EcoDotSessionService.ACTION_SET_BASS_BOOST, Bundle().apply {
+            putInt("strength", clamped)
         })
     }
 

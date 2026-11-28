@@ -24,8 +24,87 @@ data class Genre(
 data class EqPreset(
     val name: String,
     val description: String,
-    val bands: List<Int> // 5 bands in mB (-1500..1500)
+    val bands: List<Int>, // bands in mB (-1500..1500)
+    val isCustom: Boolean = false
 )
+
+/**
+ * Serializes band index -> millibel map cleanly as a stable sorted CSV (`0:300,1:-100,...`).
+ */
+fun encodeEqBands(bands: Map<Int, Int>): String {
+    return bands.entries
+        .sortedBy { it.key }
+        .joinToString(",") { "${it.key}:${it.value}" }
+}
+
+/**
+ * Parses a previously encoded EQ band string, falling back to flat (0 mB) for missing bands.
+ */
+fun decodeEqBands(raw: String?, bandCount: Int = 5): Map<Int, Int> {
+    val result = (0 until bandCount).associateWith { 0 }.toMutableMap()
+    if (raw.isNullOrBlank()) return result
+    raw.split(",").forEach { entry ->
+        val parts = entry.split(":")
+        if (parts.size == 2) {
+            val idx = parts[0].trim().toIntOrNull()
+            val level = parts[1].trim().toIntOrNull()
+            if (idx != null && level != null && idx >= 0) {
+                result[idx] = level
+            }
+        }
+    }
+    return result
+}
+
+/**
+ * Encodes user-saved EQ presets cleanly using `|` and `=` delimiters to avoid JSON reflection edge cases.
+ */
+fun encodeCustomEqPresets(presets: List<EqPreset>): String {
+    return presets.joinToString("\n") { preset ->
+        val safeName = preset.name.replace("\n", " ").replace("|", "/").trim()
+        val bandsStr = preset.bands.joinToString(",")
+        "$safeName|$bandsStr"
+    }
+}
+
+/**
+ * Decodes user-saved EQ presets previously written by [encodeCustomEqPresets].
+ */
+fun decodeCustomEqPresets(raw: String?): List<EqPreset> {
+    if (raw.isNullOrBlank()) return emptyList()
+    return raw.lineSequence()
+        .mapNotNull { line ->
+            val trimmed = line.trim()
+            if (trimmed.isEmpty()) return@mapNotNull null
+            val sep = trimmed.indexOf('|')
+            if (sep <= 0) return@mapNotNull null
+            val name = trimmed.substring(0, sep).trim()
+            val bands = trimmed.substring(sep + 1)
+                .split(",")
+                .mapNotNull { it.trim().toIntOrNull() }
+            if (name.isEmpty() || bands.isEmpty()) return@mapNotNull null
+            EqPreset(
+                name = name,
+                description = "Custom user preset",
+                bands = bands,
+                isCustom = true
+            )
+        }
+        .toList()
+}
+
+/**
+ * Formats an integer Hz center frequency cleanly (e.g. `60 Hz`, `3.6 kHz`).
+ */
+fun formatEqFrequency(freqHz: Int): String {
+    return when {
+        freqHz >= 1000 -> {
+            val k = freqHz / 1000.0
+            if (k % 1.0 == 0.0) "${k.toInt()} kHz" else "${String.format(java.util.Locale.US, "%.1f", k)} kHz"
+        }
+        else -> "$freqHz Hz"
+    }
+}
 
 val DEFAULT_EQ_PRESETS = listOf(
     EqPreset("Flat", "Linear flat response", listOf(0, 0, 0, 0, 0)),

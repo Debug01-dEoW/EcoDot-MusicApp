@@ -35,14 +35,14 @@ android {
         applicationId = "com.example.ecodot"
         minSdk = 24
         targetSdk = 37
-        versionCode = 27
-        versionName = "1.27v"
+        versionCode = 29
+        versionName = "1.28v"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     base {
-        archivesName.set("EcoDot 1.27v")
+        archivesName.set("EcoDot 1.28v")
     }
 
     signingConfigs {

@@ -9,6 +9,15 @@ interface FollowedArtistDao {
     @Query("SELECT * FROM followed_artists ORDER BY followedAt DESC")
     fun getFollowedArtists(): Flow<List<FollowedArtist>>
 
+    @Query("SELECT * FROM followed_artists ORDER BY followedAt DESC")
+    suspend fun getFollowedArtistsOnce(): List<FollowedArtist>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun followArtists(artists: List<FollowedArtist>)
+
+    @Query("DELETE FROM followed_artists")
+    suspend fun clearFollowedArtists()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun followArtist(artist: FollowedArtist)
 

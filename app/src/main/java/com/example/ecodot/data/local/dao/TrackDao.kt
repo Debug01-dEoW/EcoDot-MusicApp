@@ -90,6 +90,15 @@ interface TrackDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertTrack(track: Track)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertTracks(tracks: List<Track>)
+
+    @Query("SELECT * FROM tracks")
+    suspend fun getAllTracksOnce(): List<Track>
+
+    @Query("DELETE FROM tracks")
+    suspend fun clearAllTracks()
+
     @Query("UPDATE tracks SET canvasUrl = :canvasUrl WHERE id = :trackId")
     suspend fun updateCanvasUrl(trackId: String, canvasUrl: String?)
 

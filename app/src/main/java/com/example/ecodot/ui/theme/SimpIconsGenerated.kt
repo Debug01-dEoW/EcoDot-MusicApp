@@ -7182,3 +7182,423 @@ val SimpIcons.ZoomOut: ImageVector
 
 private var _GenZoomOut: ImageVector? = null
 
+// ── RestartAlt (restart_alt) ──
+@Suppress("CheckReturnValue")
+val SimpIcons.RestartAlt: ImageVector
+  get() {
+    if (_GenRestartAlt != null) {
+      return _GenRestartAlt!!
+    }
+    _GenRestartAlt =
+      ImageVector.Builder(
+          name = "RestartAlt",
+          defaultWidth = 24.dp,
+          defaultHeight = 24.dp,
+          viewportWidth = 24f,
+          viewportHeight = 24f,
+        )
+        .apply {
+          path(
+            fill = SolidColor(Color.Black),
+            fillAlpha = 1f,
+            stroke = null,
+            strokeAlpha = 1f,
+            strokeLineWidth = 1f,
+            strokeLineCap = StrokeCap.Butt,
+            strokeLineJoin = StrokeJoin.Bevel,
+            strokeLineMiter = 1f,
+            pathFillType = PathFillType.Companion.NonZero,
+          ) {
+            moveTo(9.83f, 20.7f)
+            quadTo(7.25f, 19.98f, 5.63f, 17.86f)
+            reflectiveQuadTo(4f, 13f)
+            quadTo(4f, 11.58f, 4.48f, 10.29f)
+            reflectiveQuadTo(5.83f, 7.93f)
+            quadTo(6.1f, 7.63f, 6.5f, 7.61f)
+            reflectiveQuadTo(7.23f, 7.93f)
+            quadTo(7.5f, 8.2f, 7.51f, 8.6f)
+            reflectiveQuadTo(7.25f, 9.35f)
+            quadToRelative(-0.6f, 0.78f, -0.92f, 1.7f)
+            quadTo(6f, 11.98f, 6f, 13f)
+            quadToRelative(0f, 2.03f, 1.19f, 3.61f)
+            reflectiveQuadToRelative(3.06f, 2.16f)
+            quadToRelative(0.33f, 0.1f, 0.54f, 0.38f)
+            quadTo(11f, 19.43f, 11f, 19.75f)
+            quadToRelative(0f, 0.5f, -0.35f, 0.79f)
+            reflectiveQuadTo(9.83f, 20.7f)
+            close()
+            moveToRelative(4.35f, 0f)
+            quadTo(13.7f, 20.83f, 13.35f, 20.53f)
+            quadTo(13f, 20.23f, 13f, 19.73f)
+            quadToRelative(0f, -0.3f, 0.21f, -0.58f)
+            quadToRelative(0.21f, -0.27f, 0.54f, -0.38f)
+            quadToRelative(1.88f, -0.6f, 3.06f, -2.17f)
+            reflectiveQuadTo(18f, 13f)
+            quadTo(18f, 10.5f, 16.25f, 8.75f)
+            reflectiveQuadTo(12f, 7f)
+            horizontalLineTo(11.93f)
+            lineToRelative(0.4f, 0.4f)
+            quadTo(12.6f, 7.68f, 12.6f, 8.1f)
+            reflectiveQuadTo(12.33f, 8.8f)
+            reflectiveQuadToRelative(-0.7f, 0.28f)
+            reflectiveQuadTo(10.93f, 8.8f)
+            lineTo(8.83f, 6.7f)
+            quadTo(8.68f, 6.55f, 8.61f, 6.38f)
+            reflectiveQuadTo(8.55f, 6f)
+            reflectiveQuadTo(8.61f, 5.63f)
+            reflectiveQuadTo(8.83f, 5.3f)
+            lineToRelative(2.1f, -2.1f)
+            quadTo(11.2f, 2.92f, 11.63f, 2.92f)
+            reflectiveQuadToRelative(0.7f, 0.28f)
+            quadTo(12.6f, 3.47f, 12.6f, 3.9f)
+            reflectiveQuadTo(12.33f, 4.6f)
+            lineTo(11.93f, 5f)
+            horizontalLineTo(12f)
+            quadToRelative(3.35f, 0f, 5.68f, 2.32f)
+            reflectiveQuadTo(20f, 13f)
+            quadToRelative(0f, 2.72f, -1.63f, 4.85f)
+            reflectiveQuadToRelative(-4.2f, 2.85f)
+            close()
+          }
+        }
+        .build()
+    return _GenRestartAlt!!
+  }
+
+private var _GenRestartAlt: ImageVector? = null
+
+// ── Bookmark (bookmark) ──
+@Suppress("CheckReturnValue")
+val SimpIcons.Bookmark: ImageVector
+  get() {
+    if (_GenBookmark != null) {
+      return _GenBookmark!!
+    }
+    _GenBookmark =
+      ImageVector.Builder(
+          name = "Bookmark",
+          defaultWidth = 24.dp,
+          defaultHeight = 24.dp,
+          viewportWidth = 24f,
+          viewportHeight = 24f,
+        )
+        .apply {
+          path(
+            fill = SolidColor(Color.Black),
+            fillAlpha = 1f,
+            stroke = null,
+            strokeAlpha = 1f,
+            strokeLineWidth = 1f,
+            strokeLineCap = StrokeCap.Butt,
+            strokeLineJoin = StrokeJoin.Bevel,
+            strokeLineMiter = 1f,
+            pathFillType = PathFillType.Companion.NonZero,
+          ) {
+            moveTo(12f, 18f)
+            lineTo(7.8f, 19.8f)
+            quadToRelative(-1f, 0.43f, -1.9f, -0.16f)
+            reflectiveQuadTo(5f, 17.98f)
+            verticalLineTo(5f)
+            quadTo(5f, 4.17f, 5.59f, 3.59f)
+            reflectiveQuadTo(7f, 3f)
+            horizontalLineTo(17f)
+            quadToRelative(0.82f, 0f, 1.41f, 0.59f)
+            reflectiveQuadTo(19f, 5f)
+            verticalLineTo(17.98f)
+            quadToRelative(0f, 1.07f, -0.9f, 1.66f)
+            quadToRelative(-0.9f, 0.59f, -1.9f, 0.16f)
+            lineTo(12f, 18f)
+            close()
+          }
+        }
+        .build()
+    return _GenBookmark!!
+  }
+
+private var _GenBookmark: ImageVector? = null
+
+// ── BookmarkBorder (bookmark unfilled) ──
+@Suppress("CheckReturnValue")
+val SimpIcons.BookmarkBorder: ImageVector
+  get() {
+    if (_GenBookmarkBorder != null) {
+      return _GenBookmarkBorder!!
+    }
+    _GenBookmarkBorder =
+      ImageVector.Builder(
+          name = "BookmarkBorder",
+          defaultWidth = 24.dp,
+          defaultHeight = 24.dp,
+          viewportWidth = 24f,
+          viewportHeight = 24f,
+        )
+        .apply {
+          path(
+            fill = SolidColor(Color.Black),
+            fillAlpha = 1f,
+            stroke = null,
+            strokeAlpha = 1f,
+            strokeLineWidth = 1f,
+            strokeLineCap = StrokeCap.Butt,
+            strokeLineJoin = StrokeJoin.Bevel,
+            strokeLineMiter = 1f,
+            pathFillType = PathFillType.Companion.NonZero,
+          ) {
+            moveTo(12f, 18f)
+            lineTo(7.8f, 19.8f)
+            quadToRelative(-1f, 0.43f, -1.9f, -0.16f)
+            reflectiveQuadTo(5f, 17.98f)
+            verticalLineTo(5f)
+            quadTo(5f, 4.17f, 5.59f, 3.59f)
+            reflectiveQuadTo(7f, 3f)
+            horizontalLineTo(17f)
+            quadToRelative(0.82f, 0f, 1.41f, 0.59f)
+            reflectiveQuadTo(19f, 5f)
+            verticalLineTo(17.98f)
+            quadToRelative(0f, 1.07f, -0.9f, 1.66f)
+            quadToRelative(-0.9f, 0.59f, -1.9f, 0.16f)
+            lineTo(12f, 18f)
+            close()
+            moveToRelative(0f, -2.2f)
+            lineToRelative(5f, 2.15f)
+            verticalLineTo(5f)
+            horizontalLineTo(7f)
+            verticalLineTo(17.95f)
+            lineTo(12f, 15.8f)
+            close()
+            moveTo(12f, 5f)
+            horizontalLineTo(7f)
+            horizontalLineTo(17f)
+            horizontalLineTo(12f)
+            close()
+          }
+        }
+        .build()
+    return _GenBookmarkBorder!!
+  }
+
+private var _GenBookmarkBorder: ImageVector? = null
+
+// ── Backup (backup) ──
+@Suppress("CheckReturnValue")
+val SimpIcons.Backup: ImageVector
+  get() {
+    if (_GenBackup != null) {
+      return _GenBackup!!
+    }
+    _GenBackup =
+      ImageVector.Builder(
+          name = "Backup",
+          defaultWidth = 24.dp,
+          defaultHeight = 24.dp,
+          viewportWidth = 24f,
+          viewportHeight = 24f,
+        )
+        .apply {
+          path(
+            fill = SolidColor(Color.Black),
+            fillAlpha = 1f,
+            stroke = null,
+            strokeAlpha = 1f,
+            strokeLineWidth = 1f,
+            strokeLineCap = StrokeCap.Butt,
+            strokeLineJoin = StrokeJoin.Bevel,
+            strokeLineMiter = 1f,
+            pathFillType = PathFillType.Companion.NonZero,
+          ) {
+            moveTo(6.5f, 20f)
+            quadTo(4.23f, 20f, 2.61f, 18.43f)
+            reflectiveQuadTo(1f, 14.58f)
+            quadTo(1f, 12.63f, 2.18f, 11.1f)
+            reflectiveQuadTo(5.25f, 9.15f)
+            quadTo(5.88f, 6.85f, 7.75f, 5.43f)
+            reflectiveQuadTo(12f, 4f)
+            quadToRelative(2.93f, 0f, 4.96f, 2.04f)
+            reflectiveQuadTo(19f, 11f)
+            quadToRelative(1.73f, 0.2f, 2.86f, 1.49f)
+            reflectiveQuadTo(23f, 15.5f)
+            quadToRelative(0f, 1.88f, -1.31f, 3.19f)
+            reflectiveQuadTo(18.5f, 20f)
+            horizontalLineTo(13f)
+            verticalLineTo(12.85f)
+            lineToRelative(0.9f, 0.88f)
+            quadTo(14.18f, 14f, 14.59f, 14f)
+            reflectiveQuadTo(15.3f, 13.7f)
+            quadTo(15.58f, 13.43f, 15.58f, 13f)
+            reflectiveQuadTo(15.3f, 12.3f)
+            lineTo(12.7f, 9.7f)
+            quadTo(12.4f, 9.4f, 12f, 9.4f)
+            reflectiveQuadTo(11.3f, 9.7f)
+            lineTo(8.7f, 12.3f)
+            quadTo(8.43f, 12.58f, 8.41f, 12.99f)
+            reflectiveQuadTo(8.7f, 13.7f)
+            quadToRelative(0.27f, 0.28f, 0.69f, 0.29f)
+            reflectiveQuadTo(10.1f, 13.73f)
+            lineTo(11f, 12.85f)
+            verticalLineTo(20f)
+            horizontalLineTo(6.5f)
+            close()
+          }
+        }
+        .build()
+    return _GenBackup!!
+  }
+
+private var _GenBackup: ImageVector? = null
+
+// ── Restore (restore) ──
+@Suppress("CheckReturnValue")
+val SimpIcons.Restore: ImageVector
+  get() {
+    if (_GenRestore != null) {
+      return _GenRestore!!
+    }
+    _GenRestore =
+      ImageVector.Builder(
+          name = "Restore",
+          defaultWidth = 24.dp,
+          defaultHeight = 24.dp,
+          viewportWidth = 24f,
+          viewportHeight = 24f,
+        )
+        .apply {
+          path(
+            fill = SolidColor(Color.Black),
+            fillAlpha = 1f,
+            stroke = null,
+            strokeAlpha = 1f,
+            strokeLineWidth = 1f,
+            strokeLineCap = StrokeCap.Butt,
+            strokeLineJoin = StrokeJoin.Bevel,
+            strokeLineMiter = 1f,
+            pathFillType = PathFillType.Companion.NonZero,
+          ) {
+            moveTo(12f, 21f)
+            quadTo(8.85f, 21f, 6.43f, 19.09f)
+            quadTo(4f, 17.18f, 3.28f, 14.2f)
+            quadTo(3.18f, 13.83f, 3.43f, 13.51f)
+            reflectiveQuadTo(4.1f, 13.15f)
+            quadTo(4.5f, 13.1f, 4.83f, 13.3f)
+            reflectiveQuadToRelative(0.45f, 0.6f)
+            quadToRelative(0.6f, 2.25f, 2.47f, 3.68f)
+            reflectiveQuadTo(12f, 19f)
+            quadToRelative(2.93f, 0f, 4.96f, -2.04f)
+            quadTo(19f, 14.93f, 19f, 12f)
+            quadTo(19f, 9.07f, 16.96f, 7.04f)
+            reflectiveQuadTo(12f, 5f)
+            quadTo(10.28f, 5f, 8.78f, 5.8f)
+            reflectiveQuadTo(6.25f, 8f)
+            horizontalLineTo(8f)
+            quadTo(8.43f, 8f, 8.71f, 8.29f)
+            reflectiveQuadTo(9f, 9f)
+            quadTo(9f, 9.42f, 8.71f, 9.71f)
+            reflectiveQuadTo(8f, 10f)
+            horizontalLineTo(4f)
+            quadTo(3.58f, 10f, 3.29f, 9.71f)
+            reflectiveQuadTo(3f, 9f)
+            verticalLineTo(5f)
+            quadTo(3f, 4.57f, 3.29f, 4.29f)
+            reflectiveQuadTo(4f, 4f)
+            reflectiveQuadTo(4.71f, 4.29f)
+            reflectiveQuadTo(5f, 5f)
+            verticalLineTo(6.35f)
+            quadTo(6.28f, 4.75f, 8.11f, 3.88f)
+            reflectiveQuadTo(12f, 3f)
+            quadToRelative(1.88f, 0f, 3.51f, 0.71f)
+            reflectiveQuadToRelative(2.85f, 1.93f)
+            reflectiveQuadToRelative(1.93f, 2.85f)
+            reflectiveQuadTo(21f, 12f)
+            reflectiveQuadToRelative(-0.71f, 3.51f)
+            reflectiveQuadToRelative(-1.93f, 2.85f)
+            reflectiveQuadToRelative(-2.85f, 1.93f)
+            reflectiveQuadTo(12f, 21f)
+            close()
+            moveToRelative(1f, -9.4f)
+            lineToRelative(2.5f, 2.5f)
+            quadToRelative(0.28f, 0.28f, 0.28f, 0.7f)
+            quadToRelative(0f, 0.43f, -0.28f, 0.7f)
+            reflectiveQuadToRelative(-0.7f, 0.28f)
+            reflectiveQuadTo(14.1f, 15.5f)
+            lineTo(11.3f, 12.7f)
+            quadTo(11.15f, 12.55f, 11.08f, 12.36f)
+            reflectiveQuadTo(11f, 11.98f)
+            verticalLineTo(8f)
+            quadTo(11f, 7.57f, 11.29f, 7.29f)
+            reflectiveQuadTo(12f, 7f)
+            reflectiveQuadToRelative(0.71f, 0.29f)
+            reflectiveQuadTo(13f, 8f)
+            verticalLineToRelative(3.6f)
+            close()
+          }
+        }
+        .build()
+    return _GenRestore!!
+  }
+
+private var _GenRestore: ImageVector? = null
+
+// ── FolderOpen (folder_open) ──
+@Suppress("CheckReturnValue")
+val SimpIcons.FolderOpen: ImageVector
+  get() {
+    if (_GenFolderOpen != null) {
+      return _GenFolderOpen!!
+    }
+    _GenFolderOpen =
+      ImageVector.Builder(
+          name = "FolderOpen",
+          defaultWidth = 24.dp,
+          defaultHeight = 24.dp,
+          viewportWidth = 24f,
+          viewportHeight = 24f,
+        )
+        .apply {
+          path(
+            fill = SolidColor(Color.Black),
+            fillAlpha = 1f,
+            stroke = null,
+            strokeAlpha = 1f,
+            strokeLineWidth = 1f,
+            strokeLineCap = StrokeCap.Butt,
+            strokeLineJoin = StrokeJoin.Bevel,
+            strokeLineMiter = 1f,
+            pathFillType = PathFillType.Companion.NonZero,
+          ) {
+            moveTo(4f, 20f)
+            quadTo(3.18f, 20f, 2.59f, 19.41f)
+            reflectiveQuadTo(2f, 18f)
+            verticalLineTo(6f)
+            quadTo(2f, 5.18f, 2.59f, 4.59f)
+            reflectiveQuadTo(4f, 4f)
+            horizontalLineTo(9.18f)
+            quadToRelative(0.4f, 0f, 0.76f, 0.15f)
+            reflectiveQuadToRelative(0.64f, 0.43f)
+            lineTo(12f, 6f)
+            horizontalLineToRelative(9f)
+            quadToRelative(0.43f, 0f, 0.71f, 0.29f)
+            reflectiveQuadTo(22f, 7f)
+            reflectiveQuadTo(21.71f, 7.71f)
+            reflectiveQuadTo(21f, 8f)
+            horizontalLineTo(7.85f)
+            quadTo(6.3f, 8f, 5.15f, 8.98f)
+            reflectiveQuadTo(4f, 11.45f)
+            verticalLineTo(18f)
+            lineTo(5.98f, 11.43f)
+            quadToRelative(0.2f, -0.65f, 0.74f, -1.04f)
+            reflectiveQuadTo(7.9f, 10f)
+            horizontalLineTo(20.8f)
+            quadToRelative(1.03f, 0f, 1.61f, 0.81f)
+            reflectiveQuadToRelative(0.31f, 1.76f)
+            lineToRelative(-1.8f, 6f)
+            quadToRelative(-0.2f, 0.65f, -0.74f, 1.04f)
+            reflectiveQuadTo(19f, 20f)
+            horizontalLineTo(4f)
+            close()
+          }
+        }
+        .build()
+    return _GenFolderOpen!!
+  }
+
+private var _GenFolderOpen: ImageVector? = null
+

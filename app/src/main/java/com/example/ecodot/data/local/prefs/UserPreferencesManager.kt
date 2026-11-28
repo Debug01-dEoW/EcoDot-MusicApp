@@ -131,6 +131,10 @@ class UserPreferencesManager(context: Context) {
         get() = prefs.getInt("virtualizer_strength", 0)
         set(value) = prefs.edit().putInt("virtualizer_strength", value).apply()
 
+    var bassBoostStrength: Int
+        get() = prefs.getInt("bass_boost_strength", 0).coerceIn(0, 1000)
+        set(value) = prefs.edit().putInt("bass_boost_strength", value.coerceIn(0, 1000)).apply()
+
     var autoCanvasEnabled: Boolean
         get() = prefs.getBoolean("auto_canvas_enabled", false)
         set(value) = prefs.edit().putBoolean("auto_canvas_enabled", value).apply()
@@ -198,6 +202,14 @@ class UserPreferencesManager(context: Context) {
     var selectedEqPreset: String
         get() = prefs.getString("selected_eq_preset", "Flat") ?: "Flat"
         set(value) = prefs.edit().putString("selected_eq_preset", value).apply()
+
+    var customEqBandsRaw: String
+        get() = prefs.getString("custom_eq_bands", "") ?: ""
+        set(value) = prefs.edit().putString("custom_eq_bands", value).apply()
+
+    var customEqPresetsRaw: String
+        get() = prefs.getString("custom_eq_presets", "") ?: ""
+        set(value) = prefs.edit().putString("custom_eq_presets", value).apply()
 
     var libraryIsGrid: Boolean
         get() = prefs.getBoolean("library_is_grid", true)
@@ -314,6 +326,25 @@ class UserPreferencesManager(context: Context) {
     var selectedHomeCountry: String
         get() = prefs.getString("selected_home_country", "Global") ?: "Global"
         set(value) = prefs.edit().putString("selected_home_country", value).apply()
+
+    var autoBackupFrequency: String
+        get() = prefs.getString("auto_backup_frequency", "OFF") ?: "OFF"
+        set(value) = prefs.edit().putString("auto_backup_frequency", value).apply()
+
+    var autoBackupTreeUri: String?
+        get() = prefs.getString("auto_backup_tree_uri", null)
+        set(value) {
+            if (value.isNullOrBlank()) prefs.edit().remove("auto_backup_tree_uri").apply()
+            else prefs.edit().putString("auto_backup_tree_uri", value).apply()
+        }
+
+    var lastBackupTimestamp: Long
+        get() = prefs.getLong("last_backup_timestamp", 0L)
+        set(value) = prefs.edit().putLong("last_backup_timestamp", value).apply()
+
+    var lastBackupSummary: String
+        get() = prefs.getString("last_backup_summary", "") ?: ""
+        set(value) = prefs.edit().putString("last_backup_summary", value).apply()
 }
 
 enum class PlayerStyle {

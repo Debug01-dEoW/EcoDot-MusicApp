@@ -51,6 +51,10 @@ import com.example.ecodot.data.local.prefs.SponsorBlockCategory
 import com.example.ecodot.data.local.prefs.ThemeColorSource
 import com.example.ecodot.data.local.prefs.ThemeMode
 import com.example.ecodot.data.local.prefs.VideoQuality
+import com.example.ecodot.data.backup.BackupSchedule
+import com.example.ecodot.data.backup.RestoreMode
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import com.example.ecodot.ui.components.AmbientThemeGlow
 import com.example.ecodot.ui.components.LocalLiquidGlassEnabled
 import com.example.ecodot.ui.components.SettingGroup
@@ -132,6 +136,43 @@ fun SettingsScreen(
     val dataSaver by viewModel.dataSaver.collectAsState()
     val cacheLimitMb by viewModel.cacheLimitMb.collectAsState()
     val storageStats by viewModel.storageStats.collectAsState()
+
+    val autoBackupSchedule by viewModel.autoBackupSchedule.collectAsState()
+    val lastBackupSummary by viewModel.lastBackupSummary.collectAsState()
+    val autoBackupFolderLabel by viewModel.autoBackupFolderLabel.collectAsState()
+    val isBackupInProgress by viewModel.isBackupInProgress.collectAsState()
+    var pendingRestoreUri by remember { mutableStateOf<Uri?>(null) }
+
+    val exportBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri ->
+        if (uri != null) {
+            viewModel.backupToUri(uri)
+        }
+    }
+
+    val importBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            pendingRestoreUri = uri
+        }
+    }
+
+    val selectBackupFolderLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.setAutoBackupFolderUri(uri)
+            Toast.makeText(context, "Auto-backup folder connected", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.discoveredSafBackupUri.collect { foundUri ->
+            pendingRestoreUri = foundUri
+        }
+    }
 
     val autoCheckUpdates by viewModel.autoCheckUpdates.collectAsState()
     val lastCheckTime by viewModel.lastUpdateCheckTime.collectAsState()
@@ -482,6 +523,64 @@ fun SettingsScreen(
                 }
             }
 
+            // ── Backup & Restore (SimpMusic-style cross-reinstall persistence) ────
+            item(key = "backup_restore") {
+                SettingGroup(title = "Backup & Restore") {
+                    SettingItem(
+                        title = "Auto-backup timing",
+                        subtitle = autoBackupSchedule.label,
+                        onClick = {
+                            activeModal = SettingsModal.SingleChoice(
+                                title = "Auto-backup frequency",
+                                options = BackupSchedule.entries.map { RadioOption(it, it.label) },
+                                selectedValue = autoBackupSchedule,
+                                onConfirm = { chosen ->
+                                    viewModel.setAutoBackupSchedule(chosen as BackupSchedule)
+                                }
+                            )
+                        }
+                    )
+                    SettingItem(
+                        title = "Backup folder",
+                        subtitle = autoBackupFolderLabel
+                            ?: "Downloads/EcoDot (default, survives uninstall)",
+                        smallSubtitle = true,
+                        onClick = {
+                            selectBackupFolderLauncher.launch(null)
+                        }
+                    )
+                    SettingItem(
+                        title = if (isBackupInProgress) "Backing up library..." else "Back up now",
+                        subtitle = lastBackupSummary.ifBlank {
+                            "Save playlists, Liked Songs, artists, history, EQ & preferences"
+                        },
+                        smallSubtitle = true,
+                        isEnable = !isBackupInProgress,
+                        onClick = {
+                            viewModel.backupNow()
+                        }
+                    )
+                    SettingItem(
+                        title = "Export backup file (.ecodot)",
+                        subtitle = "Save a portable copy to Downloads or cloud storage",
+                        isEnable = !isBackupInProgress,
+                        onClick = {
+                            val dateTag = SimpleDateFormat("yyyyMMdd_HHmm", Locale.getDefault())
+                                .format(Date())
+                            exportBackupLauncher.launch("EcoDot_Backup_$dateTag.ecodot")
+                        }
+                    )
+                    SettingItem(
+                        title = "Restore from backup",
+                        subtitle = "Import .ecodot archive after reinstall or on a new phone",
+                        isEnable = !isBackupInProgress,
+                        onClick = {
+                            importBackupLauncher.launch(arrayOf("*/*"))
+                        }
+                    )
+                }
+            }
+
             // ── Storage ───────────────────────────────────────────────────────────
             item(key = "storage") {
                 val limitOptions = listOf(
@@ -712,6 +811,52 @@ fun SettingsScreen(
             modal = activeModal,
             onDismiss = { activeModal = null }
         )
+
+        pendingRestoreUri?.let { uriToRestore ->
+            AlertDialog(
+                onDismissRequest = { pendingRestoreUri = null },
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                title = {
+                    Text(
+                        text = "Restore EcoDot Backup",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text(
+                        text = "Choose how to restore your playlists, Liked Songs, followed artists, history, EQ presets, and settings:\n\n" +
+                            "• Merge adds missing playlists, artists, and tracks without deleting current items.\n" +
+                            "• Replace overwrites current library data with the backup.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                confirmButton = {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(
+                            onClick = {
+                                pendingRestoreUri = null
+                                viewModel.restoreFromUri(uriToRestore, RestoreMode.REPLACE)
+                            }
+                        ) {
+                            Text("Replace", color = MaterialTheme.colorScheme.error)
+                        }
+                        Button(
+                            onClick = {
+                                pendingRestoreUri = null
+                                viewModel.restoreFromUri(uriToRestore, RestoreMode.MERGE)
+                            }
+                        ) {
+                            Text("Merge")
+                        }
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { pendingRestoreUri = null }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
 
         if (showColorPickerDialog) {
             CustomColorPickerDialog(

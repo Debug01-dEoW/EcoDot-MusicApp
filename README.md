@@ -1,26 +1,26 @@
 <div align="center">
 
-# 🎵 EcoDot 1.27v
+# 🎵 EcoDot 1.28v
 
-**A fast 120Hz Android music & video player combining crystal-clear Liquid Glass optics, Spotify-inspired playlists, Apple Music / Vinyl / Spotify player styles, seamless 1080p video playback, AutoMix DJ crossfade, and ad-free YouTube Music streaming.**
+**A fast 120Hz Android music & video player combining crystal-clear Liquid Glass optics, customizable multi-band Equalizer & Bass Boost, SimpMusic-style cross-reinstall backups, Spotify-inspired playlists, Apple Music / Vinyl / Spotify player styles, seamless 1080p video playback, AutoMix DJ crossfade, and ad-free YouTube Music streaming.**
 
 **Made by [Debug01-dEoW aka Deep](https://github.com/Debug01-dEoW)**
 
-[![Release](https://img.shields.io/badge/Version-EcoDot%201.27v-10B981?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases)
+[![Release](https://img.shields.io/badge/Version-EcoDot%201.28v-10B981?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases)
 [![Made By](https://img.shields.io/badge/Made%20By-Debug01--dEoW%20aka%20Deep-6366F1?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Debug01-dEoW)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.2.10-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 [![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 [![License](https://img.shields.io/badge/License-MIT-F59E0B?style=for-the-badge)](LICENSE)
 
-[**Download APK (`EcoDot 1.27v.apk`)**](releases/EcoDot%201.27v.apk) · [**GitHub Releases**](https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases) · [**Developer Profile**](https://github.com/Debug01-dEoW)
+[**Download APK (`EcoDot 1.28v.apk`)**](releases/EcoDot%201.28v.apk) · [**GitHub Releases**](https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases) · [**Developer Profile**](https://github.com/Debug01-dEoW)
 
 </div>
 
 ---
 
-## 📣 What's New & Release News (`1.27v`)
+## 📣 What's New & Release News (`1.28v`)
 
-EcoDot `1.27v` delivers a major polish pass focused on **120Hz butter-smooth performance**, **crystal-clear Liquid Glass lens refraction**, **authentic Spotify-style playlists**, **a complete scrollable 3-dots Track Options menu**, **interactive circular profile picture adjustment**, and **over-the-air update notifications for all `v1.26v` users**.
+EcoDot `1.28v` introduces a **Liquid Glass Customizable Equalizer + Bass Boost**, **SimpMusic-style cross-reinstall Backup & Auto-Backup scheduling**, **redesigned Liquid Glass Album & Artist views**, **single-row Followed Artists in Library**, and major **APK size, security, and playback queue upgrades**.
 
 ### 🎧 Spotify-Style Playlists & Full Track Actions
 - **Authentic Playlist Detail Screen (`PlaylistDetailScreen`)**: Centered rounded artwork (featuring Spotify's purple gradient Heart cover on *Liked Songs* and dynamic `2x2` album mosaics on playlists), smooth `Palette` ambient hero gradients, one-tap Download All, track reordering, Shuffle, and a green circular Play/Pause FAB.
@@ -74,7 +74,8 @@ graph TB
 ```text
 EcoDot-MusicApp/
 ├── releases/
-│   ├── EcoDot 1.27v.apk                 # Latest R8-optimized 120Hz release APK
+│   ├── EcoDot 1.28v.apk                 # Latest R8-optimized 120Hz release APK
+│   ├── EcoDot 1.27v.apk                 # Previous v1.27 release build
 │   ├── EcoDot 1.26v.apk                 # Previous v1.26 release build
 │   ├── EcoDot-v1.2-liquid-glass.apk     # Previous v1.2 build
 │   └── EcoDot-v1.0-beta.apk             # Initial beta release
@@ -107,10 +108,10 @@ EcoDot-MusicApp/
 ## 📥 Installation & Build
 
 ### Install the APK
-1. Download [**`EcoDot 1.27v.apk`**](releases/EcoDot%201.27v.apk) from [**Releases**](https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases).
+1. Download [**`EcoDot 1.28v.apk`**](releases/EcoDot%201.28v.apk) from [**Releases**](https://github.com/Debug01-dEoW/EcoDot-MusicApp/releases).
 2. Enable **"Install from unknown sources"** on your Android device (**Android 7.0 / API 24+** required, targets API 37).
 3. If Android Play Protect shows **"Scan app before install"**, tap **Scan app** → once it reports **No threats found**, tap **Install** (normal for sideloaded APKs until Google's cloud database builds enough install reputation for the signing certificate).
-4. **Upgrading from `EcoDot 1.26v`**: `EcoDot 1.27v` switches from a generic debug certificate to EcoDot's official release certificate (`SHA-256: 0B:8A:F1:49:63:A1:71:7E:F0:50:2A:CC:B1:6A:9E:80:50:F6:5D:11:11:0B:33:63:E5:9E:6A:5B:03:D4:9D:9E`). If Android blocks updating over `v1.26v` due to the key change, uninstall `v1.26v` once before installing `1.27v` — all future releases will update cleanly in-place.
+4. **Upgrading from `EcoDot 1.27v` or `1.26v`**: `EcoDot 1.28v` is signed with EcoDot's official release certificate (`SHA-256: 0B:8A:F1:49:63:A1:71:7E:F0:50:2A:CC:B1:6A:9E:80:50:F6:5D:11:11:0B:33:63:E5:9E:6A:5B:03:D4:9D:9E`), so `1.27v` updates seamlessly in-place. *(If coming from older debug-signed `1.26v`, uninstall once before installing.)*
 
 ### Build from Source
 ```bash
@@ -120,7 +121,7 @@ cd EcoDot-MusicApp
 # Run unit test suite
 ./gradlew testDebugUnitTest
 
-# Build R8-optimized 120Hz EcoDot 1.27v release APK (uses keystore.properties if present, else debug fallback)
+# Build R8-optimized 120Hz EcoDot 1.28v release APK (uses keystore.properties if present, else debug fallback)
 ./gradlew assembleRelease
 ```
 

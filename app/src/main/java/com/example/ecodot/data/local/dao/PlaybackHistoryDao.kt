@@ -30,4 +30,10 @@ interface PlaybackHistoryDao {
 
     @Query("DELETE FROM playback_history")
     suspend fun clearHistory()
+
+    @Query("SELECT * FROM playback_history ORDER BY timestamp DESC LIMIT 500")
+    suspend fun getAllHistoryOnce(): List<PlaybackHistory>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertHistories(histories: List<PlaybackHistory>)
 }

@@ -9,6 +9,9 @@ interface UserProfileDao {
     @Query("SELECT * FROM user_profiles WHERE id = 1")
     fun getUserProfile(): Flow<UserProfile?>
 
+    @Query("SELECT * FROM user_profiles WHERE id = 1 LIMIT 1")
+    suspend fun getUserProfileOnce(): UserProfile?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun updateProfile(profile: UserProfile)
 }

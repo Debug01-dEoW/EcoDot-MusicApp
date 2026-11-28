@@ -20,4 +20,10 @@ interface RecentSearchDao {
 
     @Query("DELETE FROM recent_searches")
     suspend fun clearAllRecentSearches()
+
+    @Query("SELECT * FROM recent_searches ORDER BY timestamp DESC LIMIT 50")
+    suspend fun getRecentSearchesOnce(): List<RecentSearchItem>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRecentSearches(items: List<RecentSearchItem>)
 }

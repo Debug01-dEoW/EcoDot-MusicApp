@@ -96,6 +96,7 @@ class EcoDotSessionService : MediaSessionService() {
         const val ACTION_FORWARD_10      = "ACTION_FORWARD_10"
         const val ACTION_SET_EQ_BAND     = "SET_EQ_BAND"
         const val ACTION_SET_VIRTUALIZER = "SET_VIRTUALIZER"
+        const val ACTION_SET_BASS_BOOST  = "SET_BASS_BOOST"
         const val ACTION_SET_EQ_ENABLED  = "SET_EQ_ENABLED"
         const val ACTION_SET_SKIP_SILENCE = "SET_SKIP_SILENCE"
         const val ACTION_SET_NORMALIZE_VOLUME = "SET_NORMALIZE_VOLUME"
@@ -209,9 +210,21 @@ class EcoDotSessionService : MediaSessionService() {
             setEnabled(prefsManager.equalizerEnabled)
             setNormalizeVolume(prefsManager.normalizeVolume)
             setVirtualizerStrength(prefsManager.virtualizerStrength.toShort())
-            val savedPreset = com.example.ecodot.domain.model.DEFAULT_EQ_PRESETS.find { it.name == prefsManager.selectedEqPreset }
-            savedPreset?.bands?.forEachIndexed { idx, level ->
-                setBandLevel(idx.toShort(), level.toShort())
+            setBassBoostStrength(prefsManager.bassBoostStrength.toShort())
+            val bandCount = AudioEffectManager.deviceEqSpec.value.bandCount
+            val savedRaw = prefsManager.customEqBandsRaw
+            if (savedRaw.isNotBlank()) {
+                val restored = com.example.ecodot.domain.model.decodeEqBands(savedRaw, bandCount)
+                restored.forEach { (idx, level) ->
+                    setBandLevel(idx.toShort(), level.toShort())
+                }
+            } else {
+                val allPresets = com.example.ecodot.domain.model.DEFAULT_EQ_PRESETS +
+                    com.example.ecodot.domain.model.decodeCustomEqPresets(prefsManager.customEqPresetsRaw)
+                val savedPreset = allPresets.find { it.name == prefsManager.selectedEqPreset }
+                savedPreset?.bands?.forEachIndexed { idx, level ->
+                    setBandLevel(idx.toShort(), level.toShort())
+                }
             }
         }
 
@@ -1053,6 +1066,7 @@ class EcoDotSessionService : MediaSessionService() {
                 sessionCmdBuilder
                     .add(SessionCommand(ACTION_SET_EQ_BAND, Bundle.EMPTY))
                     .add(SessionCommand(ACTION_SET_VIRTUALIZER, Bundle.EMPTY))
+                    .add(SessionCommand(ACTION_SET_BASS_BOOST, Bundle.EMPTY))
                     .add(SessionCommand(ACTION_SET_EQ_ENABLED, Bundle.EMPTY))
                     .add(SessionCommand(ACTION_SET_SKIP_SILENCE, Bundle.EMPTY))
                     .add(SessionCommand(ACTION_SET_NORMALIZE_VOLUME, Bundle.EMPTY))
@@ -1107,6 +1121,8 @@ class EcoDotSessionService : MediaSessionService() {
                 ACTION_SET_EQ_BAND    -> effectManager?.setBandLevel(
                     args.getInt("band").toShort(), args.getInt("level").toShort())
                 ACTION_SET_VIRTUALIZER -> effectManager?.setVirtualizerStrength(
+                    args.getInt("strength").toShort())
+                ACTION_SET_BASS_BOOST  -> effectManager?.setBassBoostStrength(
                     args.getInt("strength").toShort())
                 ACTION_SET_EQ_ENABLED  -> effectManager?.setEnabled(args.getBoolean("enabled"))
                 ACTION_SET_SKIP_SILENCE -> {

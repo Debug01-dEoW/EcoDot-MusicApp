@@ -3,8 +3,13 @@ package com.example.ecodot.ui.screens
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.example.ecodot.data.backup.RestoreMode
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -563,7 +568,17 @@ fun LibraryScreen(
                 when (filter) {
                     // ── 1. Your library (The default SimpMusic Home tab) ──────
                     "Your library" -> {
+                        val libraryListState = rememberLazyListState()
+                        var pendingLibraryRestoreUri by remember { mutableStateOf<Uri?>(null) }
+                        var hideEmptyRestoreCard by remember { mutableStateOf(false) }
+                        val libraryRestoreLauncher = rememberLauncherForActivityResult(
+                            contract = ActivityResultContracts.OpenDocument()
+                        ) { uri ->
+                            if (uri != null) pendingLibraryRestoreUri = uri
+                        }
+
                         LazyColumn(
+                            state = libraryListState,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(top = 4.dp, bottom = 120.dp)
                         ) {
@@ -582,7 +597,9 @@ fun LibraryScreen(
                                     followedThumbnails = followedArtists.mapNotNull { it.imageUrl }.take(2),
                                     onFollowedClick = {
                                         if (followedArtists.isNotEmpty()) {
-                                            navController.navigate("artist/${followedArtists.first().artistId}")
+                                            scope.launch {
+                                                libraryListState.animateScrollToItem(1)
+                                            }
                                         } else {
                                             Toast.makeText(context, "No artists followed yet", Toast.LENGTH_SHORT).show()
                                         }
@@ -608,6 +625,123 @@ fun LibraryScreen(
                                     cachedThumbnails = cachedTracks.mapNotNull { it.albumArtUri }.take(2),
                                     onCachedClick = { showCachedSongsScreen = true }
                                 )
+                            }
+
+                            // ── Followed Artists Single Horizontal Row ──────────────
+                            if (followedArtists.isNotEmpty()) {
+                                item(key = "followed_artists_row") {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(start = 18.dp, end = 18.dp, top = 22.dp, bottom = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "Followed Artists",
+                                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                        Surface(
+                                            color = Color.White.copy(alpha = 0.08f),
+                                            shape = RoundedCornerShape(50),
+                                            border = BorderStroke(0.5.dp, Color.White.copy(alpha = 0.14f))
+                                        ) {
+                                            Text(
+                                                text = "${followedArtists.size}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFFE7D7FD),
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                            )
+                                        }
+                                    }
+
+                                    LazyRow(
+                                        contentPadding = PaddingValues(horizontal = 18.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        items(followedArtists, key = { "followed_${it.artistId}" }) { artist ->
+                                            FollowedArtistRowItem(
+                                                artist = artist,
+                                                onClick = { navController.navigate("artist/${artist.artistId}") },
+                                                onLongClick = {
+                                                    viewModel.toggleFollowArtist(
+                                                        artistId = artist.artistId,
+                                                        name = artist.artistName,
+                                                        imageUrl = artist.imageUrl
+                                                    )
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Unfollowed ${artist.artistName}",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            } else if (!hideEmptyRestoreCard && likedCount == 0 && userPlaylists.isEmpty()) {
+                                item(key = "restore_backup_hint") {
+                                    Surface(
+                                        color = Color(0xFF171925),
+                                        shape = RoundedCornerShape(18.dp),
+                                        border = BorderStroke(0.8.dp, Color.White.copy(alpha = 0.12f)),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 18.dp, vertical = 14.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(14.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = SimpIcons.Restore,
+                                                contentDescription = null,
+                                                tint = Color(0xFF9E8CFF),
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                            Spacer(Modifier.width(12.dp))
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = "Restore your library?",
+                                                    color = Color.White,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 14.sp
+                                                )
+                                                Text(
+                                                    text = "Import .ecodot backup from Downloads or folder",
+                                                    color = Color.White.copy(alpha = 0.6f),
+                                                    fontSize = 12.sp
+                                                )
+                                            }
+                                            TextButton(
+                                                onClick = { libraryRestoreLauncher.launch(arrayOf("*/*")) }
+                                            ) {
+                                                Text(
+                                                    text = "Restore",
+                                                    color = Color(0xFF9E8CFF),
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                            IconButton(
+                                                onClick = { hideEmptyRestoreCard = true },
+                                                modifier = Modifier.size(28.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = SimpIcons.Close,
+                                                    contentDescription = "Dismiss",
+                                                    tint = Color.White.copy(alpha = 0.45f),
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
 
                             // ── Playlists Carousel Section ──────────────────────────────
@@ -746,6 +880,44 @@ fun LibraryScreen(
                                     onAddToQueue = { viewModel.addToQueue(track) }
                                 )
                             }
+                        }
+
+                        pendingLibraryRestoreUri?.let { uriToRestore ->
+                            AlertDialog(
+                                onDismissRequest = { pendingLibraryRestoreUri = null },
+                                containerColor = Color(0xFF161926),
+                                titleContentColor = Color.White,
+                                textContentColor = Color.White.copy(alpha = 0.8f),
+                                title = { Text("Restore Backup", fontWeight = FontWeight.Bold) },
+                                text = {
+                                    Text("Restore playlists, Liked Songs, followed artists, history, EQ presets & preferences from this backup file?")
+                                },
+                                confirmButton = {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        TextButton(
+                                            onClick = {
+                                                pendingLibraryRestoreUri = null
+                                                viewModel.restoreFromUri(uriToRestore, RestoreMode.REPLACE)
+                                            }
+                                        ) {
+                                            Text("Replace", color = Color(0xFFFF6B6B))
+                                        }
+                                        Button(
+                                            onClick = {
+                                                pendingLibraryRestoreUri = null
+                                                viewModel.restoreFromUri(uriToRestore, RestoreMode.MERGE)
+                                            }
+                                        ) {
+                                            Text("Merge")
+                                        }
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { pendingLibraryRestoreUri = null }) {
+                                        Text("Cancel", color = Color.White.copy(alpha = 0.65f))
+                                    }
+                                }
+                            )
                         }
                     }
 
@@ -1250,5 +1422,69 @@ private fun CreatePlaylistOverviewCard(
                 )
             }
         }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun FollowedArtistRowItem(
+    artist: FollowedArtist,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .width(86.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
+            .padding(vertical = 4.dp, horizontal = 4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.08f))
+                .border(
+                    width = 1.dp,
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.4f),
+                            Color.White.copy(alpha = 0.12f)
+                        )
+                    ),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (!artist.imageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = artist.imageUrl,
+                    contentDescription = artist.artistName,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = SimpIcons.Person,
+                    contentDescription = artist.artistName,
+                    tint = Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.size(30.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(7.dp))
+        Text(
+            text = artist.artistName,
+            color = Color.White,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center
+        )
     }
 }
